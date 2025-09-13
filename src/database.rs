@@ -1,3 +1,4 @@
+use crate::auth::{User, UserRole};
 use crate::error::{DlsError, Result};
 use crate::storage::{DiskImage, ImageFormat};
 use chrono::{DateTime, Utc};
@@ -12,6 +13,42 @@ use uuid::Uuid;
 #[derive(Debug, Clone)]
 pub struct DatabaseManager {
     pool: PgPool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserRecord {
+    pub id: Uuid,
+    pub username: String,
+    pub password_hash: String,
+    pub role: String,
+    pub email: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub last_login: Option<DateTime<Utc>>,
+    pub active: bool,
+    pub created_by: Option<Uuid>,
+}
+
+impl UserRecord {
+    pub fn get_role(&self) -> Result<UserRole> {
+        self.role.parse()
+    }
+    
+    pub fn set_role(&mut self, role: UserRole) {
+        self.role = role.to_string();
+    }
+    
+    pub fn to_user(&self) -> Result<User> {
+        Ok(User {
+            id: self.id,
+            username: self.username.clone(),
+            password_hash: self.password_hash.clone(),
+            role: self.get_role()?,
+            created_at: self.created_at,
+            last_login: self.last_login,
+            active: self.active,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -205,6 +242,27 @@ impl DatabaseManager {
             .await
             .map_err(|e| DlsError::Database(format!("Failed to enable UUID extension: {}", e)))?;
 
+        // Create users table
+        sqlx::query(r#"
+            CREATE TABLE IF NOT EXISTS users (
+                id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+                username VARCHAR(255) NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                role VARCHAR(20) NOT NULL DEFAULT 'viewer' CHECK (role IN ('admin', 'operator', 'viewer')),
+                email VARCHAR(255),
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                last_login TIMESTAMPTZ,
+                active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+                CONSTRAINT username_length CHECK (char_length(username) >= 3),
+                CONSTRAINT email_format CHECK (email ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$' OR email IS NULL)
+            )
+        "#)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to create users table: {}", e)))?;
+
         // Create images table
         sqlx::query(r#"
             CREATE TABLE IF NOT EXISTS images (
@@ -312,6 +370,9 @@ impl DatabaseManager {
 
         // Create indexes for performance
         let indexes = vec![
+            "CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)",
+            "CREATE INDEX IF NOT EXISTS idx_users_active ON users(active)",
+            "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)",
             "CREATE INDEX IF NOT EXISTS idx_images_name ON images(name)",
             "CREATE INDEX IF NOT EXISTS idx_images_os_type ON images(os_type)",
             "CREATE INDEX IF NOT EXISTS idx_images_is_template ON images(is_template)",
@@ -607,6 +668,177 @@ impl DatabaseManager {
 
         debug!("Retrieved {} active sessions", sessions.len());
         Ok(sessions)
+    }
+
+    // User management operations
+    pub async fn create_user(&self, username: &str, password_hash: &str, role: UserRole, 
+                             email: Option<&str>, created_by: Option<Uuid>) -> Result<Uuid> {
+        debug!("Creating user: {}", username);
+        
+        let user_id = Uuid::new_v4();
+        
+        sqlx::query(r#"
+            INSERT INTO users (id, username, password_hash, role, email, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6)
+        "#)
+        .bind(user_id)
+        .bind(username)
+        .bind(password_hash)
+        .bind(role.to_string())
+        .bind(email)
+        .bind(created_by)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to create user: {}", e)))?;
+
+        debug!("Successfully created user: {} with ID: {}", username, user_id);
+        Ok(user_id)
+    }
+
+    pub async fn get_user_by_username(&self, username: &str) -> Result<Option<UserRecord>> {
+        debug!("Getting user by username: {}", username);
+        
+        let user = sqlx::query_as::<_, UserRecord>(
+            "SELECT * FROM users WHERE username = $1 AND active = true"
+        )
+        .bind(username)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to get user by username: {}", e)))?;
+
+        Ok(user)
+    }
+
+    pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<UserRecord>> {
+        debug!("Getting user by ID: {}", user_id);
+        
+        let user = sqlx::query_as::<_, UserRecord>(
+            "SELECT * FROM users WHERE id = $1"
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to get user by ID: {}", e)))?;
+
+        Ok(user)
+    }
+
+    pub async fn list_users(&self, active_only: bool) -> Result<Vec<UserRecord>> {
+        debug!("Listing users (active_only: {})", active_only);
+        
+        let query = if active_only {
+            "SELECT * FROM users WHERE active = true ORDER BY username"
+        } else {
+            "SELECT * FROM users ORDER BY username"
+        };
+
+        let users = sqlx::query_as::<_, UserRecord>(query)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| DlsError::Database(format!("Failed to list users: {}", e)))?;
+
+        debug!("Retrieved {} users", users.len());
+        Ok(users)
+    }
+
+    pub async fn update_user_password(&self, user_id: Uuid, password_hash: &str) -> Result<()> {
+        debug!("Updating password for user: {}", user_id);
+        
+        let result = sqlx::query(r#"
+            UPDATE users 
+            SET password_hash = $2, updated_at = NOW()
+            WHERE id = $1
+        "#)
+        .bind(user_id)
+        .bind(password_hash)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to update user password: {}", e)))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+        }
+
+        debug!("Successfully updated password for user: {}", user_id);
+        Ok(())
+    }
+
+    pub async fn update_user_role(&self, user_id: Uuid, role: UserRole) -> Result<()> {
+        debug!("Updating role for user: {} to {:?}", user_id, role);
+        
+        let result = sqlx::query(r#"
+            UPDATE users 
+            SET role = $2, updated_at = NOW()
+            WHERE id = $1
+        "#)
+        .bind(user_id)
+        .bind(role.to_string())
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to update user role: {}", e)))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+        }
+
+        debug!("Successfully updated role for user: {}", user_id);
+        Ok(())
+    }
+
+    pub async fn update_user_last_login(&self, user_id: Uuid) -> Result<()> {
+        debug!("Updating last login for user: {}", user_id);
+        
+        sqlx::query(r#"
+            UPDATE users 
+            SET last_login = NOW(), updated_at = NOW()
+            WHERE id = $1
+        "#)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to update user last login: {}", e)))?;
+
+        debug!("Successfully updated last login for user: {}", user_id);
+        Ok(())
+    }
+
+    pub async fn deactivate_user(&self, user_id: Uuid) -> Result<()> {
+        debug!("Deactivating user: {}", user_id);
+        
+        let result = sqlx::query(r#"
+            UPDATE users 
+            SET active = false, updated_at = NOW()
+            WHERE id = $1
+        "#)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to deactivate user: {}", e)))?;
+
+        if result.rows_affected() == 0 {
+            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+        }
+
+        debug!("Successfully deactivated user: {}", user_id);
+        Ok(())
+    }
+
+    pub async fn create_default_admin(&self, username: &str, password_hash: &str) -> Result<Uuid> {
+        info!("Creating default admin user: {}", username);
+        
+        // Check if any admin users exist
+        let admin_count: (i64,) = sqlx::query_as(
+            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = true"
+        )
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| DlsError::Database(format!("Failed to check admin users: {}", e)))?;
+
+        if admin_count.0 > 0 {
+            return Err(DlsError::Database("Admin user already exists".to_string()));
+        }
+
+        self.create_user(username, password_hash, UserRole::Admin, None, None).await
     }
 
     pub async fn health_check(&self) -> Result<()> {
