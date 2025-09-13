@@ -1,0 +1,88 @@
+[package]
+name = "claude-dls"
+version = "0.1.0"
+edition = "2021"
+authors = ["Mario Cho <hephaex@gmail.com>"]
+description = "Cloud-Linked Agile Unified Diskless Environment"
+license = "MIT"
+
+[dependencies]
+# Core async runtime
+tokio = { version = "1.40", features = ["full"] }
+tokio-util = "0.7"
+
+# Web framework and HTTP
+axum = "0.7"
+tower = "0.5"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+hyper = "1.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Database (simplified for cross-compilation)
+sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono", "json"], default-features = false }
+
+# Networking
+dhcproto = "0.12"
+
+# Storage and ZFS - FreeBSD specific
+libzetta = { version = "0.3", optional = true }
+
+# Authentication and security (using native-tls instead of rustls for cross-compilation)
+jwt-simple = "0.12"
+argon2 = "0.5"
+uuid = { version = "1.10", features = ["v4", "serde"] }
+
+# Monitoring and observability
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+prometheus = "0.13"
+metrics = "0.23"
+
+# Configuration
+config = "0.14"
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Date and time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Async utilities
+futures = "0.3"
+async-trait = "0.1"
+
+[target.'cfg(target_os = "freebsd")'.dependencies]
+libzetta = "0.3"
+
+[features]
+default = []
+freebsd = ["libzetta"]
+
+[profile.dev]
+debug = true
+opt-level = 0
+
+[profile.release]
+debug = false
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+
+[[bin]]
+name = "claude-server"
+path = "src/main.rs"
+
+[[bin]]
+name = "claude-cli"
+path = "src/cli.rs"
+
+[[example]]
+name = "simple"
+path = "examples/simple.rs"
