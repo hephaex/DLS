@@ -15,11 +15,34 @@ pub struct User {
     pub active: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum UserRole {
     Admin,
     Operator,
     Viewer,
+}
+
+impl std::fmt::Display for UserRole {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UserRole::Admin => write!(f, "admin"),
+            UserRole::Operator => write!(f, "operator"),
+            UserRole::Viewer => write!(f, "viewer"),
+        }
+    }
+}
+
+impl std::str::FromStr for UserRole {
+    type Err = crate::error::DlsError;
+
+    fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "admin" => Ok(UserRole::Admin),
+            "operator" => Ok(UserRole::Operator),
+            "viewer" => Ok(UserRole::Viewer),
+            _ => Err(crate::error::DlsError::Auth(format!("Invalid user role: {}", s))),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,7 +141,7 @@ impl AuthManager {
 
 #[derive(Debug)]
 pub struct AuthMiddleware {
-    auth_manager: AuthManager,
+    pub auth_manager: AuthManager,
 }
 
 impl AuthMiddleware {
@@ -147,4 +170,149 @@ impl AuthMiddleware {
             _ => Err(DlsError::Auth("Insufficient permissions".to_string())),
         }
     }
+}
+
+#[derive(Debug)]
+pub struct UserService {
+    auth_manager: AuthManager,
+    db: std::sync::Arc<crate::database::DatabaseManager>,
+}
+
+impl UserService {
+    pub fn new(auth_manager: AuthManager, db: std::sync::Arc<crate::database::DatabaseManager>) -> Self {
+        Self { auth_manager, db }
+    }
+
+    pub async fn create_user(&self, username: &str, password: &str, role: UserRole, 
+                            email: Option<&str>, created_by: Option<uuid::Uuid>) -> Result<uuid::Uuid> {
+        let password_hash = self.auth_manager.hash_password(password)?;
+        self.db.create_user(username, &password_hash, role, email, created_by).await
+    }
+
+    pub async fn authenticate(&self, username: &str, password: &str) -> Result<(User, String)> {
+        let user_record = self.db.get_user_by_username(username).await?
+            .ok_or_else(|| DlsError::Auth("Invalid credentials".to_string()))?;
+
+        if !self.auth_manager.verify_password(password, &user_record.password_hash)? {
+            return Err(DlsError::Auth("Invalid credentials".to_string()));
+        }
+
+        let user = user_record.to_user()?;
+        let token = self.auth_manager.create_token(&user)?;
+
+        // Update last login
+        self.db.update_user_last_login(user.id).await?;
+
+        Ok((user, token))
+    }
+
+    pub async fn verify_token(&self, token: &str) -> Result<User> {
+        let claims = self.auth_manager.verify_token(token)?;
+        
+        let user_record = self.db.get_user_by_username(&claims.username).await?
+            .ok_or_else(|| DlsError::Auth("User not found".to_string()))?;
+
+        user_record.to_user()
+    }
+
+    pub async fn change_password(&self, user_id: uuid::Uuid, old_password: &str, new_password: &str) -> Result<()> {
+        let user_record = self.db.get_user_by_id(user_id).await?
+            .ok_or_else(|| DlsError::Auth("User not found".to_string()))?;
+
+        if !self.auth_manager.verify_password(old_password, &user_record.password_hash)? {
+            return Err(DlsError::Auth("Invalid current password".to_string()));
+        }
+
+        let new_password_hash = self.auth_manager.hash_password(new_password)?;
+        self.db.update_user_password(user_id, &new_password_hash).await
+    }
+
+    pub async fn reset_password(&self, user_id: uuid::Uuid, new_password: &str) -> Result<()> {
+        let new_password_hash = self.auth_manager.hash_password(new_password)?;
+        self.db.update_user_password(user_id, &new_password_hash).await
+    }
+
+    pub async fn update_user_role(&self, user_id: uuid::Uuid, role: UserRole) -> Result<()> {
+        self.db.update_user_role(user_id, role).await
+    }
+
+    pub async fn deactivate_user(&self, user_id: uuid::Uuid) -> Result<()> {
+        self.db.deactivate_user(user_id).await
+    }
+
+    pub async fn list_users(&self, active_only: bool) -> Result<Vec<User>> {
+        let user_records = self.db.list_users(active_only).await?;
+        let mut users = Vec::new();
+        
+        for record in user_records {
+            users.push(record.to_user()?);
+        }
+        
+        Ok(users)
+    }
+
+    pub async fn get_user_by_id(&self, user_id: uuid::Uuid) -> Result<Option<User>> {
+        if let Some(record) = self.db.get_user_by_id(user_id).await? {
+            Ok(Some(record.to_user()?))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn create_default_admin(&self, username: &str, password: &str) -> Result<uuid::Uuid> {
+        let password_hash = self.auth_manager.hash_password(password)?;
+        self.db.create_default_admin(username, &password_hash).await
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginRequest {
+    pub username: String,
+    pub password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LoginResponse {
+    pub token: String,
+    pub user: UserInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UserInfo {
+    pub id: uuid::Uuid,
+    pub username: String,
+    pub role: UserRole,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub last_login: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl From<User> for UserInfo {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            created_at: user.created_at,
+            last_login: user.last_login,
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateUserRequest {
+    pub username: String,
+    pub password: String,
+    pub role: UserRole,
+    pub email: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub old_password: String,
+    pub new_password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateRoleRequest {
+    pub role: UserRole,
 }
