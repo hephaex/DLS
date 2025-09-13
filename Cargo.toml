@@ -57,6 +57,12 @@ chrono = { version = "0.4", features = ["serde"] }
 futures = "0.3"
 async-trait = "0.1"
 
+# Random number generation
+rand = "0.8"
+
+# Logging
+log = "0.4"
+
 [dev-dependencies]
 criterion = "0.5"
 tempfile = "3.8"

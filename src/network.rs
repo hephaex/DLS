@@ -3,6 +3,7 @@ pub mod tftp;
 pub mod iscsi;
 
 use crate::error::Result;
+use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -21,6 +22,7 @@ pub struct NetworkManager {
     dhcp_server: Option<DhcpServer>,
     tftp_server: Option<TftpServer>,
     iscsi_target: Option<IscsiTarget>,
+    pxe_orchestrator: Option<PxeOrchestrator>,
 }
 
 impl NetworkManager {
@@ -30,10 +32,12 @@ impl NetworkManager {
             dhcp_server: None,
             tftp_server: None,
             iscsi_target: None,
+            pxe_orchestrator: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_pxe_orchestrator().await?;
         self.start_dhcp().await?;
         self.start_tftp().await?;
         self.start_iscsi().await?;
@@ -77,7 +81,23 @@ impl NetworkManager {
         Ok(())
     }
 
+    pub async fn start_pxe_orchestrator(&mut self) -> Result<()> {
+        let config = BootOrchestratorConfig {
+            enabled: true,
+            tftp_root: std::path::PathBuf::from(&self.config.tftp_root),
+            ..Default::default()
+        };
+        
+        let mut orchestrator = PxeOrchestrator::new(config);
+        orchestrator.start().await?;
+        self.pxe_orchestrator = Some(orchestrator);
+        Ok(())
+    }
+
     pub async fn stop_all_services(&mut self) -> Result<()> {
+        if let Some(mut pxe) = self.pxe_orchestrator.take() {
+            pxe.stop().await?;
+        }
         if let Some(mut dhcp) = self.dhcp_server.take() {
             dhcp.stop().await?;
         }
@@ -88,5 +108,9 @@ impl NetworkManager {
             iscsi.stop().await?;
         }
         Ok(())
+    }
+
+    pub fn get_pxe_orchestrator(&self) -> Option<&PxeOrchestrator> {
+        self.pxe_orchestrator.as_ref()
     }
 }
