@@ -533,6 +533,7 @@ dependencies = [
  "log",
  "metrics",
  "prometheus",
+ "rand",
  "serde",
  "serde_json",
  "serde_yaml",
