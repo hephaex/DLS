@@ -6,7 +6,10 @@ pub enum DlsError {
     Config(#[from] config::ConfigError),
     
     #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
+    Database(String),
+    
+    #[error("SQLx error: {0}")]
+    Sqlx(#[from] sqlx::Error),
     
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
