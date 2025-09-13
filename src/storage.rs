@@ -1,9 +1,16 @@
+pub mod zfs;
+
 use crate::error::{DlsError, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use tokio::fs;
 use uuid::Uuid;
+
+pub use zfs::{ZfsManager, FreeBsdZfsManager, ZfsDataset, ZfsSnapshot, CompressionType};
+
+#[cfg(not(target_os = "freebsd"))]
+pub use zfs::MockZfsManager;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DiskImage {
@@ -50,18 +57,36 @@ impl ZfsStorageManager {
         Self { pool_name, base_path }
     }
 
+    #[cfg(target_os = "freebsd")]
+    pub fn with_zfs_manager(zfs_manager: Box<dyn ZfsManager>) -> Self {
+        Self {
+            pool_name: "tank".to_string(),
+            base_path: "/tank/images".to_string(),
+        }
+    }
+
+    #[cfg(not(target_os = "freebsd"))]
+    pub fn with_zfs_manager(zfs_manager: Box<dyn ZfsManager>) -> Self {
+        Self {
+            pool_name: "mock-pool".to_string(),
+            base_path: "/tmp/mock-zfs".to_string(),
+        }
+    }
+
     async fn ensure_dataset_exists(&self, dataset: &str) -> Result<()> {
-        let dataset_path = format!("{}/{}", self.pool_name, dataset);
+        let _dataset_path = format!("{}/{}", self.pool_name, dataset);
         
         #[cfg(target_os = "freebsd")]
         {
-            use libzetta::zfs::{CreateDatasetBuilder, Zfs};
+            use crate::storage::zfs::FreeBsdZfsManager;
+            let zfs_manager = FreeBsdZfsManager::new(self.pool_name.clone());
             
-            let zfs = Zfs::new();
-            if let Err(_) = zfs.get_dataset(&dataset_path) {
-                CreateDatasetBuilder::new(&dataset_path)
-                    .create()
-                    .map_err(|e| DlsError::Storage(format!("Failed to create ZFS dataset: {}", e)))?;
+            if zfs_manager.get_dataset(dataset).await?.is_none() {
+                let mut properties = std::collections::HashMap::new();
+                properties.insert("mountpoint".to_string(), format!("{}/{}", self.base_path, dataset));
+                properties.insert("compression".to_string(), "lz4".to_string());
+                
+                zfs_manager.create_dataset(dataset, properties).await?;
             }
         }
         
@@ -81,6 +106,51 @@ impl ZfsStorageManager {
             ImageFormat::Qcow2 => "qcow2",
         };
         format!("{}/{}.{}", self.base_path, id, extension)
+    }
+
+    pub async fn create_image_dataset(&self, image_id: Uuid) -> Result<ZfsDataset> {
+        #[cfg(target_os = "freebsd")]
+        {
+            let zfs_manager = FreeBsdZfsManager::new(self.pool_name.clone());
+            let dataset_name = format!("images/{}", image_id);
+            
+            let mut properties = std::collections::HashMap::new();
+            properties.insert("mountpoint".to_string(), format!("{}/{}", self.base_path, image_id));
+            properties.insert("compression".to_string(), "lz4".to_string());
+            properties.insert("dedup".to_string(), "off".to_string());
+            properties.insert("quota".to_string(), "100G".to_string());
+            
+            zfs_manager.create_dataset(&dataset_name, properties).await
+        }
+        
+        #[cfg(not(target_os = "freebsd"))]
+        {
+            use crate::storage::zfs::MockZfsManager;
+            let zfs_manager = MockZfsManager::new(self.pool_name.clone());
+            let dataset_name = format!("images/{}", image_id);
+            
+            let mut properties = std::collections::HashMap::new();
+            properties.insert("compression".to_string(), "lz4".to_string());
+            
+            zfs_manager.create_dataset(&dataset_name, properties).await
+        }
+    }
+
+    pub async fn create_image_snapshot(&self, image_id: Uuid, snapshot_name: &str) -> Result<ZfsSnapshot> {
+        #[cfg(target_os = "freebsd")]
+        {
+            let zfs_manager = FreeBsdZfsManager::new(self.pool_name.clone());
+            let dataset_name = format!("images/{}", image_id);
+            zfs_manager.create_snapshot(&dataset_name, snapshot_name).await
+        }
+        
+        #[cfg(not(target_os = "freebsd"))]
+        {
+            use crate::storage::zfs::MockZfsManager;
+            let zfs_manager = MockZfsManager::new(self.pool_name.clone());
+            let dataset_name = format!("images/{}", image_id);
+            zfs_manager.create_snapshot(&dataset_name, snapshot_name).await
+        }
     }
 }
 
