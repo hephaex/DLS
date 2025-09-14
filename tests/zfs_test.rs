@@ -1,6 +1,6 @@
 mod common;
 
-use claude_dls::storage::{MockZfsManager, ZfsManager, CompressionType};
+use dls_server::storage::{MockZfsManager, ZfsManager, CompressionType};
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -174,7 +174,7 @@ async fn test_mock_zfs_dataset_destroy() {
 
 #[tokio::test]
 async fn test_zfs_compression_types() {
-    use claude_dls::storage::CompressionType;
+    use dls_server::storage::CompressionType;
     
     let compression_types = vec![
         CompressionType::Off,

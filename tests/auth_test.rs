@@ -1,6 +1,6 @@
 mod common;
 
-use claude_dls::auth::{AuthManager, UserRole, User};
+use dls_server::auth::{AuthManager, UserRole, User};
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -105,7 +105,7 @@ async fn test_role_based_permissions() {
     common::setup();
     
     let auth_manager = AuthManager::new(TEST_JWT_SECRET, 24);
-    let auth_middleware = claude_dls::auth::AuthMiddleware::new(auth_manager);
+    let auth_middleware = dls_server::auth::AuthMiddleware::new(auth_manager);
     
     // Test admin permissions (should have access to everything)
     let admin_user = User {
@@ -167,7 +167,7 @@ async fn test_auth_middleware_header_parsing() {
     common::setup();
     
     let auth_manager = AuthManager::new(TEST_JWT_SECRET, 24);
-    let auth_middleware = claude_dls::auth::AuthMiddleware::new(auth_manager);
+    let auth_middleware = dls_server::auth::AuthMiddleware::new(auth_manager);
     
     let user = User {
         id: Uuid::new_v4(),
@@ -238,11 +238,11 @@ async fn test_user_info_serialization() {
         active: true,
     };
     
-    let user_info: claude_dls::auth::UserInfo = user.into();
+    let user_info: dls_server::auth::UserInfo = user.into();
     
     // Test JSON serialization
     let json = serde_json::to_string(&user_info).unwrap();
-    let deserialized: claude_dls::auth::UserInfo = serde_json::from_str(&json).unwrap();
+    let deserialized: dls_server::auth::UserInfo = serde_json::from_str(&json).unwrap();
     
     assert_eq!(user_info.username, deserialized.username);
     assert_eq!(user_info.role, deserialized.role);

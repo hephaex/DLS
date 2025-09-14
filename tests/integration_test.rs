@@ -1,8 +1,8 @@
 mod common;
 
-use claude_dls::config::Settings;
-use claude_dls::storage::{ImageFormat, StorageManager, ZfsStorageManager};
-use claude_dls::auth::{AuthManager, User, UserRole};
+use dls_server::config::Settings;
+use dls_server::storage::{ImageFormat, StorageManager, ZfsStorageManager};
+use dls_server::auth::{AuthManager, User, UserRole};
 use tempfile::TempDir;
 
 #[tokio::test]

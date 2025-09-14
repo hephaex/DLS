@@ -1,6 +1,6 @@
 mod common;
 
-use claude_dls::storage::{ZfsStorageManager, StorageManager, ImageFormat};
+use dls_server::storage::{ZfsStorageManager, StorageManager, ImageFormat};
 
 #[tokio::test]
 async fn test_create_raw_image() {
