@@ -100,6 +100,7 @@ pub struct ClientFilter {
     pub recent_hours: Option<u32>,
 }
 
+#[derive(Debug)]
 pub struct ClientManager {
     clients: Arc<RwLock<HashMap<String, ClientInfo>>>,
     boot_metrics: Arc<RwLock<HashMap<String, ClientBootMetrics>>>,

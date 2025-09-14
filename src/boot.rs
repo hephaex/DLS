@@ -134,6 +134,7 @@ pub enum BootStatus {
     Expired,
 }
 
+#[derive(Debug)]
 pub struct PxeOrchestrator {
     config: BootOrchestratorConfig,
     profiles: Arc<RwLock<HashMap<String, BootProfile>>>,
