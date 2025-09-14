@@ -37,6 +37,11 @@ argon2 = "0.5"
 uuid = { version = "1.10", features = ["v4", "serde"] }
 ldap3 = "0.11"
 regex = "1.10"
+rustls = "0.23"
+rustls-pemfile = "2.0"
+x509-parser = "0.16"
+ring = "0.17"
+base64 = "0.22"
 
 # Monitoring and observability
 tracing = "0.1"
@@ -47,6 +52,10 @@ metrics = "0.23"
 # Configuration
 config = "0.14"
 clap = { version = "4.5", features = ["derive", "env"] }
+
+# Multi-tenancy and resource isolation
+dashmap = "6.1"
+parking_lot = "0.12"
 
 # Error handling
 thiserror = "1.0"

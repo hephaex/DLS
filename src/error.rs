@@ -46,6 +46,16 @@ pub enum DlsError {
     
     #[error("Serialization error: {0}")]
     Serialization(#[from] serde_json::Error),
+    
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+    
+    #[error("Access denied: {0}")]
+    AccessDenied(String),
+    
+    #[error("Tenant error: {0}")]
+    TenantError(String),
 }
 
 pub type Result<T> = std::result::Result<T, DlsError>;
+pub type Error = DlsError;
