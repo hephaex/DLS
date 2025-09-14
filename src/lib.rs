@@ -14,6 +14,7 @@ pub mod cluster;
 pub mod security;
 pub mod tenant;
 pub mod cloud;
+pub mod analytics;
 
 pub fn hello() -> String {
     "Hello from DLS Server!".to_string()
