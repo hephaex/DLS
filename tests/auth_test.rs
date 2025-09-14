@@ -69,7 +69,7 @@ async fn test_token_refresh() {
     };
     
     let original_token = auth_manager.create_token(&user).unwrap();
-    let refreshed_token = auth_manager.refresh_token(&original_token).unwrap();
+    let refreshed_token = auth_manager.refresh_token(&original_token).await.unwrap();
     
     // Both tokens should be valid but different
     assert_ne!(original_token, refreshed_token);

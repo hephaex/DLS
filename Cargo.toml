@@ -35,6 +35,8 @@ libzetta = { version = "0.3", optional = true }
 jwt-simple = "0.12"
 argon2 = "0.5"
 uuid = { version = "1.10", features = ["v4", "serde"] }
+ldap3 = "0.11"
+regex = "1.10"
 
 # Monitoring and observability
 tracing = "0.1"
