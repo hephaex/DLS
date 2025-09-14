@@ -8,6 +8,7 @@ pub mod monitoring;
 pub mod boot;
 pub mod client;
 pub mod web;
+pub mod provisioning;
 
 pub fn hello() -> String {
     "Hello from DLS Server!".to_string()
