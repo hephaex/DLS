@@ -8,5 +8,5 @@ pub mod monitoring;
 pub mod boot;
 
 pub fn hello() -> String {
-    "Hello from CLAUDE DLS!".to_string()
+    "Hello from DLS Server!".to_string()
 }

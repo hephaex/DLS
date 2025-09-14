@@ -254,7 +254,7 @@ impl Default for TftpConfig {
     fn default() -> Self {
         Self {
             bind_addr: "0.0.0.0:69".parse().unwrap(),
-            root_path: PathBuf::from("/var/lib/claude_dls/tftp"),
+            root_path: PathBuf::from("/var/lib/dls_server/tftp"),
             allow_read: true,
             allow_write: false, // Disabled by default for security
             max_block_size: 65464, // RFC 2348 maximum

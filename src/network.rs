@@ -50,7 +50,7 @@ impl NetworkManager {
             subnet_mask: std::net::Ipv4Addr::new(255, 255, 255, 0),
             gateway: Some(std::net::Ipv4Addr::new(192, 168, 1, 1)),
             dns_servers: vec![std::net::Ipv4Addr::new(8, 8, 8, 8)],
-            domain_name: Some("claude.local".to_string()),
+            domain_name: Some("dls.local".to_string()),
             lease_time: 3600,
             tftp_server: Some(std::net::Ipv4Addr::new(192, 168, 1, 1)),
             boot_filename: Some("pxelinux.0".to_string()),
