@@ -6,6 +6,7 @@ use crate::error::Result;
 use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
 use crate::client::{ClientManager, ClientManagerConfig};
 use crate::web::WebServer;
+use crate::provisioning::ProvisioningManager;
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -27,6 +28,7 @@ pub struct NetworkManager {
     pxe_orchestrator: Option<PxeOrchestrator>,
     client_manager: Option<ClientManager>,
     web_server: Option<WebServer>,
+    provisioning_manager: Option<ProvisioningManager>,
 }
 
 impl NetworkManager {
@@ -39,6 +41,7 @@ impl NetworkManager {
             pxe_orchestrator: None,
             client_manager: None,
             web_server: None,
+            provisioning_manager: None,
         }
     }
 
@@ -48,6 +51,7 @@ impl NetworkManager {
         self.start_dhcp().await?;
         self.start_tftp().await?;
         self.start_iscsi().await?;
+        self.start_provisioning_manager().await?;
         self.start_web_server().await?;
         Ok(())
     }
@@ -115,6 +119,9 @@ impl NetworkManager {
         if let Some(mut web) = self.web_server.take() {
             web.stop().await?;
         }
+        if let Some(mut provisioning) = self.provisioning_manager.take() {
+            provisioning.stop().await?;
+        }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
         }
@@ -150,5 +157,17 @@ impl NetworkManager {
 
     pub fn get_web_server(&self) -> Option<&WebServer> {
         self.web_server.as_ref()
+    }
+
+    pub async fn start_provisioning_manager(&mut self) -> Result<()> {
+        let provisioning_dir = std::path::PathBuf::from(&self.config.tftp_root).join("provisioning");
+        let mut manager = ProvisioningManager::new(provisioning_dir, 4);
+        manager.start().await?;
+        self.provisioning_manager = Some(manager);
+        Ok(())
+    }
+
+    pub fn get_provisioning_manager(&self) -> Option<&ProvisioningManager> {
+        self.provisioning_manager.as_ref()
     }
 }

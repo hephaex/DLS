@@ -31,6 +31,21 @@ pub enum DlsError {
     
     #[error("Internal server error: {0}")]
     Internal(String),
+    
+    #[error("Resource exhausted: {0}")]
+    ResourceExhausted(String),
+    
+    #[error("Invalid operation: {0}")]
+    InvalidOperation(String),
+    
+    #[error("Unsupported operation: {0}")]
+    UnsupportedOperation(String),
+    
+    #[error("Command failed: {0}")]
+    CommandFailed(String),
+    
+    #[error("Serialization error: {0}")]
+    Serialization(#[from] serde_json::Error),
 }
 
 pub type Result<T> = std::result::Result<T, DlsError>;
