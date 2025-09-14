@@ -5,6 +5,7 @@ pub mod iscsi;
 use crate::error::Result;
 use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
 use crate::client::{ClientManager, ClientManagerConfig};
+use crate::web::WebServer;
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -25,6 +26,7 @@ pub struct NetworkManager {
     iscsi_target: Option<IscsiTarget>,
     pxe_orchestrator: Option<PxeOrchestrator>,
     client_manager: Option<ClientManager>,
+    web_server: Option<WebServer>,
 }
 
 impl NetworkManager {
@@ -36,6 +38,7 @@ impl NetworkManager {
             iscsi_target: None,
             pxe_orchestrator: None,
             client_manager: None,
+            web_server: None,
         }
     }
 
@@ -45,6 +48,7 @@ impl NetworkManager {
         self.start_dhcp().await?;
         self.start_tftp().await?;
         self.start_iscsi().await?;
+        self.start_web_server().await?;
         Ok(())
     }
 
@@ -108,6 +112,9 @@ impl NetworkManager {
     }
 
     pub async fn stop_all_services(&mut self) -> Result<()> {
+        if let Some(mut web) = self.web_server.take() {
+            web.stop().await?;
+        }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
         }
@@ -132,5 +139,16 @@ impl NetworkManager {
 
     pub fn get_client_manager(&self) -> Option<&ClientManager> {
         self.client_manager.as_ref()
+    }
+
+    pub async fn start_web_server(&mut self) -> Result<()> {
+        let mut server = WebServer::new("0.0.0.0".to_string(), 8080);
+        server.start().await?;
+        self.web_server = Some(server);
+        Ok(())
+    }
+
+    pub fn get_web_server(&self) -> Option<&WebServer> {
+        self.web_server.as_ref()
     }
 }

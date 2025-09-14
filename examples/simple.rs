@@ -1,4 +1,4 @@
-use claude_dls::hello;
+use dls_server::hello;
 
 fn main() {
     println!("{}", hello());
