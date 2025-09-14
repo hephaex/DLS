@@ -8,6 +8,7 @@ use crate::client::{ClientManager, ClientManagerConfig};
 use crate::web::WebServer;
 use crate::provisioning::ProvisioningManager;
 use crate::performance::PerformanceMonitor;
+use crate::cluster::{ClusterManager, ClusterConfig};
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -31,6 +32,7 @@ pub struct NetworkManager {
     web_server: Option<WebServer>,
     provisioning_manager: Option<ProvisioningManager>,
     performance_monitor: Option<PerformanceMonitor>,
+    cluster_manager: Option<ClusterManager>,
 }
 
 impl NetworkManager {
@@ -45,10 +47,12 @@ impl NetworkManager {
             web_server: None,
             provisioning_manager: None,
             performance_monitor: None,
+            cluster_manager: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_cluster_manager().await?;
         self.start_performance_monitor().await?;
         self.start_client_manager().await?;
         self.start_pxe_orchestrator().await?;
@@ -129,6 +133,9 @@ impl NetworkManager {
         if let Some(performance) = self.performance_monitor.take() {
             performance.stop().await?;
         }
+        if let Some(cluster) = self.cluster_manager.take() {
+            cluster.stop().await?;
+        }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
         }
@@ -187,5 +194,37 @@ impl NetworkManager {
 
     pub fn get_performance_monitor(&self) -> Option<&PerformanceMonitor> {
         self.performance_monitor.as_ref()
+    }
+
+    pub async fn start_cluster_manager(&mut self) -> Result<()> {
+        let cluster_config = ClusterConfig {
+            node_name: format!("{}-cluster", self.config.iscsi_target_name),
+            listen_addr: "0.0.0.0:7777".parse().unwrap(),
+            ..Default::default()
+        };
+        
+        let manager = ClusterManager::new(cluster_config);
+        manager.start().await?;
+        self.cluster_manager = Some(manager);
+        Ok(())
+    }
+
+    pub fn get_cluster_manager(&self) -> Option<&ClusterManager> {
+        self.cluster_manager.as_ref()
+    }
+
+    pub async fn initiate_cluster_failover(&self, failed_node_id: &str) -> Result<()> {
+        if let Some(cluster_manager) = &self.cluster_manager {
+            cluster_manager.initiate_failover(failed_node_id).await?;
+        }
+        Ok(())
+    }
+
+    pub async fn get_cluster_status(&self) -> Option<crate::cluster::ClusterStatus> {
+        if let Some(cluster_manager) = &self.cluster_manager {
+            Some(cluster_manager.get_cluster_status().await)
+        } else {
+            None
+        }
     }
 }
