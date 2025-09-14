@@ -57,6 +57,20 @@ clap = { version = "4.5", features = ["derive", "env"] }
 dashmap = "6.1"
 parking_lot = "0.12"
 
+# Cloud integration and hybrid deployment
+# Note: Cloud SDK dependencies commented out to avoid version conflicts
+# Uncomment and configure specific versions when implementing cloud providers
+# aws-sdk-ec2 = "1.50"
+# aws-sdk-s3 = "1.50" 
+# aws-config = "1.5"
+# azure_core = "0.20"
+# azure_identity = "0.20"
+# azure_mgmt_compute = "0.20"
+# google-cloud-storage = "0.20"
+# k8s-openapi = { version = "0.22", features = ["v1_30"] }
+# kube = { version = "0.93", features = ["runtime", "derive"] }
+# docker-api = "0.14"
+
 # Error handling
 thiserror = "1.0"
 anyhow = "1.0"

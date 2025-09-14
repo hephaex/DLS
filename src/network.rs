@@ -11,6 +11,7 @@ use crate::performance::PerformanceMonitor;
 use crate::cluster::{ClusterManager, ClusterConfig};
 use crate::security::{SecurityManager, ZeroTrustConfig};
 use crate::tenant::{TenantManager, Tenant};
+use crate::cloud::{CloudManager, CloudConfig};
 use std::net::IpAddr;
 
 pub use dhcp::DhcpServer;
@@ -38,6 +39,7 @@ pub struct NetworkManager {
     cluster_manager: Option<ClusterManager>,
     security_manager: Option<SecurityManager>,
     tenant_manager: Option<TenantManager>,
+    cloud_manager: Option<CloudManager>,
 }
 
 impl NetworkManager {
@@ -55,10 +57,12 @@ impl NetworkManager {
             cluster_manager: None,
             security_manager: None,
             tenant_manager: None,
+            cloud_manager: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_cloud_manager().await?;
         self.start_tenant_manager().await?;
         self.start_security_manager().await?;
         self.start_cluster_manager().await?;
@@ -150,6 +154,9 @@ impl NetworkManager {
         }
         if let Some(tenant_mgr) = self.tenant_manager.take() {
             tenant_mgr.stop().await?;
+        }
+        if let Some(cloud_mgr) = self.cloud_manager.take() {
+            cloud_mgr.stop().await?;
         }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
@@ -353,6 +360,111 @@ impl NetworkManager {
                 .collect()
         } else {
             std::collections::HashMap::new()
+        }
+    }
+
+    pub async fn start_cloud_manager(&mut self) -> Result<()> {
+        let cloud_config = CloudConfig::default();
+        let mut manager = CloudManager::new(cloud_config);
+        manager.start().await?;
+        self.cloud_manager = Some(manager);
+        Ok(())
+    }
+
+    pub fn get_cloud_manager(&self) -> Option<&CloudManager> {
+        self.cloud_manager.as_ref()
+    }
+
+    pub async fn deploy_to_cloud(
+        &self,
+        tenant_id: Option<uuid::Uuid>,
+        provider: crate::cloud::CloudProvider,
+        config: serde_json::Value,
+    ) -> Result<String> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.provision_cloud_resource(
+                crate::cloud::ResourceType::Compute,
+                provider,
+                config,
+            ).await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn create_hybrid_deployment(
+        &self,
+        deployment: crate::cloud::HybridDeployment,
+    ) -> Result<uuid::Uuid> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.create_hybrid_deployment(deployment).await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn migrate_to_cloud(
+        &self,
+        resource_id: &str,
+        target_provider: crate::cloud::CloudProvider,
+    ) -> Result<()> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.migrate_resource(resource_id, target_provider).await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn setup_auto_scaling(
+        &self,
+        resource_id: &str,
+        min_capacity: u32,
+        max_capacity: u32,
+    ) -> Result<()> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.setup_auto_scaling(resource_id, min_capacity, max_capacity).await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::CostAnalysis> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            Some(cloud_manager.get_cost_analysis(tenant_id).await)
+        } else {
+            None
+        }
+    }
+
+    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::CostOptimization>> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.optimize_costs().await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn sync_hybrid_data(&self, source: &str, destination: &str) -> Result<()> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.sync_data(source, destination).await
+        } else {
+            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn list_cloud_resources(&self) -> Vec<crate::cloud::CloudResource> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.list_resources()
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub async fn list_hybrid_deployments(&self) -> Vec<crate::cloud::HybridDeployment> {
+        if let Some(cloud_manager) = &self.cloud_manager {
+            cloud_manager.list_deployments()
+        } else {
+            Vec::new()
         }
     }
 }
