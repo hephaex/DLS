@@ -7,6 +7,7 @@ use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
 use crate::client::{ClientManager, ClientManagerConfig};
 use crate::web::WebServer;
 use crate::provisioning::ProvisioningManager;
+use crate::performance::PerformanceMonitor;
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -29,6 +30,7 @@ pub struct NetworkManager {
     client_manager: Option<ClientManager>,
     web_server: Option<WebServer>,
     provisioning_manager: Option<ProvisioningManager>,
+    performance_monitor: Option<PerformanceMonitor>,
 }
 
 impl NetworkManager {
@@ -42,10 +44,12 @@ impl NetworkManager {
             client_manager: None,
             web_server: None,
             provisioning_manager: None,
+            performance_monitor: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_performance_monitor().await?;
         self.start_client_manager().await?;
         self.start_pxe_orchestrator().await?;
         self.start_dhcp().await?;
@@ -122,6 +126,9 @@ impl NetworkManager {
         if let Some(mut provisioning) = self.provisioning_manager.take() {
             provisioning.stop().await?;
         }
+        if let Some(performance) = self.performance_monitor.take() {
+            performance.stop().await?;
+        }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
         }
@@ -169,5 +176,16 @@ impl NetworkManager {
 
     pub fn get_provisioning_manager(&self) -> Option<&ProvisioningManager> {
         self.provisioning_manager.as_ref()
+    }
+
+    pub async fn start_performance_monitor(&mut self) -> Result<()> {
+        let monitor = PerformanceMonitor::default();
+        monitor.start().await?;
+        self.performance_monitor = Some(monitor);
+        Ok(())
+    }
+
+    pub fn get_performance_monitor(&self) -> Option<&PerformanceMonitor> {
+        self.performance_monitor.as_ref()
     }
 }
