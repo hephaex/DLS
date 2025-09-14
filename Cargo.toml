@@ -71,6 +71,13 @@ parking_lot = "0.12"
 # kube = { version = "0.93", features = ["runtime", "derive"] }
 # docker-api = "0.14"
 
+# Advanced analytics and machine learning
+ndarray = "0.15"
+smartcore = "0.4"
+linfa = "0.7"
+plotters = "0.3"
+statrs = "0.17"
+
 # Error handling
 thiserror = "1.0"
 anyhow = "1.0"

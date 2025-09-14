@@ -12,7 +12,9 @@ use crate::cluster::{ClusterManager, ClusterConfig};
 use crate::security::{SecurityManager, ZeroTrustConfig};
 use crate::tenant::{TenantManager, Tenant};
 use crate::cloud::{CloudManager, CloudConfig};
+use crate::analytics::{AnalyticsEngine, AnalyticsConfig, Metric, MetricType};
 use std::net::IpAddr;
+use chrono::Utc;
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -40,6 +42,7 @@ pub struct NetworkManager {
     security_manager: Option<SecurityManager>,
     tenant_manager: Option<TenantManager>,
     cloud_manager: Option<CloudManager>,
+    analytics_engine: Option<AnalyticsEngine>,
 }
 
 impl NetworkManager {
@@ -58,10 +61,12 @@ impl NetworkManager {
             security_manager: None,
             tenant_manager: None,
             cloud_manager: None,
+            analytics_engine: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_analytics_engine().await?;
         self.start_cloud_manager().await?;
         self.start_tenant_manager().await?;
         self.start_security_manager().await?;
@@ -157,6 +162,9 @@ impl NetworkManager {
         }
         if let Some(cloud_mgr) = self.cloud_manager.take() {
             cloud_mgr.stop().await?;
+        }
+        if let Some(analytics) = self.analytics_engine.take() {
+            analytics.stop().await?;
         }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
@@ -465,6 +473,188 @@ impl NetworkManager {
             cloud_manager.list_deployments()
         } else {
             Vec::new()
+        }
+    }
+
+    pub async fn start_analytics_engine(&mut self) -> Result<()> {
+        let analytics_config = AnalyticsConfig::default();
+        let engine = AnalyticsEngine::new(analytics_config);
+        engine.start().await?;
+        self.analytics_engine = Some(engine);
+        Ok(())
+    }
+
+    pub fn get_analytics_engine(&self) -> Option<&AnalyticsEngine> {
+        self.analytics_engine.as_ref()
+    }
+
+    pub async fn record_metric(&self, name: &str, value: f64, labels: std::collections::HashMap<String, String>) -> Result<()> {
+        if let Some(analytics) = &self.analytics_engine {
+            let metric = Metric {
+                id: uuid::Uuid::new_v4().to_string(),
+                name: name.to_string(),
+                metric_type: MetricType::Gauge,
+                value,
+                timestamp: Utc::now(),
+                labels,
+                tenant_id: None,
+                resource_id: None,
+            };
+            analytics.ingest_metric(metric).await
+        } else {
+            Ok(())
+        }
+    }
+
+    pub async fn get_system_insights(&self, tenant_id: Option<uuid::Uuid>, limit: Option<usize>) -> Vec<crate::analytics::Insight> {
+        if let Some(analytics) = &self.analytics_engine {
+            analytics.get_insights(tenant_id, limit).await
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub async fn get_system_recommendations(&self, tenant_id: Option<uuid::Uuid>, limit: Option<usize>) -> Vec<crate::analytics::Recommendation> {
+        if let Some(analytics) = &self.analytics_engine {
+            analytics.get_recommendations(tenant_id, limit).await
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub async fn analyze_performance_trends(&self) -> Result<crate::analytics::AnalysisResult> {
+        if let Some(analytics) = &self.analytics_engine {
+            let request = crate::analytics::AnalysisRequest {
+                id: uuid::Uuid::new_v4(),
+                analysis_type: crate::analytics::AnalysisType::Trend,
+                metric_names: vec![
+                    "cpu_usage".to_string(),
+                    "memory_usage".to_string(),
+                    "network_throughput".to_string(),
+                    "disk_io".to_string(),
+                ],
+                time_range: crate::analytics::TimeRange {
+                    start: Utc::now() - chrono::Duration::hours(24),
+                    end: Utc::now(),
+                },
+                parameters: std::collections::HashMap::new(),
+                tenant_id: None,
+                created_at: Utc::now(),
+            };
+            analytics.analyze_metrics(request).await
+        } else {
+            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
+        }
+    }
+
+    pub async fn detect_system_anomalies(&self) -> Result<Vec<crate::analytics::AnomalyDetection>> {
+        if let Some(analytics) = &self.analytics_engine {
+            let mut all_anomalies = Vec::new();
+            
+            // Check critical system metrics for anomalies
+            let critical_metrics = ["cpu_usage", "memory_usage", "network_throughput", "response_time"];
+            
+            for metric in &critical_metrics {
+                match analytics.detect_real_time_anomalies(metric).await {
+                    Ok(mut anomalies) => all_anomalies.append(&mut anomalies),
+                    Err(_) => continue, // Skip metrics that don't exist
+                }
+            }
+            
+            Ok(all_anomalies)
+        } else {
+            Ok(Vec::new())
+        }
+    }
+
+    pub async fn generate_performance_forecast(&self, metric_name: &str, hours_ahead: u32) -> Result<Vec<f64>> {
+        if let Some(analytics) = &self.analytics_engine {
+            let request = crate::analytics::AnalysisRequest {
+                id: uuid::Uuid::new_v4(),
+                analysis_type: crate::analytics::AnalysisType::Forecast,
+                metric_names: vec![metric_name.to_string()],
+                time_range: crate::analytics::TimeRange {
+                    start: Utc::now() - chrono::Duration::hours(24),
+                    end: Utc::now(),
+                },
+                parameters: {
+                    let mut params = std::collections::HashMap::new();
+                    params.insert("forecast_hours".to_string(), serde_json::Value::Number(serde_json::Number::from(hours_ahead)));
+                    params
+                },
+                tenant_id: None,
+                created_at: Utc::now(),
+            };
+            
+            let result = analytics.analyze_metrics(request).await?;
+            
+            // Extract forecast values from result
+            if let Some(forecasts) = result.results.get(metric_name) {
+                if let Some(forecast_data) = forecasts.get("forecast") {
+                    if let Some(values) = forecast_data.as_array() {
+                        let forecast_values: Vec<f64> = values.iter()
+                            .filter_map(|v| v.as_f64())
+                            .collect();
+                        return Ok(forecast_values);
+                    }
+                }
+            }
+            
+            Ok(Vec::new())
+        } else {
+            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
+        }
+    }
+
+    pub async fn create_analytics_dashboard(&self, name: &str, tenant_id: Option<uuid::Uuid>) -> Result<uuid::Uuid> {
+        if let Some(analytics) = &self.analytics_engine {
+            let dashboard = crate::analytics::Dashboard {
+                id: uuid::Uuid::new_v4(),
+                name: name.to_string(),
+                description: format!("Analytics dashboard for {}", name),
+                tenant_id,
+                widgets: vec![
+                    crate::analytics::Widget {
+                        id: uuid::Uuid::new_v4(),
+                        title: "System CPU Usage".to_string(),
+                        widget_type: crate::analytics::WidgetType::LineChart,
+                        position: crate::analytics::Position { x: 0, y: 0 },
+                        size: crate::analytics::Size { width: 400, height: 300 },
+                        configuration: crate::analytics::WidgetConfiguration {
+                            metrics: vec!["cpu_usage".to_string()],
+                            time_range: crate::analytics::TimeRange {
+                                start: Utc::now() - chrono::Duration::hours(1),
+                                end: Utc::now(),
+                            },
+                            aggregation: crate::analytics::AggregationType::Average,
+                            display_options: std::collections::HashMap::new(),
+                        },
+                    },
+                    crate::analytics::Widget {
+                        id: uuid::Uuid::new_v4(),
+                        title: "Memory Usage".to_string(),
+                        widget_type: crate::analytics::WidgetType::Gauge,
+                        position: crate::analytics::Position { x: 400, y: 0 },
+                        size: crate::analytics::Size { width: 200, height: 200 },
+                        configuration: crate::analytics::WidgetConfiguration {
+                            metrics: vec!["memory_usage".to_string()],
+                            time_range: crate::analytics::TimeRange {
+                                start: Utc::now() - chrono::Duration::minutes(5),
+                                end: Utc::now(),
+                            },
+                            aggregation: crate::analytics::AggregationType::Average,
+                            display_options: std::collections::HashMap::new(),
+                        },
+                    }
+                ],
+                refresh_interval_seconds: 30,
+                created_at: Utc::now(),
+                updated_at: Utc::now(),
+            };
+
+            analytics.create_dashboard(dashboard).await
+        } else {
+            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
         }
     }
 }
