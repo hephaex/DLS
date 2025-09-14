@@ -9,6 +9,9 @@ use crate::web::WebServer;
 use crate::provisioning::ProvisioningManager;
 use crate::performance::PerformanceMonitor;
 use crate::cluster::{ClusterManager, ClusterConfig};
+use crate::security::{SecurityManager, ZeroTrustConfig};
+use crate::tenant::{TenantManager, Tenant};
+use std::net::IpAddr;
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -33,6 +36,8 @@ pub struct NetworkManager {
     provisioning_manager: Option<ProvisioningManager>,
     performance_monitor: Option<PerformanceMonitor>,
     cluster_manager: Option<ClusterManager>,
+    security_manager: Option<SecurityManager>,
+    tenant_manager: Option<TenantManager>,
 }
 
 impl NetworkManager {
@@ -48,10 +53,14 @@ impl NetworkManager {
             provisioning_manager: None,
             performance_monitor: None,
             cluster_manager: None,
+            security_manager: None,
+            tenant_manager: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_tenant_manager().await?;
+        self.start_security_manager().await?;
         self.start_cluster_manager().await?;
         self.start_performance_monitor().await?;
         self.start_client_manager().await?;
@@ -136,6 +145,12 @@ impl NetworkManager {
         if let Some(cluster) = self.cluster_manager.take() {
             cluster.stop().await?;
         }
+        if let Some(security) = self.security_manager.take() {
+            security.stop().await?;
+        }
+        if let Some(tenant_mgr) = self.tenant_manager.take() {
+            tenant_mgr.stop().await?;
+        }
         if let Some(mut client_mgr) = self.client_manager.take() {
             client_mgr.stop().await?;
         }
@@ -196,6 +211,15 @@ impl NetworkManager {
         self.performance_monitor.as_ref()
     }
 
+    pub async fn start_security_manager(&mut self) -> Result<()> {
+        let zero_trust_config = ZeroTrustConfig::default();
+        
+        let manager = SecurityManager::new(zero_trust_config).await?;
+        manager.start().await?;
+        self.security_manager = Some(manager);
+        Ok(())
+    }
+
     pub async fn start_cluster_manager(&mut self) -> Result<()> {
         let cluster_config = ClusterConfig {
             node_name: format!("{}-cluster", self.config.iscsi_target_name),
@@ -207,6 +231,34 @@ impl NetworkManager {
         manager.start().await?;
         self.cluster_manager = Some(manager);
         Ok(())
+    }
+
+    pub fn get_security_manager(&self) -> Option<&SecurityManager> {
+        self.security_manager.as_ref()
+    }
+
+    pub async fn evaluate_network_access(&self, ip: std::net::IpAddr, segment: &str) -> Result<bool> {
+        if let Some(security_manager) = &self.security_manager {
+            security_manager.evaluate_network_access(ip, segment).await
+        } else {
+            Ok(true) // Allow if security manager is not enabled
+        }
+    }
+
+    pub async fn get_security_events(&self, limit: Option<usize>) -> Vec<crate::security::SecurityEvent> {
+        if let Some(security_manager) = &self.security_manager {
+            security_manager.get_security_events(limit).await
+        } else {
+            Vec::new()
+        }
+    }
+
+    pub async fn get_network_segments(&self) -> std::collections::HashMap<String, crate::security::NetworkSegment> {
+        if let Some(security_manager) = &self.security_manager {
+            security_manager.get_network_segments().await
+        } else {
+            std::collections::HashMap::new()
+        }
     }
 
     pub fn get_cluster_manager(&self) -> Option<&ClusterManager> {
@@ -225,6 +277,82 @@ impl NetworkManager {
             Some(cluster_manager.get_cluster_status().await)
         } else {
             None
+        }
+    }
+
+    pub async fn start_tenant_manager(&mut self) -> Result<()> {
+        let manager = TenantManager::new();
+        manager.start().await?;
+        self.tenant_manager = Some(manager);
+        Ok(())
+    }
+
+    pub fn get_tenant_manager(&self) -> Option<&TenantManager> {
+        self.tenant_manager.as_ref()
+    }
+
+    pub async fn register_tenant_client(&self, client_ip: IpAddr, tenant_id: uuid::Uuid) -> Result<()> {
+        if let Some(tenant_manager) = &self.tenant_manager {
+            tenant_manager.register_client_connection(client_ip, tenant_id).await
+        } else {
+            Err(crate::error::Error::Internal("Tenant manager not initialized".to_string()))
+        }
+    }
+
+    pub async fn unregister_tenant_client(&self, client_ip: IpAddr) -> Result<()> {
+        if let Some(tenant_manager) = &self.tenant_manager {
+            tenant_manager.unregister_client_connection(client_ip).await
+        } else {
+            Err(crate::error::Error::Internal("Tenant manager not initialized".to_string()))
+        }
+    }
+
+    pub fn get_client_tenant(&self, client_ip: &IpAddr) -> Option<uuid::Uuid> {
+        self.tenant_manager
+            .as_ref()
+            .and_then(|tm| tm.get_tenant_for_client(client_ip))
+    }
+
+    pub async fn validate_tenant_access(&self, client_ip: IpAddr, requested_resource: &str) -> Result<bool> {
+        if let Some(tenant_manager) = &self.tenant_manager {
+            if let Some(tenant_id) = tenant_manager.get_tenant_for_client(&client_ip) {
+                if let Some(tenant) = tenant_manager.get_tenant(&tenant_id) {
+                    if !tenant.is_active() {
+                        return Ok(false);
+                    }
+
+                    // Additional access validation based on tenant policies
+                    // This could include resource-specific checks, network segment validation, etc.
+                    
+                    // Example: Check if client is in allowed network ranges
+                    if let Some(security_manager) = &self.security_manager {
+                        let network_segment = format!("tenant-{}", tenant.namespace);
+                        return security_manager.evaluate_network_access(client_ip, &network_segment).await;
+                    }
+
+                    return Ok(true);
+                }
+            }
+            Ok(false) // No tenant found for client
+        } else {
+            Ok(true) // Allow if tenant manager is not enabled
+        }
+    }
+
+    pub async fn get_tenant_resource_usage(&self, tenant_id: &uuid::Uuid) -> Option<crate::tenant::ResourceUsage> {
+        self.tenant_manager
+            .as_ref()
+            .and_then(|tm| tm.get_resource_usage(tenant_id))
+    }
+
+    pub async fn list_tenant_clients(&self) -> std::collections::HashMap<IpAddr, uuid::Uuid> {
+        if let Some(tenant_manager) = &self.tenant_manager {
+            tenant_manager.client_connections
+                .iter()
+                .map(|entry| (*entry.key(), *entry.value()))
+                .collect()
+        } else {
+            std::collections::HashMap::new()
         }
     }
 }
