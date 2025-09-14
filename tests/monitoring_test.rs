@@ -1,6 +1,6 @@
 mod common;
 
-use claude_dls::monitoring::{MonitoringManager, ClientStatus};
+use dls_server::monitoring::{MonitoringManager, ClientStatus};
 
 #[tokio::test]
 async fn test_monitoring_manager_creation() {

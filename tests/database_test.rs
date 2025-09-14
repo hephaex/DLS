@@ -1,6 +1,6 @@
 mod common;
 
-use claude_dls::database::{BootMode, SessionStatus};
+use dls_server::database::{BootMode, SessionStatus};
 use std::str::FromStr;
 
 #[tokio::test]

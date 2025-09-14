@@ -4,6 +4,7 @@ pub mod iscsi;
 
 use crate::error::Result;
 use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
+use crate::client::{ClientManager, ClientManagerConfig};
 
 pub use dhcp::DhcpServer;
 pub use tftp::TftpServer;
@@ -23,6 +24,7 @@ pub struct NetworkManager {
     tftp_server: Option<TftpServer>,
     iscsi_target: Option<IscsiTarget>,
     pxe_orchestrator: Option<PxeOrchestrator>,
+    client_manager: Option<ClientManager>,
 }
 
 impl NetworkManager {
@@ -33,10 +35,12 @@ impl NetworkManager {
             tftp_server: None,
             iscsi_target: None,
             pxe_orchestrator: None,
+            client_manager: None,
         }
     }
 
     pub async fn start_all_services(&mut self) -> Result<()> {
+        self.start_client_manager().await?;
         self.start_pxe_orchestrator().await?;
         self.start_dhcp().await?;
         self.start_tftp().await?;
@@ -81,6 +85,15 @@ impl NetworkManager {
         Ok(())
     }
 
+    pub async fn start_client_manager(&mut self) -> Result<()> {
+        let config = ClientManagerConfig::default();
+        
+        let mut manager = ClientManager::new(config);
+        manager.start().await?;
+        self.client_manager = Some(manager);
+        Ok(())
+    }
+
     pub async fn start_pxe_orchestrator(&mut self) -> Result<()> {
         let config = BootOrchestratorConfig {
             enabled: true,
@@ -95,6 +108,9 @@ impl NetworkManager {
     }
 
     pub async fn stop_all_services(&mut self) -> Result<()> {
+        if let Some(mut client_mgr) = self.client_manager.take() {
+            client_mgr.stop().await?;
+        }
         if let Some(mut pxe) = self.pxe_orchestrator.take() {
             pxe.stop().await?;
         }
@@ -112,5 +128,9 @@ impl NetworkManager {
 
     pub fn get_pxe_orchestrator(&self) -> Option<&PxeOrchestrator> {
         self.pxe_orchestrator.as_ref()
+    }
+
+    pub fn get_client_manager(&self) -> Option<&ClientManager> {
+        self.client_manager.as_ref()
     }
 }
