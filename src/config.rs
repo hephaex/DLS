@@ -69,7 +69,7 @@ impl Settings {
             .add_source(File::with_name("config/default"))
             .add_source(File::with_name(&format!("config/{}", run_mode)).required(false))
             .add_source(File::with_name("config/local").required(false))
-            .add_source(Environment::with_prefix("CLAUDE_DLS"))
+            .add_source(Environment::with_prefix("DLS"))
             .build()?;
 
         s.try_deserialize()
@@ -78,7 +78,7 @@ impl Settings {
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, ConfigError> {
         let s = Config::builder()
             .add_source(File::from(path.as_ref()))
-            .add_source(Environment::with_prefix("CLAUDE_DLS"))
+            .add_source(Environment::with_prefix("DLS"))
             .build()?;
 
         s.try_deserialize()
@@ -95,7 +95,7 @@ impl Default for Settings {
                 log_level: "info".to_string(),
             },
             database: DatabaseConfig {
-                url: "postgres://localhost/claude_dls".to_string(),
+                url: "postgres://localhost/dls_server".to_string(),
                 max_connections: 10,
                 min_connections: 1,
                 connect_timeout: 30,
