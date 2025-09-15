@@ -319,7 +319,7 @@ pub struct AnalyticsEngine {
     insights: Arc<RwLock<Vec<Insight>>>,
     recommendations: Arc<RwLock<Vec<Recommendation>>>,
     dashboards: Arc<DashMap<Uuid, Dashboard>>,
-    config: AnalyticsConfig,
+    pub config: AnalyticsConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -325,6 +325,35 @@ impl ReportingEngine {
         Ok(())
     }
 
+    // Getter methods for testing
+    pub fn reports(&self) -> &Arc<DashMap<Uuid, Report>> {
+        &self.reports
+    }
+
+    pub fn compliance_requirements(&self) -> &Arc<DashMap<String, ComplianceRequirement>> {
+        &self.compliance_requirements
+    }
+
+    pub fn audit_trails(&self) -> &Arc<RwLock<Vec<AuditTrail>>> {
+        &self.audit_trails
+    }
+
+    pub fn templates(&self) -> &Arc<DashMap<String, ReportTemplate>> {
+        &self.templates
+    }
+
+    pub fn active_generators(&self) -> &Arc<DashMap<Uuid, tokio::task::JoinHandle<Result<()>>>> {
+        &self.active_generators
+    }
+
+    pub async fn load_compliance_requirements_public(&self) -> Result<()> {
+        self.load_compliance_requirements().await
+    }
+
+    pub async fn load_report_templates_public(&self) -> Result<()> {
+        self.load_report_templates().await
+    }
+
     async fn load_existing_reports(&self) -> Result<()> {
         // Implementation would load reports from storage
         // For now, this is a placeholder
@@ -771,7 +800,7 @@ impl ReportingEngine {
         Ok(file_path)
     }
 
-    fn generate_html_compliance_report(report: &ComplianceReport) -> Result<String> {
+    pub fn generate_html_compliance_report(report: &ComplianceReport) -> Result<String> {
         let html = format!(r#"
 <!DOCTYPE html>
 <html>
@@ -876,7 +905,7 @@ impl ReportingEngine {
         Ok(html)
     }
 
-    fn generate_text_compliance_report(report: &ComplianceReport) -> Result<String> {
+    pub fn generate_text_compliance_report(report: &ComplianceReport) -> Result<String> {
         let mut content = String::new();
         content.push_str(&format!("COMPLIANCE ASSESSMENT REPORT\n"));
         content.push_str(&format!("Framework: {:?}\n", report.framework));
