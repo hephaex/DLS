@@ -193,7 +193,7 @@ impl NetworkManager {
     }
 
     pub async fn start_web_server(&mut self) -> Result<()> {
-        let mut server = WebServer::new("0.0.0.0".to_string(), 8080);
+        let server = WebServer::new("0.0.0.0".to_string(), 8080);
         server.start().await?;
         self.web_server = Some(server);
         Ok(())
@@ -328,7 +328,7 @@ impl NetworkManager {
             .and_then(|tm| tm.get_tenant_for_client(client_ip))
     }
 
-    pub async fn validate_tenant_access(&self, client_ip: IpAddr, requested_resource: &str) -> Result<bool> {
+    pub async fn validate_tenant_access(&self, client_ip: IpAddr, _requested_resource: &str) -> Result<bool> {
         if let Some(tenant_manager) = &self.tenant_manager {
             if let Some(tenant_id) = tenant_manager.get_tenant_for_client(&client_ip) {
                 if let Some(tenant) = tenant_manager.get_tenant(&tenant_id) {
@@ -385,7 +385,7 @@ impl NetworkManager {
 
     pub async fn deploy_to_cloud(
         &self,
-        tenant_id: Option<uuid::Uuid>,
+        _tenant_id: Option<uuid::Uuid>,
         provider: crate::cloud::CloudProvider,
         config: serde_json::Value,
     ) -> Result<String> {

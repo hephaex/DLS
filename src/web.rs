@@ -259,7 +259,7 @@ async fn get_dashboard_stats(State(state): State<Arc<AppState>>) -> Json<ApiResp
     }
 }
 
-async fn get_system_overview(State(state): State<Arc<AppState>>) -> Json<ApiResponse<SystemOverview>> {
+async fn get_system_overview(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<SystemOverview>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -442,7 +442,7 @@ async fn get_client_boot_history(
     }
 }
 
-async fn list_boot_profiles(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<String>>> {
+async fn list_boot_profiles(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<String>>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -463,7 +463,7 @@ async fn list_boot_profiles(State(state): State<Arc<AppState>>) -> Json<ApiRespo
     })
 }
 
-async fn get_storage_stats(State(state): State<Arc<AppState>>) -> Json<ApiResponse<StorageStats>> {
+async fn get_storage_stats(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<StorageStats>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -485,7 +485,7 @@ async fn get_storage_stats(State(state): State<Arc<AppState>>) -> Json<ApiRespon
     })
 }
 
-async fn get_network_stats(State(state): State<Arc<AppState>>) -> Json<ApiResponse<NetworkStats>> {
+async fn get_network_stats(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<NetworkStats>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -510,7 +510,7 @@ async fn get_network_stats(State(state): State<Arc<AppState>>) -> Json<ApiRespon
     })
 }
 
-async fn get_system_status(State(state): State<Arc<AppState>>) -> Json<ApiResponse<HashMap<String, String>>> {
+async fn get_system_status(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<HashMap<String, String>>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -854,7 +854,7 @@ async fn get_system_alerts(State(state): State<Arc<AppState>>) -> Json<ApiRespon
     Json(ApiResponse { success: true, data: Some(vec![]), error: None, timestamp })
 }
 
-async fn serve_static_file(Path(file): Path<String>) -> &'static str {
+async fn serve_static_file(Path(_file): Path<String>) -> &'static str {
     // Placeholder for static file serving
     "Static file not found"
 }
