@@ -6,12 +6,14 @@ use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
 use dashmap::DashMap;
 use parking_lot::RwLock;
-use ndarray::{Array1, Array2, Axis};
-use statrs::statistics::Statistics;
-use smartcore::linalg::basic::matrix::DenseMatrix;
-use smartcore::linear::linear_regression::LinearRegression;
-use smartcore::cluster::kmeans::KMeans;
-use smartcore::model_selection::train_test_split;
+// Note: ML/analytics imports commented out as they're not currently used
+// These can be uncommented when machine learning features are implemented
+// use ndarray::{Array1, Array2, Axis};
+// use statrs::statistics::Statistics;
+// use smartcore::linalg::basic::matrix::DenseMatrix;
+// use smartcore::linear::linear_regression::LinearRegression;
+// use smartcore::cluster::kmeans::KMeans;
+// use smartcore::model_selection::train_test_split;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum MetricType {

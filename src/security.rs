@@ -1,12 +1,11 @@
 use crate::error::{DlsError, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
-use rustls::ServerConfig;
+use tracing::{info, warn};
 use x509_parser::prelude::*;
 use ring::digest;
 use base64::{Engine as _, engine::general_purpose};

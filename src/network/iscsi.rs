@@ -1,15 +1,16 @@
 use crate::error::{DlsError, Result};
 use std::collections::HashMap;
 use std::net::SocketAddr;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::fs::{File, OpenOptions};
+use tokio::fs::File;
 use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt, SeekFrom};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::RwLock;
 use tracing::{debug, error, info, warn};
 use serde::{Deserialize, Serialize};
+use dashmap::DashMap;
 
 /// iSCSI protocol constants
 const ISCSI_DEFAULT_PORT: u16 = 3260;
@@ -312,6 +313,8 @@ pub struct IscsiTarget {
     config: IscsiConfig,
     luns: Arc<RwLock<HashMap<u32, IscsiLun>>>,
     sessions: Arc<RwLock<HashMap<u64, IscsiSession>>>,
+    // Performance optimization: File handle cache to avoid repeated open/close
+    file_cache: Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
     running: bool,
 }
 
@@ -324,6 +327,7 @@ impl IscsiTarget {
             config,
             luns: Arc::new(RwLock::new(HashMap::new())),
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            file_cache: Arc::new(DashMap::new()),
             running: false,
         }
     }
@@ -333,6 +337,7 @@ impl IscsiTarget {
             config,
             luns: Arc::new(RwLock::new(HashMap::new())),
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            file_cache: Arc::new(DashMap::new()),
             running: false,
         }
     }
@@ -348,9 +353,10 @@ impl IscsiTarget {
         let config = self.config.clone();
         let luns = self.luns.clone();
         let sessions = self.sessions.clone();
+        let file_cache = self.file_cache.clone();
         
         tokio::spawn(async move {
-            if let Err(e) = Self::run_iscsi_target(config, luns, sessions).await {
+            if let Err(e) = Self::run_iscsi_target(config, luns, sessions, file_cache).await {
                 error!("iSCSI target error: {}", e);
             }
         });
@@ -411,6 +417,7 @@ impl IscsiTarget {
         config: IscsiConfig,
         luns: Arc<RwLock<HashMap<u32, IscsiLun>>>,
         sessions: Arc<RwLock<HashMap<u64, IscsiSession>>>,
+        file_cache: Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
     ) -> Result<()> {
         let listener = TcpListener::bind(config.bind_addr).await
             .map_err(|e| DlsError::Network(format!("Failed to bind iSCSI socket: {}", e)))?;
@@ -441,10 +448,11 @@ impl IscsiTarget {
                     let config_clone = config.clone();
                     let luns_clone = luns.clone();
                     let sessions_clone = sessions.clone();
+                    let file_cache_clone = file_cache.clone();
                     
                     tokio::spawn(async move {
                         if let Err(e) = Self::handle_connection(
-                            stream, addr, config_clone, luns_clone, sessions_clone
+                            stream, addr, config_clone, luns_clone, sessions_clone, file_cache_clone
                         ).await {
                             error!("iSCSI connection error from {}: {}", addr, e);
                         }
@@ -466,6 +474,7 @@ impl IscsiTarget {
         config: IscsiConfig,
         luns: Arc<RwLock<HashMap<u32, IscsiLun>>>,
         sessions: Arc<RwLock<HashMap<u64, IscsiSession>>>,
+        file_cache: Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
     ) -> Result<()> {
         info!("Handling iSCSI connection from {}", client_addr);
         
@@ -483,7 +492,7 @@ impl IscsiTarget {
                     
                     if let Err(e) = Self::process_pdu(
                         &buffer[..len], &mut stream, client_addr, &config,
-                        &luns, &sessions, &mut session
+                        &luns, &sessions, &file_cache, &mut session
                     ).await {
                         error!("Error processing iSCSI PDU from {}: {}", client_addr, e);
                         break;
@@ -513,6 +522,7 @@ impl IscsiTarget {
         config: &IscsiConfig,
         luns: &Arc<RwLock<HashMap<u32, IscsiLun>>>,
         sessions: &Arc<RwLock<HashMap<u64, IscsiSession>>>,
+        file_cache: &Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
         session: &mut Option<IscsiSession>,
     ) -> Result<()> {
         let header = IscsiHeader::parse(data)?;
@@ -525,7 +535,7 @@ impl IscsiTarget {
                 Self::handle_logout_request(header, stream, sessions, session).await
             }
             IscsiOpcode::ScsiCommand => {
-                Self::handle_scsi_command(header, stream, luns, session).await
+                Self::handle_scsi_command(header, stream, luns, file_cache, session).await
             }
             IscsiOpcode::NoOp => {
                 Self::handle_noop(header, stream, session).await
@@ -648,6 +658,7 @@ impl IscsiTarget {
         request: IscsiHeader,
         stream: &mut TcpStream,
         luns: &Arc<RwLock<HashMap<u32, IscsiLun>>>,
+        file_cache: &Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
         session: &mut Option<IscsiSession>,
     ) -> Result<()> {
         debug!("Processing SCSI command for LUN {}", request.lun);
@@ -669,7 +680,7 @@ impl IscsiTarget {
         match scsi_opcode {
             0x12 => Self::handle_inquiry(request, stream, luns).await,
             0x25 => Self::handle_read_capacity(request, stream, luns).await,
-            0x28 => Self::handle_read_10(request, stream, luns).await,
+            0x28 => Self::handle_read_10(request, stream, luns, file_cache).await,
             0x2A => Self::handle_write_10(request, stream, luns).await,
             0x00 => Self::handle_test_unit_ready(request, stream).await,
             _ => {
@@ -781,6 +792,7 @@ impl IscsiTarget {
         request: IscsiHeader,
         stream: &mut TcpStream,
         luns: &Arc<RwLock<HashMap<u32, IscsiLun>>>,
+        file_cache: &Arc<DashMap<PathBuf, Arc<RwLock<File>>>>,
     ) -> Result<()> {
         debug!("Handling READ(10) command");
         
@@ -800,11 +812,20 @@ impl IscsiTarget {
             None => return Self::send_scsi_error(request, stream, ScsiStatus::CheckCondition).await,
         };
         
-        // Read data from disk image
-        let mut file = File::open(&lun.image_path).await?;
+        // Performance optimization: Use cached file handle
+        let cached_file = if let Some(cached) = file_cache.get(&lun.image_path) {
+            Arc::clone(&*cached)
+        } else {
+            let new_file = Arc::new(RwLock::new(File::open(&lun.image_path).await?));
+            file_cache.insert(lun.image_path.clone(), Arc::clone(&new_file));
+            new_file
+        };
+        
         let offset = lba as u64 * lun.block_size as u64;
         let read_size = transfer_length * lun.block_size;
         
+        // Use cached file handle for reading
+        let mut file = cached_file.write().await;
         file.seek(SeekFrom::Start(offset)).await?;
         let mut buffer = vec![0u8; read_size as usize];
         let bytes_read = file.read(&mut buffer).await?;
@@ -906,7 +927,7 @@ impl IscsiTarget {
         request: IscsiHeader,
         stream: &mut TcpStream,
         status: ScsiStatus,
-        residual_count: u32,
+        _residual_count: u32,
     ) -> Result<()> {
         let mut response_data = vec![0u8; 48]; // SCSI response data
         

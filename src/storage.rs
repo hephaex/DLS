@@ -4,10 +4,10 @@ use crate::error::{DlsError, Result};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use tokio::fs;
 use tokio::process::Command;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 pub use zfs::{ZfsManager, FreeBsdZfsManager, ZfsDataset, ZfsSnapshot, CompressionType};

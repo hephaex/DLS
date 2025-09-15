@@ -6,7 +6,6 @@ use crate::auth::AuthManager;
 use crate::monitoring::MonitoringManager;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     response::Json,
     routing::{get, post, put, delete},
     Router,
@@ -16,7 +15,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
-use log::{info, warn, error};
+use log::{info, error};
 
 #[derive(Clone)]
 pub struct WebServer {

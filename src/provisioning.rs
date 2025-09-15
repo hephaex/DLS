@@ -8,7 +8,7 @@ use tokio::fs;
 use tokio::process::Command;
 use tokio::sync::RwLock;
 use tokio::io::AsyncWriteExt;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

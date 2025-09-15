@@ -4,10 +4,8 @@ use crate::storage::{DiskImage, ImageFormat};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use sqlx::{FromRow, Row};
-use std::collections::HashMap;
-use std::net::Ipv4Addr;
-use tracing::{debug, info, warn};
+use sqlx::FromRow;
+use tracing::{debug, info};
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]

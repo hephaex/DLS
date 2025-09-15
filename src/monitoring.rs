@@ -2,9 +2,9 @@ use crate::error::{DlsError, Result};
 use prometheus::{Counter, Gauge, Histogram, Registry, TextEncoder};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+// Note: Duration import removed as it's currently unused
 use tokio::sync::RwLock;
-use tracing::{debug, error, info, warn};
+use tracing::info;
 
 #[derive(Debug)]
 pub struct Metrics {

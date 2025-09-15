@@ -39,7 +39,7 @@ pub enum ComplianceFramework {
     GDPR,       // General Data Protection Regulation
     SOC2,       // Service Organization Control 2
     ISO27001,   // Information Security Management
-    PCI_DSS,    // Payment Card Industry Data Security Standard
+    PciDss,     // Payment Card Industry Data Security Standard
     FISMA,      // Federal Information Security Management Act
     NIST,       // National Institute of Standards and Technology
     CIS,        // Center for Internet Security
