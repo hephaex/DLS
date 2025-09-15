@@ -48,7 +48,22 @@ pub enum DlsError {
     Serialization(#[from] serde_json::Error),
     
     #[error("Validation error: {0}")]
-    ValidationError(String),
+    Validation(String),
+    
+    #[error("Report generation in progress")]
+    ReportGenerationInProgress,
+    
+    #[error("Report not found: {0}")]
+    ReportNotFound(String),
+    
+    #[error("Invalid report format: {0}")]
+    InvalidReportFormat(String),
+    
+    #[error("Compliance error: {0}")]
+    Compliance(String),
+    
+    #[error("Audit trail error: {0}")]
+    AuditTrail(String),
     
     #[error("Access denied: {0}")]
     AccessDenied(String),
