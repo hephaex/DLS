@@ -364,7 +364,7 @@ impl TenantManager {
     ) -> Result<Uuid> {
         // Validate namespace uniqueness
         if self.tenant_by_namespace.contains_key(&namespace) {
-            return Err(crate::error::Error::ValidationError(
+            return Err(crate::error::DlsError::Validation(
                 format!("Namespace '{}' already exists", namespace)
             ));
         }
@@ -473,7 +473,7 @@ impl TenantManager {
             .ok_or_else(|| crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id)))?;
 
         if !tenant.is_active() {
-            return Err(crate::error::Error::ValidationError(
+            return Err(crate::error::DlsError::Validation(
                 format!("Tenant {} is not active", tenant_id)
             ));
         }
@@ -566,7 +566,7 @@ impl TenantManager {
             .ok_or_else(|| crate::error::Error::NotFound(format!("Parent tenant {} not found", parent_id)))?;
 
         if !parent.is_active() {
-            return Err(crate::error::Error::ValidationError(
+            return Err(crate::error::DlsError::Validation(
                 format!("Parent tenant {} is not active", parent_id)
             ));
         }
@@ -593,7 +593,7 @@ impl TenantManager {
             .any(|entry| *entry.value() == tenant_id);
 
         if has_connections {
-            return Err(crate::error::Error::ValidationError(
+            return Err(crate::error::DlsError::Validation(
                 format!("Cannot delete tenant {} with active connections", tenant_id)
             ));
         }
@@ -674,12 +674,12 @@ impl TenantManager {
             }
 
             let network_ip: IpAddr = parts[0].parse()
-                .map_err(|_| crate::error::Error::ValidationError(
+                .map_err(|_| crate::error::DlsError::Validation(
                     format!("Invalid network IP: {}", parts[0])
                 ))?;
 
             let prefix_len: u8 = parts[1].parse()
-                .map_err(|_| crate::error::Error::ValidationError(
+                .map_err(|_| crate::error::DlsError::Validation(
                     format!("Invalid prefix length: {}", parts[1])
                 ))?;
 
@@ -687,7 +687,7 @@ impl TenantManager {
             match (ip, network_ip) {
                 (IpAddr::V4(ip4), IpAddr::V4(net4)) => {
                     let ip_bits = u32::from(*ip4);
-                    let net_bits = u32::from(net4);
+                    let net_bits = u32::from(*net4);
                     let mask = !0u32 << (32 - prefix_len);
                     Ok((ip_bits & mask) == (net_bits & mask))
                 }
@@ -700,7 +700,7 @@ impl TenantManager {
         } else {
             // Exact IP match
             let allowed_ip: IpAddr = range.parse()
-                .map_err(|_| crate::error::Error::ValidationError(
+                .map_err(|_| crate::error::DlsError::Validation(
                     format!("Invalid IP address: {}", range)
                 ))?;
             Ok(*ip == allowed_ip)

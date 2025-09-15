@@ -484,7 +484,7 @@ impl AnalyticsEngine {
         let training_data = self.collect_training_data(&features, &target_metric).await?;
         
         if training_data.len() < 10 {
-            return Err(crate::error::Error::ValidationError(
+            return Err(crate::error::DlsError::Validation(
                 "Insufficient training data".to_string()
             ));
         }
