@@ -564,7 +564,7 @@ impl AuthManager {
         }
 
         let mut user: User;
-        let mut groups = Vec::new();
+        let _groups = Vec::new();
         let provider: AuthenticationProvider;
 
         match self.config.primary_provider {
@@ -573,7 +573,7 @@ impl AuthManager {
                     match ldap_auth.authenticate(username, password).await {
                         Ok((ldap_user, ldap_groups)) => {
                             user = ldap_user;
-                            groups = ldap_groups.clone();
+                            let _groups = ldap_groups.clone();
                             user.role = ldap_auth.determine_role_from_groups(&ldap_groups);
                             provider = self.config.primary_provider.clone();
                         }
@@ -625,7 +625,7 @@ impl AuthManager {
         Ok((user, token))
     }
 
-    pub async fn authenticate_local(&self, username: &str, password: &str, ip_address: &str, user_agent: &str) -> Result<(User, String)> {
+    pub async fn authenticate_local(&self, _username: &str, _password: &str, _ip_address: &str, _user_agent: &str) -> Result<(User, String)> {
         // This is a placeholder - in real implementation, this would authenticate against local database
         Err(DlsError::Auth("Local authentication not implemented".to_string()))
     }
@@ -1214,7 +1214,7 @@ impl EnterpriseAuthService {
             .authenticate_enterprise(&request.username, &request.password, ip_address, user_agent)
             .await;
 
-        let elapsed = start_time.elapsed();
+        let _elapsed = start_time.elapsed();
 
         match result {
             Ok((user, token)) => {
@@ -1330,7 +1330,7 @@ impl EnterpriseAuthService {
     async fn audit_authentication(&self, username: &str, provider: &AuthenticationProvider, success: bool, 
                                  ip_address: &str, user_agent: &str, failure_reason: Option<String>, 
                                  session_id: &Option<String>, groups: &[String]) {
-        let audit_entry = AuthenticationAuditLog {
+        let _audit_entry = AuthenticationAuditLog {
             id: uuid::Uuid::new_v4(),
             username: username.to_string(),
             provider: provider.clone(),
