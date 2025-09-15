@@ -10,7 +10,7 @@ use crate::provisioning::ProvisioningManager;
 use crate::performance::PerformanceMonitor;
 use crate::cluster::{ClusterManager, ClusterConfig};
 use crate::security::{SecurityManager, ZeroTrustConfig};
-use crate::tenant::{TenantManager, Tenant};
+use crate::tenant::TenantManager;
 use crate::cloud::{CloudManager, CloudConfig};
 use crate::analytics::{AnalyticsEngine, AnalyticsConfig, Metric, MetricType};
 use std::net::IpAddr;
