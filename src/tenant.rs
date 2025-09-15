@@ -687,7 +687,7 @@ impl TenantManager {
             match (ip, network_ip) {
                 (IpAddr::V4(ip4), IpAddr::V4(net4)) => {
                     let ip_bits = u32::from(*ip4);
-                    let net_bits = u32::from(*net4);
+                    let net_bits = u32::from(net4);
                     let mask = !0u32 << (32 - prefix_len);
                     Ok((ip_bits & mask) == (net_bits & mask))
                 }

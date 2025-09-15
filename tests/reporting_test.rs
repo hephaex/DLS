@@ -10,11 +10,11 @@ async fn test_reporting_engine_creation() {
     let engine = ReportingEngine::new(config);
     
     // Verify engine is created with empty collections
-    assert!(engine.reports.is_empty());
-    assert!(engine.audit_trails.read().is_empty());
-    assert!(engine.compliance_requirements.is_empty());
-    assert!(engine.active_generators.is_empty());
-    assert!(engine.templates.is_empty());
+    assert!(engine.reports().is_empty());
+    assert!(engine.audit_trails().read().is_empty());
+    assert!(engine.compliance_requirements().is_empty());
+    assert!(engine.active_generators().is_empty());
+    assert!(engine.templates().is_empty());
 }
 
 #[tokio::test]
@@ -164,25 +164,25 @@ async fn test_compliance_requirements_loading() {
     let engine = ReportingEngine::new(config);
     
     // Load compliance requirements
-    engine.load_compliance_requirements().await.unwrap();
+    engine.load_compliance_requirements_public().await.unwrap();
     
     // Verify different framework requirements are loaded
-    assert!(engine.compliance_requirements.contains_key("SOX-302"));
-    assert!(engine.compliance_requirements.contains_key("SOX-404"));
-    assert!(engine.compliance_requirements.contains_key("SOC2-CC1.0"));
-    assert!(engine.compliance_requirements.contains_key("SOC2-CC6.0"));
-    assert!(engine.compliance_requirements.contains_key("ISO27001-A.5.1"));
-    assert!(engine.compliance_requirements.contains_key("ISO27001-A.8.1"));
-    assert!(engine.compliance_requirements.contains_key("GDPR-Art.32"));
-    assert!(engine.compliance_requirements.contains_key("GDPR-Art.33"));
+    assert!(engine.compliance_requirements().contains_key("SOX-302"));
+    assert!(engine.compliance_requirements().contains_key("SOX-404"));
+    assert!(engine.compliance_requirements().contains_key("SOC2-CC1.0"));
+    assert!(engine.compliance_requirements().contains_key("SOC2-CC6.0"));
+    assert!(engine.compliance_requirements().contains_key("ISO27001-A.5.1"));
+    assert!(engine.compliance_requirements().contains_key("ISO27001-A.8.1"));
+    assert!(engine.compliance_requirements().contains_key("GDPR-Art.32"));
+    assert!(engine.compliance_requirements().contains_key("GDPR-Art.33"));
     
     // Verify requirement details
-    let sox_302 = engine.compliance_requirements.get("SOX-302").unwrap();
+    let sox_302 = engine.compliance_requirements().get("SOX-302").unwrap();
     assert_eq!(sox_302.framework, ComplianceFramework::SOX);
     assert_eq!(sox_302.control_id, "302");
     assert_eq!(sox_302.risk_level, RiskLevel::High);
     
-    let gdpr_32 = engine.compliance_requirements.get("GDPR-Art.32").unwrap();
+    let gdpr_32 = engine.compliance_requirements().get("GDPR-Art.32").unwrap();
     assert_eq!(gdpr_32.framework, ComplianceFramework::GDPR);
     assert_eq!(gdpr_32.risk_level, RiskLevel::Critical);
 }
@@ -193,14 +193,14 @@ async fn test_compliance_status_calculation() {
     let engine = ReportingEngine::new(config);
     
     // Load requirements and update some statuses
-    engine.load_compliance_requirements().await.unwrap();
+    engine.load_compliance_requirements_public().await.unwrap();
     
     // Update some requirements to compliant status
-    let mut soc2_cc1 = engine.compliance_requirements.get("SOC2-CC1.0").unwrap().clone();
+    let mut soc2_cc1 = engine.compliance_requirements().get("SOC2-CC1.0").unwrap().clone();
     soc2_cc1.implementation_status = ComplianceStatus::FullyCompliant;
     engine.update_compliance_requirement(soc2_cc1).await.unwrap();
     
-    let mut soc2_cc6 = engine.compliance_requirements.get("SOC2-CC6.0").unwrap().clone();
+    let mut soc2_cc6 = engine.compliance_requirements().get("SOC2-CC6.0").unwrap().clone();
     soc2_cc6.implementation_status = ComplianceStatus::PartiallyCompliant;
     engine.update_compliance_requirement(soc2_cc6).await.unwrap();
     
@@ -246,7 +246,7 @@ async fn test_audit_trail_recording() {
     }
     
     // Verify events were recorded
-    let trails = engine.audit_trails.read();
+    let trails = engine.audit_trails().read();
     assert_eq!(trails.len(), 5);
     
     // Test filtering by date range
@@ -269,17 +269,17 @@ async fn test_report_templates_loading() {
     let config = ReportingConfig::default();
     let engine = ReportingEngine::new(config);
     
-    engine.load_report_templates().await.unwrap();
+    engine.load_report_templates_public().await.unwrap();
     
     // Verify templates are loaded
-    assert!(engine.templates.contains_key("compliance_audit"));
-    assert!(engine.templates.contains_key("security_assessment"));
+    assert!(engine.templates().contains_key("compliance_audit"));
+    assert!(engine.templates().contains_key("security_assessment"));
     
-    let compliance_template = engine.templates.get("compliance_audit").unwrap();
+    let compliance_template = engine.templates().get("compliance_audit").unwrap();
     assert_eq!(compliance_template.report_type, ReportType::ComplianceAudit);
     assert!(compliance_template.required_permissions.contains(&"compliance.read".to_string()));
     
-    let security_template = engine.templates.get("security_assessment").unwrap();
+    let security_template = engine.templates().get("security_assessment").unwrap();
     assert_eq!(security_template.report_type, ReportType::SecurityAssessment);
     assert!(security_template.required_permissions.contains(&"security.read".to_string()));
 }
