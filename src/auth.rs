@@ -564,7 +564,7 @@ impl AuthManager {
         }
 
         let mut user: User;
-        let _groups = Vec::new();
+        let groups = Vec::new();
         let provider: AuthenticationProvider;
 
         match self.config.primary_provider {
