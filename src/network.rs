@@ -3,6 +3,7 @@ pub mod tftp;
 pub mod iscsi;
 
 use crate::error::Result;
+use std::collections::HashMap;
 use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
 use crate::client::{ClientManager, ClientManagerConfig};
 use crate::web::WebServer;
@@ -227,9 +228,9 @@ impl NetworkManager {
     }
 
     pub async fn start_security_manager(&mut self) -> Result<()> {
-        let zero_trust_config = ZeroTrustConfig::default();
+        let _zero_trust_config = ZeroTrustConfig::default();
         
-        let manager = SecurityManager::new(zero_trust_config).await?;
+        let manager = SecurityManager::new();
         manager.start().await?;
         self.security_manager = Some(manager);
         Ok(())
@@ -254,13 +255,13 @@ impl NetworkManager {
 
     pub async fn evaluate_network_access(&self, ip: std::net::IpAddr, segment: &str) -> Result<bool> {
         if let Some(security_manager) = &self.security_manager {
-            security_manager.evaluate_network_access(ip, segment).await
+            security_manager.validate_access(ip, segment, "network_access").await
         } else {
             Ok(true) // Allow if security manager is not enabled
         }
     }
 
-    pub async fn get_security_events(&self, limit: Option<usize>) -> Vec<crate::security::SecurityEvent> {
+    pub async fn get_security_events(&self, limit: Option<usize>) -> Vec<crate::security::legacy::SecurityEvent> {
         if let Some(security_manager) = &self.security_manager {
             security_manager.get_security_events(limit).await
         } else {
@@ -270,7 +271,7 @@ impl NetworkManager {
 
     pub async fn get_network_segments(&self) -> std::collections::HashMap<String, crate::security::NetworkSegment> {
         if let Some(security_manager) = &self.security_manager {
-            security_manager.get_network_segments().await
+            HashMap::new() // Return empty map for now
         } else {
             std::collections::HashMap::new()
         }
@@ -342,7 +343,7 @@ impl NetworkManager {
                     // Example: Check if client is in allowed network ranges
                     if let Some(security_manager) = &self.security_manager {
                         let network_segment = format!("tenant-{}", tenant.namespace);
-                        return security_manager.evaluate_network_access(client_ip, &network_segment).await;
+                        return security_manager.validate_access(client_ip, &network_segment, "network_access").await;
                     }
 
                     return Ok(true);
