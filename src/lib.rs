@@ -18,6 +18,7 @@ pub mod analytics;
 pub mod reporting;
 pub mod disaster_recovery;
 pub mod ai;
+pub mod edge;
 
 pub fn hello() -> String {
     "Hello from DLS Server!".to_string()
