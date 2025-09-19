@@ -224,7 +224,8 @@ impl SecurityManager {
         
         // Keep only last 10000 events
         if events.len() > 10000 {
-            events.drain(..events.len() - 10000);
+            let excess = events.len() - 10000;
+            events.drain(..excess);
         }
         
         Ok(())
