@@ -70,6 +70,15 @@ pub enum DlsError {
     
     #[error("Tenant error: {0}")]
     TenantError(String),
+
+    #[error("Security error: {0}")]
+    Security(String),
+
+    #[error("Invalid state: {0}")]
+    InvalidState(String),
+
+    #[error("Internal error: {0}")]
+    InternalError(String),
 }
 
 pub type Result<T> = std::result::Result<T, DlsError>;
