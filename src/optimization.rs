@@ -152,7 +152,7 @@ where
 }
 
 /// Async-friendly data structures that reduce blocking
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AsyncDataStore<K, V>
 where
     K: std::hash::Hash + Eq + Clone + Send + Sync,
@@ -216,8 +216,11 @@ where
 }
 
 /// Memory-efficient event buffer with circular buffer implementation
-#[derive(Debug)]
-pub struct CircularEventBuffer<T> {
+#[derive(Debug, Clone)]
+pub struct CircularEventBuffer<T>
+where
+    T: Clone,
+{
     buffer: Arc<parking_lot::RwLock<Vec<Option<T>>>>,
     capacity: usize,
     write_index: Arc<std::sync::atomic::AtomicUsize>,
