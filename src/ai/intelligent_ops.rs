@@ -1,5 +1,5 @@
 use crate::error::{DlsError, Result};
-use crate::ai::predictive_analytics::{PredictiveAnalyticsEngine, Prediction, FailurePrediction, CapacityForecast, PerformanceOptimization};
+use crate::ai::predictive_analytics::{PredictiveAnalyticsEngine, Prediction};
 use crate::ai::anomaly_detection::{AnomalyDetectionEngine, AnomalyRecord};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

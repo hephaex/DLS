@@ -1,5 +1,5 @@
 use crate::error::{DlsError, Result};
-use crate::edge::edge_node::{EdgeNode, EdgeNodeManager, EdgeWorkload, WorkloadType, WorkloadPriority};
+use crate::edge::edge_node::{EdgeNode, EdgeNodeManager, EdgeWorkload, WorkloadPriority};
 use crate::ai::{PredictiveAnalyticsEngine, IntelligentOpsEngine};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

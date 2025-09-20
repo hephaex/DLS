@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc, Duration, Datelike};
 use uuid::Uuid;
 use dashmap::DashMap;
 use parking_lot::RwLock;
-use jsonwebtoken::{encode, decode, Header, Algorithm, Validation, EncodingKey, DecodingKey};
+// JWT functionality not currently used - removed unused imports
 use sha2::{Sha256, Digest};
 use rand::{thread_rng, Rng};
 

@@ -6,7 +6,7 @@ use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
 use dashmap::DashMap;
 use parking_lot::RwLock;
-use tokio::sync::mpsc;
+// mpsc channels not currently used in this module
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PredictionModel {

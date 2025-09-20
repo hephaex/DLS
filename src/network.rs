@@ -270,7 +270,7 @@ impl NetworkManager {
     }
 
     pub async fn get_network_segments(&self) -> std::collections::HashMap<String, crate::security::NetworkSegment> {
-        if let Some(security_manager) = &self.security_manager {
+        if let Some(_security_manager) = &self.security_manager {
             HashMap::new() // Return empty map for now
         } else {
             std::collections::HashMap::new()

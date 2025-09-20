@@ -1,8 +1,8 @@
 use crate::error::{DlsError, Result};
-use crate::security::zero_trust::{SecurityEvent, SecurityEventType, SecuritySeverity};
+use crate::security::zero_trust::{SecurityEvent, SecuritySeverity};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::net::IpAddr;
+// IpAddr not currently used in this module
 use std::sync::Arc;
 use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
