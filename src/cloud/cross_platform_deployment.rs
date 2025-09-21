@@ -269,7 +269,7 @@ pub struct CustomMetricSpec {
     pub metric_selector: HashMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub enum DeploymentPhase {
     Planning,
     Validation,
@@ -921,7 +921,7 @@ impl DeploymentOrchestrator {
         Self {
             orchestrator_id: format!("do_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
             active_deployments: AsyncDataStore::new(),
-            deployment_strategies: LightweightStore::new(),
+            deployment_strategies: LightweightStore::new(Some(1000)),
             platform_adapters: Arc::new(DashMap::new()),
             dependency_resolver: Arc::new(DependencyResolver::new()),
             resource_allocator: Arc::new(ResourceAllocator::new()),
