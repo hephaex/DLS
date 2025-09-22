@@ -22,6 +22,7 @@ pub mod optimization;
 pub mod edge;
 pub mod integration;
 pub mod analytics_intelligence;
+pub mod enterprise;
 
 pub fn hello() -> String {
     "Hello from DLS Server!".to_string()

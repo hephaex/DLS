@@ -353,19 +353,19 @@ impl MonitoringManager {
     }
 
     pub async fn update_active_clients(&self, count: f64) {
-        self.metrics.active_clients.set(count);
+        self.metrics.active_clients.insert(count);
     }
 
     pub async fn update_disk_images_count(&self, count: f64) {
-        self.metrics.disk_images_total.set(count);
+        self.metrics.disk_images_total.insert(count);
     }
 
     pub async fn update_storage_used(&self, bytes: f64) {
-        self.metrics.storage_used_bytes.set(bytes);
+        self.metrics.storage_used_bytes.insert(bytes);
     }
 
     pub async fn update_network_throughput(&self, bytes_per_sec: f64) {
-        self.metrics.network_throughput_bytes.set(bytes_per_sec);
+        self.metrics.network_throughput_bytes.insert(bytes_per_sec);
     }
 
     pub async fn record_dhcp_error(&self) {
@@ -389,11 +389,11 @@ impl MonitoringManager {
     }
 
     pub async fn update_storage_available(&self, bytes: f64) {
-        self.metrics.storage_available_bytes.set(bytes);
+        self.metrics.storage_available_bytes.insert(bytes);
     }
 
     pub async fn update_zfs_snapshots_count(&self, count: f64) {
-        self.metrics.zfs_snapshots_total.set(count);
+        self.metrics.zfs_snapshots_total.insert(count);
     }
 
     pub async fn record_image_operation(&self) {
@@ -409,7 +409,7 @@ impl MonitoringManager {
     }
 
     pub async fn update_active_sessions(&self, count: f64) {
-        self.metrics.active_sessions.set(count);
+        self.metrics.active_sessions.insert(count);
     }
 
     pub async fn record_token_refresh(&self) {
@@ -417,15 +417,15 @@ impl MonitoringManager {
     }
 
     pub async fn update_cpu_usage(&self, percent: f64) {
-        self.metrics.cpu_usage_percent.set(percent);
+        self.metrics.cpu_usage_percent.insert(percent);
     }
 
     pub async fn update_memory_usage(&self, bytes: f64) {
-        self.metrics.memory_usage_bytes.set(bytes);
+        self.metrics.memory_usage_bytes.insert(bytes);
     }
 
     pub async fn update_memory_available(&self, bytes: f64) {
-        self.metrics.memory_available_bytes.set(bytes);
+        self.metrics.memory_available_bytes.insert(bytes);
     }
 
     pub async fn record_disk_io(&self, bytes: f64) {
@@ -433,7 +433,7 @@ impl MonitoringManager {
     }
 
     pub async fn update_database_connections(&self, count: f64) {
-        self.metrics.database_connections.set(count);
+        self.metrics.database_connections.insert(count);
     }
 
     pub async fn record_database_query(&self, duration_seconds: f64) {
@@ -446,7 +446,7 @@ impl MonitoringManager {
     }
 
     pub async fn update_uptime(&self, seconds: f64) {
-        self.metrics.uptime_seconds.set(seconds);
+        self.metrics.uptime_seconds.insert(seconds);
     }
 
     pub async fn record_health_check(&self) {
@@ -519,7 +519,7 @@ impl MonitoringManager {
                 
                 let sessions = client_sessions.read().await;
                 let active_count = sessions.len() as f64;
-                metrics.active_clients.set(active_count);
+                metrics.active_clients.insert(active_count);
                 
                 info!("Monitoring update - Active clients: {}", active_count);
             }

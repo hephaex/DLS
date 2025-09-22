@@ -20,7 +20,7 @@ pub struct MultiCloudManager {
     pub disaster_recovery: Arc<DisasterRecoveryManager>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct CloudProvider {
     pub provider_id: String,
     pub provider_type: CloudProviderType,
@@ -778,7 +778,7 @@ pub enum EnforcementLevel {
     Optional,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum Priority {
     Low,
     Normal,
@@ -1134,7 +1134,7 @@ impl MultiCloudManager {
         Self {
             manager_id: format!("mcm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
             cloud_providers: Arc::new(DashMap::new()),
-            deployment_strategies: LightweightStore::new(),
+            deployment_strategies: LightweightStore::new(Some(1000)),
             resource_orchestrator: Arc::new(ResourceOrchestrator::new()),
             cost_optimizer: Arc::new(CostOptimizer::new()),
             compliance_manager: Arc::new(ComplianceManager::new()),
