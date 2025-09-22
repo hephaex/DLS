@@ -308,7 +308,7 @@ pub struct MFAManager {
     pub manager_id: String,
     pub mfa_providers: Arc<DashMap<String, MFAProvider>>,
     pub user_mfa_settings: AsyncDataStore<String, UserMFASettings>,
-    pub mfa_challenges: Arc<DashMap<String, MFAChallenge>>,
+    pub mfa_challenges: LightweightStore<String, MFAChallenge>,
     pub backup_codes_manager: Arc<BackupCodesManager>,
 }
 
@@ -400,7 +400,9 @@ pub enum ChallengeStatus {
 impl EnterpriseAuthenticationManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("eam_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!("eam_{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
             authentication_providers: Arc::new(DashMap::new()),
             sso_manager: Arc::new(SSOManager::new()),
             session_manager: Arc::new(SessionManager::new()),
@@ -489,7 +491,9 @@ impl EnterpriseAuthenticationManager {
 impl SSOManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sso_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!("sso_{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
             sso_providers: Arc::new(DashMap::new()),
             sso_sessions: AsyncDataStore::new(),
             assertion_processor: Arc::new(AssertionProcessor::new()),
@@ -535,7 +539,9 @@ impl SSOManager {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!("sm_{}",
+                SystemTime::now().duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
             active_sessions: Arc::new(DashMap::new()),
             session_store: AsyncDataStore::new(),
             session_config: SessionConfiguration {
