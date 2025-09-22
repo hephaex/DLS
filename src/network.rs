@@ -239,7 +239,8 @@ impl NetworkManager {
     pub async fn start_cluster_manager(&mut self) -> Result<()> {
         let cluster_config = ClusterConfig {
             node_name: format!("{}-cluster", self.config.iscsi_target_name),
-            listen_addr: "0.0.0.0:7777".parse().unwrap(),
+            listen_addr: "0.0.0.0:7777".parse()
+                .map_err(|e| crate::error::Error::InvalidConfig(format!("Invalid listen address: {}", e)))?,
             ..Default::default()
         };
         
