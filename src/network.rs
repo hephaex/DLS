@@ -12,7 +12,7 @@ use crate::performance::PerformanceMonitor;
 use crate::cluster::{ClusterManager, ClusterConfig};
 use crate::security::{SecurityManager, ZeroTrustConfig};
 use crate::tenant::TenantManager;
-use crate::cloud::{CloudManager, CloudConfig};
+use crate::cloud::multi_cloud::MultiCloudManager;
 use crate::analytics::{AnalyticsEngine, AnalyticsConfig, Metric, MetricType};
 use std::net::IpAddr;
 use chrono::Utc;
@@ -42,7 +42,7 @@ pub struct NetworkManager {
     cluster_manager: Option<ClusterManager>,
     security_manager: Option<SecurityManager>,
     tenant_manager: Option<TenantManager>,
-    cloud_manager: Option<CloudManager>,
+    cloud_manager: Option<MultiCloudManager>,
     analytics_engine: Option<AnalyticsEngine>,
 }
 
@@ -373,14 +373,13 @@ impl NetworkManager {
     }
 
     pub async fn start_cloud_manager(&mut self) -> Result<()> {
-        let cloud_config = CloudConfig::default();
-        let mut manager = CloudManager::new(cloud_config);
+        let mut manager = MultiCloudManager::new();
         manager.start().await?;
         self.cloud_manager = Some(manager);
         Ok(())
     }
 
-    pub fn get_cloud_manager(&self) -> Option<&CloudManager> {
+    pub fn get_cloud_manager(&self) -> Option<&MultiCloudManager> {
         self.cloud_manager.as_ref()
     }
 
@@ -403,7 +402,7 @@ impl NetworkManager {
 
     pub async fn create_hybrid_deployment(
         &self,
-        deployment: crate::cloud::HybridDeployment,
+        deployment: crate::cloud::cross_platform_deployment::ActiveDeployment,
     ) -> Result<uuid::Uuid> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.create_hybrid_deployment(deployment).await
@@ -437,7 +436,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::CostAnalysis> {
+    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::multi_cloud::CostModel> {
         if let Some(cloud_manager) = &self.cloud_manager {
             Some(cloud_manager.get_cost_analysis(tenant_id).await)
         } else {
@@ -445,7 +444,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::CostOptimization>> {
+    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRule>> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.optimize_costs().await
         } else {
@@ -461,7 +460,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn list_cloud_resources(&self) -> Vec<crate::cloud::CloudResource> {
+    pub async fn list_cloud_resources(&self) -> Vec<crate::cloud::multi_cloud::AvailableResource> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.list_resources()
         } else {
@@ -469,7 +468,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn list_hybrid_deployments(&self) -> Vec<crate::cloud::HybridDeployment> {
+    pub async fn list_hybrid_deployments(&self) -> Vec<crate::cloud::cross_platform_deployment::ActiveDeployment> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.list_deployments()
         } else {
