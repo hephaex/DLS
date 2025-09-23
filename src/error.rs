@@ -79,6 +79,9 @@ pub enum DlsError {
 
     #[error("Internal error: {0}")]
     InternalError(String),
+
+    #[error("Invalid configuration: {0}")]
+    InvalidConfig(String),
 }
 
 pub type Result<T> = std::result::Result<T, DlsError>;

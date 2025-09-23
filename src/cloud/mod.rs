@@ -1,7 +1,7 @@
 // Multi-Cloud & Hybrid Infrastructure Management
 
 // Multi-Cloud components
-pub use multi_cloud::{MultiCloudManager, CloudProvider, CloudProviderType,
+pub use multi_cloud::{MultiCloudManager, CloudProvider, CloudProviderType, ResourceType,
                       DeploymentStrategy as MultiCloudDeploymentStrategy,
                       ComplianceCertification as MultiCloudComplianceCertification,
                       ScalingTrigger as MultiCloudScalingTrigger,

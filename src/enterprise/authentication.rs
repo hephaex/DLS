@@ -515,7 +515,7 @@ impl SSOManager {
             provider_id: request.provider_id,
             attributes: assertion.attributes,
             created_at: SystemTime::now(),
-            expires_at: SystemTime::now() + Duration::from_hours(8),
+            expires_at: SystemTime::now() + Duration::from_secs(8 * 3600),
             last_accessed: SystemTime::now(),
             ip_address: request.ip_address,
             user_agent: request.user_agent,
@@ -633,7 +633,7 @@ impl MFAManager {
             method,
             challenge_data,
             created_at: SystemTime::now(),
-            expires_at: SystemTime::now() + Duration::from_minutes(5),
+            expires_at: SystemTime::now() + Duration::from_secs(5 * 60),
             attempts: 0,
             status: ChallengeStatus::Pending,
         };
@@ -828,7 +828,7 @@ impl AssertionProcessor {
         Ok(ProcessedAssertion {
             subject: "user123".to_string(),
             attributes: HashMap::new(),
-            valid_until: SystemTime::now() + Duration::from_hours(8),
+            valid_until: SystemTime::now() + Duration::from_secs(8 * 3600),
         })
     }
 }

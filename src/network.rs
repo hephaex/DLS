@@ -161,7 +161,7 @@ impl NetworkManager {
         if let Some(tenant_mgr) = self.tenant_manager.take() {
             tenant_mgr.stop().await?;
         }
-        if let Some(cloud_mgr) = self.cloud_manager.take() {
+        if let Some(mut cloud_mgr) = self.cloud_manager.take() {
             cloud_mgr.stop().await?;
         }
         if let Some(analytics) = self.analytics_engine.take() {
@@ -391,11 +391,25 @@ impl NetworkManager {
         config: serde_json::Value,
     ) -> Result<String> {
         if let Some(cloud_manager) = &self.cloud_manager {
+            // Convert CloudProvider to provider_id string
+            let provider_id = &provider.provider_id;
+
+            // Create default ResourceSpecifications from config
+            let specifications = crate::cloud::multi_cloud::ResourceSpecifications {
+                cpu_cores: config.get("cpu_cores").and_then(|v| v.as_u64()).unwrap_or(2) as u32,
+                memory_gb: config.get("memory_gb").and_then(|v| v.as_u64()).unwrap_or(4) as u32,
+                storage_gb: config.get("storage_gb").and_then(|v| v.as_u64()).unwrap_or(50),
+                network_bandwidth_gbps: config.get("bandwidth").and_then(|v| v.as_u64()).unwrap_or(1) as u32,
+                gpu_count: config.get("gpu_count").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+                special_features: vec![],
+            };
+
             cloud_manager.provision_cloud_resource(
                 crate::cloud::ResourceType::Compute,
-                provider,
-                config,
+                provider_id,
+                specifications,
             ).await
+                .map_err(|e| crate::error::Error::Internal(format!("Resource provisioning failed: {}", e)))
         } else {
             Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
         }
@@ -403,10 +417,11 @@ impl NetworkManager {
 
     pub async fn create_hybrid_deployment(
         &self,
-        deployment: crate::cloud::cross_platform_deployment::ActiveDeployment,
-    ) -> Result<uuid::Uuid> {
+        deployment: crate::cloud::multi_cloud::HybridDeployment,
+    ) -> Result<String> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.create_hybrid_deployment(deployment).await
+                .map_err(|e| crate::error::Error::Internal(format!("Hybrid deployment failed: {}", e)))
         } else {
             Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
         }
@@ -415,10 +430,11 @@ impl NetworkManager {
     pub async fn migrate_to_cloud(
         &self,
         resource_id: &str,
-        target_provider: crate::cloud::CloudProvider,
+        target_provider: &str,
     ) -> Result<()> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.migrate_resource(resource_id, target_provider).await
+                .map_err(|e| crate::error::Error::Internal(format!("Resource migration failed: {}", e)))
         } else {
             Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
         }
@@ -437,9 +453,10 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::multi_cloud::CostModel> {
+    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::multi_cloud::CostAnalysis> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            Some(cloud_manager.get_cost_analysis(tenant_id).await)
+            let tenant_str = tenant_id.map(|id| id.to_string()).unwrap_or_else(|| "default".to_string());
+            cloud_manager.get_cost_analysis(&tenant_str).await
         } else {
             None
         }
