@@ -462,9 +462,10 @@ impl NetworkManager {
         }
     }
 
-    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRule>> {
+    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRecommendation>> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.optimize_costs().await
+                .map_err(|e| crate::error::Error::Internal(format!("Cost optimization failed: {}", e)))
         } else {
             Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
         }
@@ -478,7 +479,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn list_cloud_resources(&self) -> Vec<crate::cloud::multi_cloud::AvailableResource> {
+    pub async fn list_cloud_resources(&self) -> Vec<crate::cloud::multi_cloud::CloudResource> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.list_resources()
         } else {
@@ -486,7 +487,7 @@ impl NetworkManager {
         }
     }
 
-    pub async fn list_hybrid_deployments(&self) -> Vec<crate::cloud::cross_platform_deployment::ActiveDeployment> {
+    pub async fn list_hybrid_deployments(&self) -> Vec<crate::cloud::multi_cloud::CloudDeployment> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.list_deployments()
         } else {

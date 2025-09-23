@@ -704,7 +704,7 @@ pub struct RiskAssessment {
     pub recommended_actions: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum RiskLevel {
     Low,
     Medium,
