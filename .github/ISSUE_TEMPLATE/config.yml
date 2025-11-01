@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/hephaex/DLS/wiki
+    about: Check the documentation for help and guides
+  - name: Discussions
+    url: https://github.com/hephaex/DLS/discussions
+    about: Ask questions and discuss with the community
