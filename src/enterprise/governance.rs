@@ -815,7 +815,7 @@ impl ComplianceEngine {
             next_assessment_date: SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
         };
 
-        self.compliance_assessments.insert(assessment_id.clone(), assessment.clone()).await?;
+        self.compliance_assessments.insert(assessment_id.clone(), assessment.clone()).await;
         Ok(assessment)
     }
 

@@ -1222,7 +1222,7 @@ impl SecurityAuditEngine {
             next_assessment_date: SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
         };
 
-        self.control_assessments.insert(assessment.assessment_id.clone(), assessment.clone()).await?;
+        self.control_assessments.insert(assessment.assessment_id.clone(), assessment.clone()).await;
         Ok(assessment)
     }
 }

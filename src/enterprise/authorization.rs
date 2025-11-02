@@ -705,7 +705,7 @@ impl RBACManager {
     }
 
     pub async fn assign_role(&self, user_id: &str, role_id: &str) -> Result<()> {
-        let mut assignments = self.user_roles.get(user_id).await?
+        let mut assignments = self.user_roles.get(&user_id.to_string()).await
             .unwrap_or_else(|| UserRoleAssignments {
                 user_id: user_id.to_string(),
                 role_assignments: vec![],
@@ -721,12 +721,12 @@ impl RBACManager {
             constraints: vec![],
         });
 
-        self.user_roles.insert(user_id.to_string(), assignments).await?;
+        self.user_roles.insert(user_id.to_string(), assignments).await;
         Ok(())
     }
 
     pub async fn check_access(&self, request: &AuthorizationRequest) -> Result<AuthorizationDecision> {
-        let user_roles = self.user_roles.get(&request.subject.subject_id).await?;
+        let user_roles = self.user_roles.get(&request.subject.subject_id).await;
 
         if let Some(assignments) = user_roles {
             for assignment in &assignments.role_assignments {

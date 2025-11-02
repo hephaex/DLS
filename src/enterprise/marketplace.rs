@@ -1152,7 +1152,7 @@ impl PluginRegistry {
             },
         };
 
-        self.plugin_metadata.insert(plugin_id.clone(), metadata).await?;
+        self.plugin_metadata.insert(plugin_id.clone(), metadata).await;
 
         Ok(plugin_id)
     }
