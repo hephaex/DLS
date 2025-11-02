@@ -861,7 +861,7 @@ impl LicenseValidator {
     }
 
     pub async fn validate(&self, license_key: &str) -> Result<ValidationResult> {
-        if let Some(cached_result) = self.validation_cache.get(license_key) {
+        if let Some(cached_result) = self.validation_cache.get(&license_key.to_string()) {
             if !cached_result.is_expired() {
                 return Ok(cached_result);
             }

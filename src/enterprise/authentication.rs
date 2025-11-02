@@ -441,11 +441,11 @@ impl EnterpriseAuthenticationManager {
         let auth_result = self.perform_authentication(&provider, &credentials).await?;
 
         if auth_result.success {
-            if let Some(user_info) = &auth_result.user_info {
+            if let Some(user_info) = auth_result.user_info.clone() {
                 let session = self.session_manager.create_session(user_info.clone(), &credentials).await?;
                 return Ok(AuthenticationResult {
                     success: true,
-                    user_info: auth_result.user_info,
+                    user_info: Some(user_info.clone()),
                     session_id: Some(session.session_id),
                     requires_mfa: self.requires_mfa(&user_info.user_id).await?,
                     risk_assessment: Some(risk_assessment),
@@ -521,11 +521,7 @@ impl SSOManager {
             user_agent: request.user_agent,
         };
 
-        self.sso_sessions.insert(session.session_id.clone(), SessionData {
-            session_id: session.session_id.clone(),
-            data: serde_json::to_string(&session).unwrap(),
-            expires_at: session.expires_at,
-        }).await?;
+        self.sso_sessions.insert(session.session_id.clone(), session.clone()).await;
 
         Ok(SSOResponse {
             success: true,
@@ -607,7 +603,7 @@ impl SessionManager {
 
     pub async fn terminate_session(&self, session_id: &str) -> Result<()> {
         self.active_sessions.remove(session_id);
-        self.session_store.delete(session_id).await?;
+        self.session_store.remove(&session_id.to_string()).await;
         Ok(())
     }
 }
@@ -618,7 +614,7 @@ impl MFAManager {
             manager_id: format!("mfa_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
             mfa_providers: Arc::new(DashMap::new()),
             user_mfa_settings: AsyncDataStore::new(),
-            mfa_challenges: Arc::new(DashMap::new()),
+            mfa_challenges: LightweightStore::new(None),
             backup_codes_manager: Arc::new(BackupCodesManager::new()),
         }
     }
@@ -643,9 +639,10 @@ impl MFAManager {
     }
 
     pub async fn verify_mfa_challenge(&self, challenge_id: &str, response: &str) -> Result<bool> {
-        if let Some(mut challenge) = self.mfa_challenges.get_mut(challenge_id) {
+        if let Some(mut challenge) = self.mfa_challenges.get(&challenge_id.to_string()) {
             if challenge.expires_at < SystemTime::now() {
                 challenge.status = ChallengeStatus::Expired;
+                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
                 return Ok(false);
             }
 
@@ -653,11 +650,13 @@ impl MFAManager {
 
             if self.verify_challenge_response(&challenge, response).await? {
                 challenge.status = ChallengeStatus::Verified;
+                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
                 return Ok(true);
             } else {
                 if challenge.attempts >= 3 {
                     challenge.status = ChallengeStatus::Failed;
                 }
+                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
                 return Ok(false);
             }
         }

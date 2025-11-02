@@ -210,6 +210,20 @@ where
         result
     }
 
+    pub async fn remove(&self, key: &K) -> Option<V> {
+        let mut store = self.store.write().await;
+        let result = store.remove(key);
+
+        // Update metrics
+        let mut metrics = self.metrics.write().await;
+        metrics.writes += 1;
+        if result.is_some() {
+            metrics.evictions += 1;
+        }
+
+        result
+    }
+
     pub async fn get_metrics(&self) -> StoreMetrics {
         self.metrics.read().await.clone()
     }
