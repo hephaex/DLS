@@ -1,11 +1,11 @@
 // Enterprise Marketplace & Extensions System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -1075,7 +1075,13 @@ pub struct PerformanceRequirements {
 impl MarketplaceManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             plugin_registry: Arc::new(PluginRegistry::new()),
             extension_manager: Arc::new(ExtensionManager::new()),
             marketplace_store: Arc::new(MarketplaceStore::new()),
@@ -1091,15 +1097,24 @@ impl MarketplaceManager {
         self.plugin_registry.register_plugin(plugin).await
     }
 
-    pub async fn install_plugin(&self, plugin_id: &str, version: Option<&str>) -> Result<PluginInstance> {
-        self.plugin_registry.install_plugin(plugin_id, version).await
+    pub async fn install_plugin(
+        &self,
+        plugin_id: &str,
+        version: Option<&str>,
+    ) -> Result<PluginInstance> {
+        self.plugin_registry
+            .install_plugin(plugin_id, version)
+            .await
     }
 
     pub async fn register_extension(&self, extension: Extension) -> Result<String> {
         self.extension_manager.register_extension(extension).await
     }
 
-    pub async fn search_marketplace(&self, query: MarketplaceQuery) -> Result<Vec<MarketplaceItem>> {
+    pub async fn search_marketplace(
+        &self,
+        query: MarketplaceQuery,
+    ) -> Result<Vec<MarketplaceItem>> {
         self.marketplace_store.search(query).await
     }
 
@@ -1111,7 +1126,13 @@ impl MarketplaceManager {
 impl PluginRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("pr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "pr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             plugins: Arc::new(DashMap::new()),
             plugin_metadata: AsyncDataStore::new(),
             plugin_instances: Arc::new(DashMap::new()),
@@ -1152,13 +1173,20 @@ impl PluginRegistry {
             },
         };
 
-        self.plugin_metadata.insert(plugin_id.clone(), metadata).await;
+        self.plugin_metadata
+            .insert(plugin_id.clone(), metadata)
+            .await;
 
         Ok(plugin_id)
     }
 
-    pub async fn install_plugin(&self, plugin_id: &str, _version: Option<&str>) -> Result<PluginInstance> {
-        let plugin = self.plugins
+    pub async fn install_plugin(
+        &self,
+        plugin_id: &str,
+        _version: Option<&str>,
+    ) -> Result<PluginInstance> {
+        let plugin = self
+            .plugins
             .get(plugin_id)
             .ok_or_else(|| crate::error::Error::NotFound("Plugin not found".to_string()))?;
 
@@ -1185,7 +1213,8 @@ impl PluginRegistry {
             restart_count: 0,
         };
 
-        self.plugin_instances.insert(instance_id.clone(), instance.clone());
+        self.plugin_instances
+            .insert(instance_id.clone(), instance.clone());
 
         Ok(instance)
     }
@@ -1195,7 +1224,8 @@ impl PluginRegistry {
     }
 
     pub async fn list_plugins(&self, filter: PluginFilter) -> Result<Vec<Plugin>> {
-        let plugins: Vec<Plugin> = self.plugins
+        let plugins: Vec<Plugin> = self
+            .plugins
             .iter()
             .filter(|entry| self.matches_filter(entry.value(), &filter))
             .map(|entry| entry.value().clone())
@@ -1211,7 +1241,13 @@ impl PluginRegistry {
 impl ExtensionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("em_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "em_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             extensions: Arc::new(DashMap::new()),
             extension_points: Arc::new(DashMap::new()),
             extension_loader: Arc::new(ExtensionLoader::new()),
@@ -1226,16 +1262,26 @@ impl ExtensionManager {
         Ok(extension_id)
     }
 
-    pub async fn register_extension_point(&self, extension_point: ExtensionPoint) -> Result<String> {
+    pub async fn register_extension_point(
+        &self,
+        extension_point: ExtensionPoint,
+    ) -> Result<String> {
         let point_id = extension_point.point_id.clone();
-        self.extension_points.insert(point_id.clone(), extension_point);
+        self.extension_points
+            .insert(point_id.clone(), extension_point);
         Ok(point_id)
     }
 
     pub async fn get_extensions_for_point(&self, point_id: &str) -> Result<Vec<Extension>> {
-        let extensions: Vec<Extension> = self.extensions
+        let extensions: Vec<Extension> = self
+            .extensions
             .iter()
-            .filter(|entry| entry.value().target_extension_points.contains(&point_id.to_string()))
+            .filter(|entry| {
+                entry
+                    .value()
+                    .target_extension_points
+                    .contains(&point_id.to_string())
+            })
             .map(|entry| entry.value().clone())
             .collect();
         Ok(extensions)
@@ -1368,8 +1414,14 @@ macro_rules! impl_marketplace_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1432,7 +1484,11 @@ impl MarketplaceStore {
             download_url: "https://marketplace.example.com/download/sample_plugin".to_string(),
             documentation_url: Some("https://docs.example.com/sample_plugin".to_string()),
             screenshots: vec!["screenshot1.png".to_string(), "screenshot2.png".to_string()],
-            tags: vec!["authentication".to_string(), "security".to_string(), "enterprise".to_string()],
+            tags: vec![
+                "authentication".to_string(),
+                "security".to_string(),
+                "enterprise".to_string(),
+            ],
             compatibility: CompatibilityInfo {
                 platform_versions: vec![],
                 breaking_changes: vec![],

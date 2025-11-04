@@ -1,21 +1,21 @@
-use crate::error::Result;
-use crate::client::{ClientManager, ClientFilter, ClientSystemStats};
-use crate::boot::PxeOrchestrator;
-use crate::storage::StorageManager;
 use crate::auth::AuthManager;
+use crate::boot::PxeOrchestrator;
+use crate::client::{ClientFilter, ClientManager, ClientSystemStats};
+use crate::error::Result;
 use crate::monitoring::MonitoringManager;
+use crate::storage::StorageManager;
 use axum::{
     extract::{Path, Query, State},
     response::Json,
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Router,
 };
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
-use log::{info, error};
 
 #[derive(Clone)]
 pub struct WebServer {
@@ -157,16 +157,23 @@ impl WebServer {
     }
 
     pub async fn start(&self) -> Result<()> {
-        info!("Starting web management interface on {}:{}", self.bind_addr, self.port);
+        info!(
+            "Starting web management interface on {}:{}",
+            self.bind_addr, self.port
+        );
 
         let app = self.create_router().await;
-        
-        let listener = tokio::net::TcpListener::bind(format!("{}:{}", self.bind_addr, self.port)).await?;
-        
-        info!("Web management interface listening on {}:{}", self.bind_addr, self.port);
-        
+
+        let listener =
+            tokio::net::TcpListener::bind(format!("{}:{}", self.bind_addr, self.port)).await?;
+
+        info!(
+            "Web management interface listening on {}:{}",
+            self.bind_addr, self.port
+        );
+
         axum::serve(listener, app).await?;
-        
+
         Ok(())
     }
 
@@ -175,42 +182,43 @@ impl WebServer {
             // Dashboard endpoints
             .route("/api/dashboard", get(get_dashboard_stats))
             .route("/api/dashboard/overview", get(get_system_overview))
-            
             // Client management endpoints
             .route("/api/clients", get(list_clients))
             .route("/api/clients/:client_id", get(get_client_info))
-            .route("/api/clients/:client_id/history", get(get_client_boot_history))
-            .route("/api/clients/:client_id/assign", post(assign_client_profile))
-            
+            .route(
+                "/api/clients/:client_id/history",
+                get(get_client_boot_history),
+            )
+            .route(
+                "/api/clients/:client_id/assign",
+                post(assign_client_profile),
+            )
             // Boot profile management
             .route("/api/profiles", get(list_boot_profiles))
             .route("/api/profiles", post(create_boot_profile))
             .route("/api/profiles/:profile_id", get(get_boot_profile))
             .route("/api/profiles/:profile_id", put(update_boot_profile))
             .route("/api/profiles/:profile_id", delete(delete_boot_profile))
-            
             // Boot session monitoring
             .route("/api/sessions", get(list_boot_sessions))
             .route("/api/sessions/:session_id", get(get_boot_session))
-            .route("/api/sessions/:session_id/metrics", get(get_session_metrics))
-            
+            .route(
+                "/api/sessions/:session_id/metrics",
+                get(get_session_metrics),
+            )
             // Storage management
             .route("/api/storage/images", get(list_storage_images))
             .route("/api/storage/stats", get(get_storage_stats))
-            
             // Network monitoring
             .route("/api/network/stats", get(get_network_stats))
             .route("/api/network/dhcp/leases", get(list_dhcp_leases))
-            
             // System management
             .route("/api/system/status", get(get_system_status))
             .route("/api/system/services", get(get_services_status))
             .route("/api/system/alerts", get(get_system_alerts))
-            
             // Static files for React app
             .route("/", get(serve_index))
             .route("/static/*file", get(serve_static_file))
-            
             .layer(CorsLayer::permissive())
             .with_state(self.app_state.clone())
     }
@@ -234,7 +242,9 @@ impl WebServer {
 
 // API Handler Functions
 
-async fn get_dashboard_stats(State(state): State<Arc<AppState>>) -> Json<ApiResponse<DashboardStats>> {
+async fn get_dashboard_stats(
+    State(state): State<Arc<AppState>>,
+) -> Json<ApiResponse<DashboardStats>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -259,7 +269,9 @@ async fn get_dashboard_stats(State(state): State<Arc<AppState>>) -> Json<ApiResp
     }
 }
 
-async fn get_system_overview(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<SystemOverview>> {
+async fn get_system_overview(
+    State(_state): State<Arc<AppState>>,
+) -> Json<ApiResponse<SystemOverview>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -307,8 +319,8 @@ async fn get_system_overview(State(_state): State<Arc<AppState>>) -> Json<ApiRes
 }
 
 async fn list_clients(
-    Query(query): Query<ClientListQuery>, 
-    State(state): State<Arc<AppState>>
+    Query(query): Query<ClientListQuery>,
+    State(state): State<Arc<AppState>>,
 ) -> Json<ApiResponse<Vec<crate::client::ClientInfo>>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -321,7 +333,9 @@ async fn list_clients(
         let filter = Some(ClientFilter {
             state: query.state.and_then(|s| parse_client_state(&s)),
             client_type: query.client_type.and_then(|t| parse_client_type(&t)),
-            architecture: query.architecture.and_then(|a| parse_client_architecture(&a)),
+            architecture: query
+                .architecture
+                .and_then(|a| parse_client_architecture(&a)),
             online_only: query.online_only.unwrap_or(false),
             failed_only: query.failed_only.unwrap_or(false),
             recent_hours: query.recent_hours,
@@ -337,7 +351,7 @@ async fn list_clients(
                         clients.clear();
                     }
                 }
-                
+
                 if let Some(limit) = query.limit {
                     clients.truncate(limit);
                 }
@@ -354,7 +368,7 @@ async fn list_clients(
                 data: None,
                 error: Some(e.to_string()),
                 timestamp,
-            })
+            }),
         }
     } else {
         Json(ApiResponse {
@@ -368,7 +382,7 @@ async fn list_clients(
 
 async fn get_client_info(
     Path(client_id): Path<String>,
-    State(state): State<Arc<AppState>>
+    State(state): State<Arc<AppState>>,
 ) -> Json<ApiResponse<crate::client::ClientInfo>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -409,7 +423,7 @@ async fn get_client_info(
 
 async fn get_client_boot_history(
     Path(client_id): Path<String>,
-    State(state): State<Arc<AppState>>
+    State(state): State<Arc<AppState>>,
 ) -> Json<ApiResponse<Vec<crate::client::ClientBootMetrics>>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -418,7 +432,10 @@ async fn get_client_boot_history(
 
     let client_manager_guard = state.client_manager.read().await;
     if let Some(client_manager) = client_manager_guard.as_ref() {
-        match client_manager.get_client_boot_history(&client_id, Some(20)).await {
+        match client_manager
+            .get_client_boot_history(&client_id, Some(20))
+            .await
+        {
             Ok(history) => Json(ApiResponse {
                 success: true,
                 data: Some(history),
@@ -471,8 +488,8 @@ async fn get_storage_stats(State(_state): State<Arc<AppState>>) -> Json<ApiRespo
 
     let storage_stats = StorageStats {
         total_images: 15,
-        total_capacity: 1024 * 1024 * 1024 * 1024, // 1TB
-        used_capacity: 512 * 1024 * 1024 * 1024,   // 512GB
+        total_capacity: 1024 * 1024 * 1024 * 1024,    // 1TB
+        used_capacity: 512 * 1024 * 1024 * 1024,      // 512GB
         available_capacity: 512 * 1024 * 1024 * 1024, // 512GB
         recent_snapshots: 3,
     };
@@ -510,7 +527,9 @@ async fn get_network_stats(State(_state): State<Arc<AppState>>) -> Json<ApiRespo
     })
 }
 
-async fn get_system_status(State(_state): State<Arc<AppState>>) -> Json<ApiResponse<HashMap<String, String>>> {
+async fn get_system_status(
+    State(_state): State<Arc<AppState>>,
+) -> Json<ApiResponse<HashMap<String, String>>> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -790,68 +809,183 @@ async fn serve_index() -> &'static str {
 
 // Placeholder handlers for endpoints not fully implemented yet
 async fn assign_client_profile(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn create_boot_profile(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn get_boot_profile(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn update_boot_profile(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn delete_boot_profile(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn list_boot_sessions(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<String>>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: true, data: Some(vec![]), error: None, timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: true,
+        data: Some(vec![]),
+        error: None,
+        timestamp,
+    })
 }
 
 async fn get_boot_session(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn get_session_metrics(State(state): State<Arc<AppState>>) -> Json<ApiResponse<String>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: false, data: None, error: Some("Not implemented".to_string()), timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: false,
+        data: None,
+        error: Some("Not implemented".to_string()),
+        timestamp,
+    })
 }
 
 async fn list_storage_images(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<String>>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: true, data: Some(vec![]), error: None, timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: true,
+        data: Some(vec![]),
+        error: None,
+        timestamp,
+    })
 }
 
 async fn list_dhcp_leases(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<String>>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: true, data: Some(vec![]), error: None, timestamp })
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: true,
+        data: Some(vec![]),
+        error: None,
+        timestamp,
+    })
 }
 
-async fn get_services_status(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<ServiceStatus>>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
+async fn get_services_status(
+    State(state): State<Arc<AppState>>,
+) -> Json<ApiResponse<Vec<ServiceStatus>>> {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
     let services = vec![
-        ServiceStatus { name: "DHCP Server".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
-        ServiceStatus { name: "TFTP Server".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
-        ServiceStatus { name: "iSCSI Target".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
+        ServiceStatus {
+            name: "DHCP Server".to_string(),
+            status: "Active".to_string(),
+            uptime: 3600,
+            health: "Healthy".to_string(),
+        },
+        ServiceStatus {
+            name: "TFTP Server".to_string(),
+            status: "Active".to_string(),
+            uptime: 3600,
+            health: "Healthy".to_string(),
+        },
+        ServiceStatus {
+            name: "iSCSI Target".to_string(),
+            status: "Active".to_string(),
+            uptime: 3600,
+            health: "Healthy".to_string(),
+        },
     ];
-    Json(ApiResponse { success: true, data: Some(services), error: None, timestamp })
+    Json(ApiResponse {
+        success: true,
+        data: Some(services),
+        error: None,
+        timestamp,
+    })
 }
 
-async fn get_system_alerts(State(state): State<Arc<AppState>>) -> Json<ApiResponse<Vec<SystemAlert>>> {
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    Json(ApiResponse { success: true, data: Some(vec![]), error: None, timestamp })
+async fn get_system_alerts(
+    State(state): State<Arc<AppState>>,
+) -> Json<ApiResponse<Vec<SystemAlert>>> {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs();
+    Json(ApiResponse {
+        success: true,
+        data: Some(vec![]),
+        error: None,
+        timestamp,
+    })
 }
 
 async fn serve_static_file(Path(_file): Path<String>) -> &'static str {
@@ -862,7 +996,7 @@ async fn serve_static_file(Path(_file): Path<String>) -> &'static str {
 // Helper functions
 async fn get_dashboard_data(state: &AppState) -> Result<DashboardStats> {
     let client_manager_guard = state.client_manager.read().await;
-    
+
     let client_stats = if let Some(client_manager) = client_manager_guard.as_ref() {
         client_manager.get_system_stats().await.unwrap_or_default()
     } else {
@@ -880,15 +1014,33 @@ async fn get_dashboard_data(state: &AppState) -> Result<DashboardStats> {
             active_boot_sessions: 0,
         }
     };
-    
+
     let system_overview = SystemOverview {
-        uptime: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_secs(),
+        uptime: std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs(),
         version: env!("CARGO_PKG_VERSION").to_string(),
         status: "Running".to_string(),
         services: vec![
-            ServiceStatus { name: "DHCP Server".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
-            ServiceStatus { name: "TFTP Server".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
-            ServiceStatus { name: "iSCSI Target".to_string(), status: "Active".to_string(), uptime: 3600, health: "Healthy".to_string() },
+            ServiceStatus {
+                name: "DHCP Server".to_string(),
+                status: "Active".to_string(),
+                uptime: 3600,
+                health: "Healthy".to_string(),
+            },
+            ServiceStatus {
+                name: "TFTP Server".to_string(),
+                status: "Active".to_string(),
+                uptime: 3600,
+                health: "Healthy".to_string(),
+            },
+            ServiceStatus {
+                name: "iSCSI Target".to_string(),
+                status: "Active".to_string(),
+                uptime: 3600,
+                health: "Healthy".to_string(),
+            },
         ],
         alerts: vec![],
     };
@@ -983,15 +1135,27 @@ mod tests {
 
     #[test]
     fn test_parse_client_state() {
-        assert_eq!(parse_client_state("Unknown"), Some(crate::client::ClientState::Unknown));
-        assert_eq!(parse_client_state("BootCompleted"), Some(crate::client::ClientState::BootCompleted));
+        assert_eq!(
+            parse_client_state("Unknown"),
+            Some(crate::client::ClientState::Unknown)
+        );
+        assert_eq!(
+            parse_client_state("BootCompleted"),
+            Some(crate::client::ClientState::BootCompleted)
+        );
         assert_eq!(parse_client_state("InvalidState"), None);
     }
 
     #[test]
     fn test_parse_client_type() {
-        assert_eq!(parse_client_type("LegacyBios"), Some(crate::client::ClientType::LegacyBios));
-        assert_eq!(parse_client_type("UefiBios"), Some(crate::client::ClientType::UefiBios));
+        assert_eq!(
+            parse_client_type("LegacyBios"),
+            Some(crate::client::ClientType::LegacyBios)
+        );
+        assert_eq!(
+            parse_client_type("UefiBios"),
+            Some(crate::client::ClientType::UefiBios)
+        );
         assert_eq!(parse_client_type("InvalidType"), None);
     }
 
@@ -1003,7 +1167,7 @@ mod tests {
             error: None,
             timestamp: 1640000000,
         };
-        
+
         assert!(response.success);
         assert!(response.data.is_some());
         assert!(response.error.is_none());
@@ -1039,7 +1203,7 @@ mod tests {
             },
             recent_activity: vec![],
         };
-        
+
         assert_eq!(stats.system_overview.version, "1.0.0");
         assert_eq!(stats.storage_stats.total_images, 10);
         assert_eq!(stats.network_stats.active_dhcp_leases, 25);

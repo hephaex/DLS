@@ -1,12 +1,12 @@
 use crate::error::{DlsError, Result};
 // StorageManager integration pending
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 // PathBuf not currently used
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,10 +38,10 @@ pub enum StorageType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum PerformanceTier {
-    Hot,      // Frequently accessed data
-    Warm,     // Occasionally accessed data
-    Cold,     // Rarely accessed data
-    Archive,  // Long-term storage
+    Hot,     // Frequently accessed data
+    Warm,    // Occasionally accessed data
+    Cold,    // Rarely accessed data
+    Archive, // Long-term storage
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -130,9 +130,9 @@ pub enum ObjectType {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ConsistencyLevel {
-    Strong,    // All replicas must be consistent
-    Eventual,  // Replicas will eventually be consistent
-    Weak,      // No consistency guarantees
+    Strong,   // All replicas must be consistent
+    Eventual, // Replicas will eventually be consistent
+    Weak,     // No consistency guarantees
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -167,11 +167,11 @@ pub struct AccessPattern {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum AccessFrequency {
-    VeryHigh,  // Multiple times per minute
-    High,      // Multiple times per hour
-    Medium,    // Multiple times per day
-    Low,       // Once per day or less
-    Archive,   // Very rarely accessed
+    VeryHigh, // Multiple times per minute
+    High,     // Multiple times per hour
+    Medium,   // Multiple times per day
+    Low,      // Once per day or less
+    Archive,  // Very rarely accessed
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -279,7 +279,7 @@ pub struct DistributedStorageManager {
     storage_policies: Arc<DashMap<String, StoragePolicy>>,
     sync_engine: Arc<StorageSyncEngine>,
     local_storage: Arc<dyn std::any::Any + Send + Sync>, // Placeholder for storage manager
-    chunk_map: Arc<DashMap<String, Vec<String>>>, // object_id -> chunk_ids
+    chunk_map: Arc<DashMap<String, Vec<String>>>,        // object_id -> chunk_ids
     node_selector: Arc<RwLock<Box<dyn NodeSelector + Send + Sync>>>,
     tiering_scheduler: Arc<TieringScheduler>,
 }
@@ -292,7 +292,11 @@ pub trait NodeSelector {
         replication_factor: u8,
     ) -> Result<Vec<String>>;
 
-    fn select_node_for_read(&self, chunk: &DataChunk, available_replicas: &[ChunkReplica]) -> Result<String>;
+    fn select_node_for_read(
+        &self,
+        chunk: &DataChunk,
+        available_replicas: &[ChunkReplica],
+    ) -> Result<String>;
 }
 
 pub struct GeographicNodeSelector;
@@ -305,7 +309,9 @@ impl NodeSelector for GeographicNodeSelector {
         replication_factor: u8,
     ) -> Result<Vec<String>> {
         if available_nodes.len() < replication_factor as usize {
-            return Err(DlsError::ResourceExhausted("Not enough nodes for replication".to_string()));
+            return Err(DlsError::ResourceExhausted(
+                "Not enough nodes for replication".to_string(),
+            ));
         }
 
         // Simple round-robin selection for now
@@ -319,13 +325,21 @@ impl NodeSelector for GeographicNodeSelector {
         Ok(selected)
     }
 
-    fn select_node_for_read(&self, _chunk: &DataChunk, available_replicas: &[ChunkReplica]) -> Result<String> {
+    fn select_node_for_read(
+        &self,
+        _chunk: &DataChunk,
+        available_replicas: &[ChunkReplica],
+    ) -> Result<String> {
         // Select the primary replica or the one with best sync status
         let best_replica = available_replicas
             .iter()
             .filter(|r| r.sync_status == SyncStatus::Synced)
             .find(|r| r.is_primary)
-            .or_else(|| available_replicas.iter().find(|r| r.sync_status == SyncStatus::Synced))
+            .or_else(|| {
+                available_replicas
+                    .iter()
+                    .find(|r| r.sync_status == SyncStatus::Synced)
+            })
             .ok_or_else(|| DlsError::NotFound("No available synced replica".to_string()))?;
 
         Ok(best_replica.node_id.clone())
@@ -428,13 +442,18 @@ impl StorageSyncEngine {
             tracing::info!("Sync operation {} cancelled", operation_id);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!("Sync operation {} not found", operation_id)))
+            Err(DlsError::NotFound(format!(
+                "Sync operation {} not found",
+                operation_id
+            )))
         }
     }
 
     pub async fn schedule_periodic_sync(&self, schedule: SyncSchedule) -> Result<()> {
         let schedule_id = schedule.schedule_id.clone();
-        self.sync_schedules.write().insert(schedule_id.clone(), schedule);
+        self.sync_schedules
+            .write()
+            .insert(schedule_id.clone(), schedule);
         tracing::info!("Periodic sync scheduled: {}", schedule_id);
         Ok(())
     }
@@ -458,8 +477,14 @@ impl TieringScheduler {
     pub async fn evaluate_tiering(&self, chunk: &DataChunk) -> Result<Option<PerformanceTier>> {
         let rules = self.tiering_rules.read();
 
-        for rule in rules.iter().filter(|r| r.enabled && r.source_tier == chunk.tier) {
-            if self.evaluate_rule_conditions(chunk, &rule.conditions).await? {
+        for rule in rules
+            .iter()
+            .filter(|r| r.enabled && r.source_tier == chunk.tier)
+        {
+            if self
+                .evaluate_rule_conditions(chunk, &rule.conditions)
+                .await?
+            {
                 return Ok(Some(rule.target_tier.clone()));
             }
         }
@@ -467,7 +492,11 @@ impl TieringScheduler {
         Ok(None)
     }
 
-    async fn evaluate_rule_conditions(&self, chunk: &DataChunk, conditions: &[TieringCondition]) -> Result<bool> {
+    async fn evaluate_rule_conditions(
+        &self,
+        chunk: &DataChunk,
+        conditions: &[TieringCondition],
+    ) -> Result<bool> {
         for condition in conditions {
             if !self.evaluate_condition(chunk, condition).await? {
                 return Ok(false);
@@ -476,7 +505,11 @@ impl TieringScheduler {
         Ok(true)
     }
 
-    async fn evaluate_condition(&self, chunk: &DataChunk, condition: &TieringCondition) -> Result<bool> {
+    async fn evaluate_condition(
+        &self,
+        chunk: &DataChunk,
+        condition: &TieringCondition,
+    ) -> Result<bool> {
         let value = match condition.condition_type {
             TieringConditionType::LastAccessTime => {
                 (Utc::now() - chunk.last_accessed).num_days() as f64
@@ -486,9 +519,7 @@ impl TieringScheduler {
                 let age_days = (Utc::now() - chunk.last_accessed).num_days().max(1) as f64;
                 chunk.access_count as f64 / age_days
             }
-            TieringConditionType::DataAge => {
-                (Utc::now() - chunk.last_accessed).num_hours() as f64
-            }
+            TieringConditionType::DataAge => (Utc::now() - chunk.last_accessed).num_hours() as f64,
             _ => 0.0, // Other conditions would be implemented based on available metrics
         };
 
@@ -506,7 +537,8 @@ impl TieringScheduler {
 
     pub async fn schedule_migration(&self, migration: TieringMigration) -> Result<()> {
         let migration_id = migration.migration_id.clone();
-        self.scheduled_migrations.insert(migration_id.clone(), migration);
+        self.scheduled_migrations
+            .insert(migration_id.clone(), migration);
         tracing::info!("Tiering migration {} scheduled", migration_id);
         Ok(())
     }
@@ -538,9 +570,15 @@ impl DistributedStorageManager {
         Ok(())
     }
 
-    pub async fn store_object(&self, object_data: Vec<u8>, object_name: String, policy_id: String) -> Result<String> {
+    pub async fn store_object(
+        &self,
+        object_data: Vec<u8>,
+        object_name: String,
+        policy_id: String,
+    ) -> Result<String> {
         let object_id = Uuid::new_v4().to_string();
-        let policy = self.storage_policies
+        let policy = self
+            .storage_policies
             .get(&policy_id)
             .ok_or_else(|| DlsError::NotFound(format!("Storage policy {} not found", policy_id)))?
             .clone();
@@ -577,8 +615,12 @@ impl DistributedStorageManager {
             },
         };
 
-        self.distributed_objects.insert(object_id.clone(), distributed_object);
-        self.chunk_map.insert(object_id.clone(), chunks.iter().map(|c| c.chunk_id.clone()).collect());
+        self.distributed_objects
+            .insert(object_id.clone(), distributed_object);
+        self.chunk_map.insert(
+            object_id.clone(),
+            chunks.iter().map(|c| c.chunk_id.clone()).collect(),
+        );
 
         tracing::info!("Object {} stored with {} chunks", object_id, chunks.len());
         Ok(object_id)
@@ -623,7 +665,8 @@ impl DistributedStorageManager {
     }
 
     async fn replicate_chunk(&self, chunk: &DataChunk, policy: &StoragePolicy) -> Result<()> {
-        let available_nodes: Vec<EdgeStorageNode> = self.storage_nodes
+        let available_nodes: Vec<EdgeStorageNode> = self
+            .storage_nodes
             .iter()
             .map(|entry| entry.value().clone())
             .collect();
@@ -654,7 +697,8 @@ impl DistributedStorageManager {
     }
 
     pub async fn retrieve_object(&self, object_id: &str) -> Result<Vec<u8>> {
-        let object = self.distributed_objects
+        let object = self
+            .distributed_objects
             .get(object_id)
             .ok_or_else(|| DlsError::NotFound(format!("Object {} not found", object_id)))?;
 
@@ -696,7 +740,8 @@ impl DistributedStorageManager {
     }
 
     pub async fn delete_object(&self, object_id: &str) -> Result<()> {
-        let object = self.distributed_objects
+        let object = self
+            .distributed_objects
             .remove(object_id)
             .ok_or_else(|| DlsError::NotFound(format!("Object {} not found", object_id)))?;
 
@@ -743,8 +788,16 @@ impl DistributedStorageManager {
     }
 
     pub async fn get_storage_stats(&self) -> StorageStats {
-        let nodes: Vec<EdgeStorageNode> = self.storage_nodes.iter().map(|entry| entry.value().clone()).collect();
-        let objects: Vec<DistributedObject> = self.distributed_objects.iter().map(|entry| entry.value().clone()).collect();
+        let nodes: Vec<EdgeStorageNode> = self
+            .storage_nodes
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect();
+        let objects: Vec<DistributedObject> = self
+            .distributed_objects
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect();
 
         let total_capacity: u64 = nodes.iter().map(|n| n.storage_capacity_gb).sum();
         let used_capacity: u64 = nodes.iter().map(|n| n.used_capacity_gb).sum();
@@ -753,11 +806,18 @@ impl DistributedStorageManager {
 
         StorageStats {
             total_nodes: nodes.len(),
-            active_nodes: nodes.iter().filter(|n| n.sync_status == SyncStatus::Synced).count(),
+            active_nodes: nodes
+                .iter()
+                .filter(|n| n.sync_status == SyncStatus::Synced)
+                .count(),
             total_capacity_gb: total_capacity,
             used_capacity_gb: used_capacity,
             available_capacity_gb: total_capacity.saturating_sub(used_capacity),
-            utilization_percentage: if total_capacity > 0 { (used_capacity as f64 / total_capacity as f64) * 100.0 } else { 0.0 },
+            utilization_percentage: if total_capacity > 0 {
+                (used_capacity as f64 / total_capacity as f64) * 100.0
+            } else {
+                0.0
+            },
             total_objects,
             total_chunks,
             replication_health: self.calculate_replication_health(&objects),
@@ -770,10 +830,13 @@ impl DistributedStorageManager {
             return 100.0;
         }
 
-        let healthy_objects = objects.iter().filter(|obj| {
-            // Check if object has sufficient replicas
-            obj.chunks.len() > 0 // Simplified check
-        }).count();
+        let healthy_objects = objects
+            .iter()
+            .filter(|obj| {
+                // Check if object has sufficient replicas
+                obj.chunks.len() > 0 // Simplified check
+            })
+            .count();
 
         (healthy_objects as f64 / objects.len() as f64) * 100.0
     }
@@ -801,7 +864,11 @@ impl DistributedStorageManager {
                     tier: PerformanceTier::Hot,
                 };
 
-                if let Some(target_tier) = self.tiering_scheduler.evaluate_tiering(&dummy_chunk).await? {
+                if let Some(target_tier) = self
+                    .tiering_scheduler
+                    .evaluate_tiering(&dummy_chunk)
+                    .await?
+                {
                     let migration = TieringMigration {
                         migration_id: Uuid::new_v4().to_string(),
                         chunk_id: chunk_id.clone(),

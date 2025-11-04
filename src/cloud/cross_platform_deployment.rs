@@ -1,11 +1,11 @@
 // Cross-Platform Deployment Engine for Multi-Cloud Operations
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -853,7 +853,13 @@ pub enum AutoApprovalConditionType {
 impl CrossPlatformDeploymentEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("cpde_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "cpde_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             deployment_orchestrator: Arc::new(DeploymentOrchestrator::new()),
             template_manager: Arc::new(DeploymentTemplateManager::new()),
             artifact_registry: Arc::new(ArtifactRegistry::new()),
@@ -864,11 +870,16 @@ impl CrossPlatformDeploymentEngine {
         }
     }
 
-    pub async fn deploy_application(&self, deployment_spec: DeploymentSpecification) -> Result<String> {
+    pub async fn deploy_application(
+        &self,
+        deployment_spec: DeploymentSpecification,
+    ) -> Result<String> {
         let deployment_id = format!("deploy_{}", Uuid::new_v4());
 
         // Validate deployment specification
-        self.compliance_validator.validate_deployment_spec(&deployment_spec).await?;
+        self.compliance_validator
+            .validate_deployment_spec(&deployment_spec)
+            .await?;
 
         // Create active deployment
         let active_deployment = ActiveDeployment {
@@ -895,31 +906,54 @@ impl CrossPlatformDeploymentEngine {
         };
 
         // Store active deployment
-        self.deployment_orchestrator.active_deployments.insert(deployment_id.clone(), active_deployment).await;
+        self.deployment_orchestrator
+            .active_deployments
+            .insert(deployment_id.clone(), active_deployment)
+            .await;
 
         // Start deployment orchestration
-        self.deployment_orchestrator.orchestrate_deployment(&deployment_id).await?;
+        self.deployment_orchestrator
+            .orchestrate_deployment(&deployment_id)
+            .await?;
 
         Ok(deployment_id)
     }
 
     pub async fn get_deployment_status(&self, deployment_id: &str) -> Result<DeploymentStatus> {
-        if let Some(deployment) = self.deployment_orchestrator.active_deployments.get(&deployment_id.to_string()).await {
+        if let Some(deployment) = self
+            .deployment_orchestrator
+            .active_deployments
+            .get(&deployment_id.to_string())
+            .await
+        {
             Ok(deployment.deployment_status)
         } else {
             Ok(DeploymentStatus::Failed)
         }
     }
 
-    pub async fn rollback_deployment(&self, deployment_id: &str, checkpoint_id: Option<String>) -> Result<()> {
-        self.deployment_orchestrator.rollback_manager.initiate_rollback(deployment_id, checkpoint_id).await
+    pub async fn rollback_deployment(
+        &self,
+        deployment_id: &str,
+        checkpoint_id: Option<String>,
+    ) -> Result<()> {
+        self.deployment_orchestrator
+            .rollback_manager
+            .initiate_rollback(deployment_id, checkpoint_id)
+            .await
     }
 }
 
 impl DeploymentOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("do_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "do_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             active_deployments: AsyncDataStore::new(),
             deployment_strategies: LightweightStore::new(Some(1000)),
             platform_adapters: Arc::new(DashMap::new()),
@@ -950,7 +984,13 @@ pub struct DependencyResolver {
 impl DependencyResolver {
     pub fn new() -> Self {
         Self {
-            resolver_id: format!("dr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            resolver_id: format!(
+                "dr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -963,7 +1003,13 @@ pub struct ResourceAllocator {
 impl ResourceAllocator {
     pub fn new() -> Self {
         Self {
-            allocator_id: format!("ra_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            allocator_id: format!(
+                "ra_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -976,11 +1022,21 @@ pub struct RollbackManager {
 impl RollbackManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("rm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "rm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn initiate_rollback(&self, _deployment_id: &str, _checkpoint_id: Option<String>) -> Result<()> {
+    pub async fn initiate_rollback(
+        &self,
+        _deployment_id: &str,
+        _checkpoint_id: Option<String>,
+    ) -> Result<()> {
         Ok(())
     }
 }
@@ -993,7 +1049,13 @@ pub struct DeploymentTemplateManager {
 impl DeploymentTemplateManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("dtm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "dtm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1006,7 +1068,13 @@ pub struct ArtifactRegistry {
 impl ArtifactRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("ar_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "ar_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1019,7 +1087,13 @@ pub struct ConfigurationManager {
 impl ConfigurationManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1032,7 +1106,13 @@ pub struct RolloutController {
 impl RolloutController {
     pub fn new() -> Self {
         Self {
-            controller_id: format!("rc_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            controller_id: format!(
+                "rc_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1045,7 +1125,13 @@ pub struct DeploymentMonitoringIntegration {
 impl DeploymentMonitoringIntegration {
     pub fn new() -> Self {
         Self {
-            integration_id: format!("dmi_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            integration_id: format!(
+                "dmi_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1058,7 +1144,13 @@ pub struct DeploymentComplianceValidator {
 impl DeploymentComplianceValidator {
     pub fn new() -> Self {
         Self {
-            validator_id: format!("dcv_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            validator_id: format!(
+                "dcv_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 

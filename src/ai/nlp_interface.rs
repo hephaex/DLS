@@ -1,11 +1,11 @@
 use crate::error::{DlsError, Result};
+use chrono::{DateTime, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NaturalLanguageQuery {
@@ -955,7 +955,7 @@ impl NaturalLanguageProcessor {
         self.initialize_entity_models().await?;
         self.load_knowledge_base().await?;
         self.setup_query_executors().await?;
-        
+
         // Start session management
         self.start_session_management().await;
 
@@ -977,8 +977,14 @@ impl NaturalLanguageProcessor {
                         "How is the system performing?".to_string(),
                         "Show me system health".to_string(),
                     ],
-                    keywords: vec!["status", "health", "system", "performance"].iter().map(|s| s.to_string()).collect(),
-                    patterns: vec![".*status.*", ".*health.*", "how.*system.*"].iter().map(|s| s.to_string()).collect(),
+                    keywords: vec!["status", "health", "system", "performance"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect(),
+                    patterns: vec![".*status.*", ".*health.*", "how.*system.*"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect(),
                 },
                 IntentClass {
                     intent: QueryIntent::GetMetrics,
@@ -988,15 +994,23 @@ impl NaturalLanguageProcessor {
                         "What are the memory usage stats?".to_string(),
                         "Display network performance".to_string(),
                     ],
-                    keywords: vec!["metrics", "stats", "usage", "performance", "cpu", "memory"].iter().map(|s| s.to_string()).collect(),
-                    patterns: vec![".*metrics.*", ".*usage.*", "show.*performance.*"].iter().map(|s| s.to_string()).collect(),
+                    keywords: vec!["metrics", "stats", "usage", "performance", "cpu", "memory"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect(),
+                    patterns: vec![".*metrics.*", ".*usage.*", "show.*performance.*"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect(),
                 },
             ],
             last_trained: Utc::now(),
             version: 1,
         };
 
-        self.intent_classifier.models.insert("en".to_string(), model);
+        self.intent_classifier
+            .models
+            .insert("en".to_string(), model);
         Ok(())
     }
 
@@ -1006,18 +1020,21 @@ impl NaturalLanguageProcessor {
             entity_type: EntityType::ComponentName,
             model_data: vec![], // Would contain actual model data
             accuracy: 0.85,
-            patterns: vec![
-                EntityPattern {
-                    pattern: r"(?i)(cpu|processor|memory|ram|disk|storage|network)".to_string(),
-                    pattern_type: PatternType::Regex,
-                    confidence: 0.9,
-                    examples: vec!["CPU", "memory", "disk", "network"].iter().map(|s| s.to_string()).collect(),
-                },
-            ],
+            patterns: vec![EntityPattern {
+                pattern: r"(?i)(cpu|processor|memory|ram|disk|storage|network)".to_string(),
+                pattern_type: PatternType::Regex,
+                confidence: 0.9,
+                examples: vec!["CPU", "memory", "disk", "network"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
+            }],
             last_trained: Utc::now(),
         };
 
-        self.entity_recognizer.entity_models.insert(EntityType::ComponentName, component_model);
+        self.entity_recognizer
+            .entity_models
+            .insert(EntityType::ComponentName, component_model);
         Ok(())
     }
 
@@ -1028,36 +1045,44 @@ impl NaturalLanguageProcessor {
             title: "System Monitoring Guide".to_string(),
             content: "This guide explains how to monitor system performance...".to_string(),
             document_type: DocumentType::UserGuide,
-            tags: vec!["monitoring", "performance", "system"].iter().map(|s| s.to_string()).collect(),
+            tags: vec!["monitoring", "performance", "system"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             last_updated: Utc::now(),
             author: "DevOps Team".to_string(),
             version: 1,
             metadata: HashMap::new(),
         };
 
-        self.knowledge_base.documents.insert(doc.document_id.clone(), doc);
+        self.knowledge_base
+            .documents
+            .insert(doc.document_id.clone(), doc);
 
         let concept = Concept {
             concept_id: "cpu_monitoring".to_string(),
             name: "CPU Monitoring".to_string(),
             definition: "The process of tracking CPU usage and performance metrics".to_string(),
-            aliases: vec!["processor monitoring", "CPU tracking"].iter().map(|s| s.to_string()).collect(),
+            aliases: vec!["processor monitoring", "CPU tracking"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
             category: ConceptCategory::Monitoring,
             complexity_level: ComplexityLevel::Intermediate,
             related_documents: vec!["system_monitoring".to_string()],
-            examples: vec![
-                ConceptExample {
-                    example_id: "cpu_threshold_alert".to_string(),
-                    title: "Setting CPU Threshold Alerts".to_string(),
-                    description: "Configure alerts when CPU usage exceeds 80%".to_string(),
-                    code_snippet: Some("cpu_alert_threshold: 80%".to_string()),
-                    expected_result: "Alert triggered when CPU > 80%".to_string(),
-                    difficulty: ComplexityLevel::Beginner,
-                },
-            ],
+            examples: vec![ConceptExample {
+                example_id: "cpu_threshold_alert".to_string(),
+                title: "Setting CPU Threshold Alerts".to_string(),
+                description: "Configure alerts when CPU usage exceeds 80%".to_string(),
+                code_snippet: Some("cpu_alert_threshold: 80%".to_string()),
+                expected_result: "Alert triggered when CPU > 80%".to_string(),
+                difficulty: ComplexityLevel::Beginner,
+            }],
         };
 
-        self.knowledge_base.concepts.insert(concept.concept_id.clone(), concept);
+        self.knowledge_base
+            .concepts
+            .insert(concept.concept_id.clone(), concept);
         Ok(())
     }
 
@@ -1067,21 +1092,26 @@ impl NaturalLanguageProcessor {
         Ok(())
     }
 
-    pub async fn process_query(&self, query_text: String, user_id: String, session_id: Option<String>) -> Result<QueryResponse> {
+    pub async fn process_query(
+        &self,
+        query_text: String,
+        user_id: String,
+        session_id: Option<String>,
+    ) -> Result<QueryResponse> {
         let session_id = session_id.unwrap_or_else(|| Uuid::new_v4().to_string());
-        
+
         // Get or create conversation session
         let mut session = self.get_or_create_session(&session_id, &user_id).await?;
-        
+
         // Classify intent
         let intent = self.classify_intent(&query_text).await?;
-        
+
         // Extract entities
         let entities = self.extract_entities(&query_text).await?;
-        
+
         // Build query context
         let context = self.build_query_context(&session, &user_id).await?;
-        
+
         // Create query object
         let mut query = NaturalLanguageQuery {
             query_id: Uuid::new_v4(),
@@ -1095,13 +1125,13 @@ impl NaturalLanguageProcessor {
             response: None,
             satisfaction_rating: None,
         };
-        
+
         // Process query and generate response
         let response = self.generate_response(&query).await?;
-        
+
         // Update query with response
         query.response = Some(response.clone());
-        
+
         // Update conversation session
         let turn = ConversationTurn {
             turn_id: Uuid::new_v4(),
@@ -1110,21 +1140,25 @@ impl NaturalLanguageProcessor {
             timestamp: Utc::now(),
             context_variables: HashMap::new(),
         };
-        
+
         session.turns.push(turn);
         session.last_activity = Utc::now();
-        
+
         // Update session in store
         self.active_sessions.insert(session_id, session);
-        
+
         // Store query in history
         let mut history = self.query_history.write();
         history.push(query);
-        
+
         Ok(response)
     }
 
-    async fn get_or_create_session(&self, session_id: &str, user_id: &str) -> Result<ConversationSession> {
+    async fn get_or_create_session(
+        &self,
+        session_id: &str,
+        user_id: &str,
+    ) -> Result<ConversationSession> {
         if let Some(existing_session) = self.active_sessions.get(session_id) {
             Ok(existing_session.clone())
         } else {
@@ -1155,7 +1189,7 @@ impl NaturalLanguageProcessor {
                 status: SessionStatus::Active,
                 satisfaction_score: None,
             };
-            
+
             Ok(session)
         }
     }
@@ -1163,7 +1197,7 @@ impl NaturalLanguageProcessor {
     async fn classify_intent(&self, query_text: &str) -> Result<QueryIntent> {
         // Simplified intent classification
         let query_lower = query_text.to_lowercase();
-        
+
         if query_lower.contains("status") || query_lower.contains("health") {
             Ok(QueryIntent::GetSystemStatus)
         } else if query_lower.contains("metrics") || query_lower.contains("performance") {
@@ -1172,7 +1206,10 @@ impl NaturalLanguageProcessor {
             Ok(QueryIntent::GetDocumentation)
         } else if query_lower.contains("recommend") || query_lower.contains("suggest") {
             Ok(QueryIntent::GetRecommendations)
-        } else if query_lower.contains("problem") || query_lower.contains("issue") || query_lower.contains("error") {
+        } else if query_lower.contains("problem")
+            || query_lower.contains("issue")
+            || query_lower.contains("error")
+        {
             Ok(QueryIntent::TroubleshootIssue)
         } else {
             Ok(QueryIntent::Unknown)
@@ -1181,7 +1218,7 @@ impl NaturalLanguageProcessor {
 
     async fn extract_entities(&self, query_text: &str) -> Result<Vec<NamedEntity>> {
         let mut entities = Vec::new();
-        
+
         // Simple pattern matching for common entities
         let component_patterns = vec![
             ("cpu", EntityType::ComponentName),
@@ -1189,7 +1226,7 @@ impl NaturalLanguageProcessor {
             ("disk", EntityType::ComponentName),
             ("network", EntityType::ComponentName),
         ];
-        
+
         for (pattern, entity_type) in component_patterns {
             if let Some(start) = query_text.to_lowercase().find(pattern) {
                 entities.push(NamedEntity {
@@ -1202,14 +1239,18 @@ impl NaturalLanguageProcessor {
                 });
             }
         }
-        
+
         Ok(entities)
     }
 
-    async fn build_query_context(&self, session: &ConversationSession, user_id: &str) -> Result<QueryContext> {
+    async fn build_query_context(
+        &self,
+        session: &ConversationSession,
+        user_id: &str,
+    ) -> Result<QueryContext> {
         // Build comprehensive query context
         Ok(QueryContext {
-            user_role: "user".to_string(), // Would get from user management
+            user_role: "user".to_string(),         // Would get from user management
             permissions: vec!["read".to_string()], // Would get from authorization
             previous_queries: session.turns.iter().map(|t| t.user_input.clone()).collect(),
             current_session_context: HashMap::new(),
@@ -1226,31 +1267,25 @@ impl NaturalLanguageProcessor {
 
     async fn generate_response(&self, query: &NaturalLanguageQuery) -> Result<QueryResponse> {
         let start_time = std::time::Instant::now();
-        
+
         // Process based on intent
         let content = match query.intent {
-            QueryIntent::GetSystemStatus => {
-                self.get_system_status_response().await?
-            },
-            QueryIntent::GetMetrics => {
-                self.get_metrics_response(&query.entities).await?
-            },
+            QueryIntent::GetSystemStatus => self.get_system_status_response().await?,
+            QueryIntent::GetMetrics => self.get_metrics_response(&query.entities).await?,
             QueryIntent::GetDocumentation => {
                 self.get_documentation_response(&query.query_text).await?
-            },
-            QueryIntent::GetRecommendations => {
-                self.get_recommendations_response().await?
-            },
+            }
+            QueryIntent::GetRecommendations => self.get_recommendations_response().await?,
             QueryIntent::TroubleshootIssue => {
                 self.get_troubleshooting_response(&query.query_text).await?
-            },
-            _ => {
-                ResponseContent::Text("I'm not sure how to help with that. Could you rephrase your question?".to_string())
             }
+            _ => ResponseContent::Text(
+                "I'm not sure how to help with that. Could you rephrase your question?".to_string(),
+            ),
         };
-        
+
         let processing_time = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(QueryResponse {
             response_id: Uuid::new_v4(),
             response_type: self.determine_response_type(&content),
@@ -1262,17 +1297,15 @@ impl NaturalLanguageProcessor {
                 "Would you like to see detailed metrics?".to_string(),
                 "Do you need help with troubleshooting?".to_string(),
             ],
-            actions_available: vec![
-                SuggestedAction {
-                    action_id: "view_dashboard".to_string(),
-                    action_type: SuggestedActionType::ViewDetails,
-                    description: "Open system dashboard".to_string(),
-                    required_permissions: vec!["dashboard.read".to_string()],
-                    estimated_time: Duration::minutes(2),
-                    risk_level: RiskLevel::VeryLow,
-                    parameters: HashMap::new(),
-                },
-            ],
+            actions_available: vec![SuggestedAction {
+                action_id: "view_dashboard".to_string(),
+                action_type: SuggestedActionType::ViewDetails,
+                description: "Open system dashboard".to_string(),
+                required_permissions: vec!["dashboard.read".to_string()],
+                estimated_time: Duration::minutes(2),
+                risk_level: RiskLevel::VeryLow,
+                parameters: HashMap::new(),
+            }],
         })
     }
 
@@ -1282,7 +1315,7 @@ impl NaturalLanguageProcessor {
             "overall_health": 95.2,
             "services": {
                 "dhcp": "healthy",
-                "tftp": "healthy", 
+                "tftp": "healthy",
                 "iscsi": "warning",
                 "pxe": "healthy"
             },
@@ -1290,37 +1323,51 @@ impl NaturalLanguageProcessor {
             "alerts": 2,
             "uptime": "15 days, 6 hours"
         });
-        
+
         Ok(ResponseContent::StructuredData(status_data))
     }
 
     async fn get_metrics_response(&self, entities: &[NamedEntity]) -> Result<ResponseContent> {
         // Generate metrics based on requested entities
-        let component = entities.iter()
+        let component = entities
+            .iter()
             .find(|e| e.entity_type == EntityType::ComponentName)
             .map(|e| e.value.as_str())
             .unwrap_or("system");
-        
+
         let chart_data = ChartData {
             chart_type: ChartType::TimeSeries,
             title: format!("{} Usage Over Time", component.to_uppercase()),
             x_axis_label: "Time".to_string(),
             y_axis_label: "Usage %".to_string(),
-            data_series: vec![
-                DataSeries {
-                    name: format!("{} Usage", component),
-                    data_points: vec![
-                        DataPoint { x: 0.0, y: 45.2, label: None, timestamp: Some(Utc::now() - Duration::hours(1)) },
-                        DataPoint { x: 1.0, y: 52.1, label: None, timestamp: Some(Utc::now() - Duration::minutes(30)) },
-                        DataPoint { x: 2.0, y: 48.7, label: None, timestamp: Some(Utc::now()) },
-                    ],
-                    color: Some("#007bff".to_string()),
-                    style: None,
-                },
-            ],
+            data_series: vec![DataSeries {
+                name: format!("{} Usage", component),
+                data_points: vec![
+                    DataPoint {
+                        x: 0.0,
+                        y: 45.2,
+                        label: None,
+                        timestamp: Some(Utc::now() - Duration::hours(1)),
+                    },
+                    DataPoint {
+                        x: 1.0,
+                        y: 52.1,
+                        label: None,
+                        timestamp: Some(Utc::now() - Duration::minutes(30)),
+                    },
+                    DataPoint {
+                        x: 2.0,
+                        y: 48.7,
+                        label: None,
+                        timestamp: Some(Utc::now()),
+                    },
+                ],
+                color: Some("#007bff".to_string()),
+                style: None,
+            }],
             annotations: vec![],
         };
-        
+
         Ok(ResponseContent::Chart(chart_data))
     }
 
@@ -1355,7 +1402,7 @@ impl NaturalLanguageProcessor {
                 },
             ],
         };
-        
+
         Ok(ResponseContent::Explanation(explanation))
     }
 
@@ -1378,7 +1425,7 @@ impl NaturalLanguageProcessor {
                 confidence: 0.74,
             },
         ];
-        
+
         Ok(ResponseContent::Recommendations(recommendations))
     }
 
@@ -1404,29 +1451,38 @@ impl NaturalLanguageProcessor {
     fn format_response_for_display(&self, response: &QueryResponse) -> String {
         match &response.content {
             ResponseContent::Text(text) => text.clone(),
-            ResponseContent::StructuredData(data) => format!("System Status: {}", serde_json::to_string_pretty(data).unwrap_or_default()),
+            ResponseContent::StructuredData(data) => format!(
+                "System Status: {}",
+                serde_json::to_string_pretty(data).unwrap_or_default()
+            ),
             ResponseContent::Chart(chart) => format!("Chart: {}", chart.title),
             ResponseContent::Table(table) => format!("Table with {} rows", table.rows.len()),
-            ResponseContent::ActionResult(result) => format!("Action {}: {}", result.action_id, result.result_summary),
-            ResponseContent::Explanation(explanation) => format!("Explanation: {}", explanation.concept),
-            ResponseContent::Recommendations(recommendations) => format!("Found {} recommendations", recommendations.len()),
+            ResponseContent::ActionResult(result) => {
+                format!("Action {}: {}", result.action_id, result.result_summary)
+            }
+            ResponseContent::Explanation(explanation) => {
+                format!("Explanation: {}", explanation.concept)
+            }
+            ResponseContent::Recommendations(recommendations) => {
+                format!("Found {} recommendations", recommendations.len())
+            }
         }
     }
 
     async fn start_session_management(&self) {
         let active_sessions = Arc::clone(&self.active_sessions);
         let max_duration = self.config.max_session_duration;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::minutes(5).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Clean up expired sessions
                 let now = Utc::now();
                 let cutoff = now - max_duration;
-                
+
                 active_sessions.retain(|_, session| {
                     session.last_activity > cutoff && session.status == SessionStatus::Active
                 });
@@ -1435,7 +1491,9 @@ impl NaturalLanguageProcessor {
     }
 
     pub async fn get_conversation_history(&self, session_id: &str) -> Option<ConversationSession> {
-        self.active_sessions.get(session_id).map(|session| session.clone())
+        self.active_sessions
+            .get(session_id)
+            .map(|session| session.clone())
     }
 
     pub async fn rate_response(&self, query_id: Uuid, rating: u8) -> Result<()> {
@@ -1449,11 +1507,17 @@ impl NaturalLanguageProcessor {
     }
 
     pub async fn add_knowledge_document(&self, document: KnowledgeDocument) -> Result<()> {
-        self.knowledge_base.documents.insert(document.document_id.clone(), document);
+        self.knowledge_base
+            .documents
+            .insert(document.document_id.clone(), document);
         Ok(())
     }
 
-    pub async fn update_user_preferences(&self, session_id: &str, preferences: UserPreferences) -> Result<()> {
+    pub async fn update_user_preferences(
+        &self,
+        session_id: &str,
+        preferences: UserPreferences,
+    ) -> Result<()> {
         if let Some(mut session) = self.active_sessions.get_mut(session_id) {
             session.context.user_preferences = preferences;
             Ok(())

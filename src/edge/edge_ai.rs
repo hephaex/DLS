@@ -1,13 +1,13 @@
 use crate::error::Result;
 // AI engine integrations pending
 // Edge node integration pending
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeAIEngine {
@@ -45,9 +45,9 @@ pub struct ComputeUnits {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ComputeCapability {
-    Basic,      // CPU only
-    Enhanced,   // GPU accelerated
-    Advanced,   // Dedicated AI chips
+    Basic,       // CPU only
+    Enhanced,    // GPU accelerated
+    Advanced,    // Dedicated AI chips
     Specialized, // Custom AI hardware
 }
 
@@ -1068,7 +1068,11 @@ impl DistributedMLPipeline {
         Ok(())
     }
 
-    pub async fn deploy_model_to_edge(&self, model_id: &str, target_nodes: Vec<String>) -> Result<Vec<String>> {
+    pub async fn deploy_model_to_edge(
+        &self,
+        model_id: &str,
+        target_nodes: Vec<String>,
+    ) -> Result<Vec<String>> {
         let mut deployment_ids = Vec::new();
 
         for node_id in target_nodes {
@@ -1139,21 +1143,32 @@ impl DistributedMLPipeline {
             engine.performance_metrics.total_inferences += 1;
             engine.performance_metrics.last_updated = Utc::now();
 
-            tracing::info!("Inference {} submitted to node {}", inference_id, target_node);
+            tracing::info!(
+                "Inference {} submitted to node {}",
+                inference_id,
+                target_node
+            );
         }
 
         Ok(inference_id)
     }
 
-    pub async fn start_federated_learning(&self, model_id: &str, participants: Vec<String>) -> Result<String> {
-        self.federated_learning.start_session(model_id, participants).await
+    pub async fn start_federated_learning(
+        &self,
+        model_id: &str,
+        participants: Vec<String>,
+    ) -> Result<String> {
+        self.federated_learning
+            .start_session(model_id, participants)
+            .await
     }
 
     pub async fn get_pipeline_metrics(&self) -> PipelineMetrics {
         let total_engines = self.edge_engines.len();
         let total_models = self.global_models.len();
 
-        let total_inferences: u64 = self.edge_engines
+        let total_inferences: u64 = self
+            .edge_engines
             .iter()
             .map(|entry| entry.value().performance_metrics.total_inferences)
             .sum();
@@ -1162,7 +1177,8 @@ impl DistributedMLPipeline {
             self.edge_engines
                 .iter()
                 .map(|entry| entry.value().performance_metrics.average_latency_ms)
-                .sum::<f64>() / total_engines as f64
+                .sum::<f64>()
+                / total_engines as f64
         } else {
             0.0
         };
@@ -1174,7 +1190,7 @@ impl DistributedMLPipeline {
             total_inferences,
             average_latency_ms: average_latency,
             total_throughput_qps: 0.0, // Would be calculated from actual metrics
-            success_rate: 0.99, // Simplified
+            success_rate: 0.99,        // Simplified
             last_updated: Utc::now(),
         }
     }
@@ -1217,7 +1233,11 @@ impl FederatedLearningManager {
         };
 
         self.active_sessions.insert(session_id.clone(), session);
-        tracing::info!("Federated learning session {} started for model {}", session_id, model_id);
+        tracing::info!(
+            "Federated learning session {} started for model {}",
+            session_id,
+            model_id
+        );
         Ok(session_id)
     }
 }

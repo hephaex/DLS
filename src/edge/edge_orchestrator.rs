@@ -1,13 +1,13 @@
-use crate::error::{DlsError, Result};
+use crate::ai::{IntelligentOpsEngine, PredictiveAnalyticsEngine};
 use crate::edge::edge_node::{EdgeNode, EdgeNodeManager, EdgeWorkload, WorkloadPriority};
-use crate::ai::{PredictiveAnalyticsEngine, IntelligentOpsEngine};
+use crate::error::{DlsError, Result};
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EdgeCluster {
@@ -295,7 +295,11 @@ pub enum ScalingStatus {
 }
 
 pub trait PlacementAlgorithm {
-    fn calculate_placement(&self, workload: &EdgeWorkload, available_nodes: &[EdgeNode]) -> Result<String>;
+    fn calculate_placement(
+        &self,
+        workload: &EdgeWorkload,
+        available_nodes: &[EdgeNode],
+    ) -> Result<String>;
     fn get_algorithm_name(&self) -> &str;
 }
 
@@ -312,12 +316,21 @@ impl RoundRobinPlacement {
 }
 
 impl PlacementAlgorithm for RoundRobinPlacement {
-    fn calculate_placement(&self, _workload: &EdgeWorkload, available_nodes: &[EdgeNode]) -> Result<String> {
+    fn calculate_placement(
+        &self,
+        _workload: &EdgeWorkload,
+        available_nodes: &[EdgeNode],
+    ) -> Result<String> {
         if available_nodes.is_empty() {
-            return Err(DlsError::ResourceExhausted("No available nodes for placement".to_string()));
+            return Err(DlsError::ResourceExhausted(
+                "No available nodes for placement".to_string(),
+            ));
         }
 
-        let index = self.counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) % available_nodes.len();
+        let index = self
+            .counter
+            .fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+            % available_nodes.len();
         Ok(available_nodes[index].node_id.clone())
     }
 
@@ -329,7 +342,11 @@ impl PlacementAlgorithm for RoundRobinPlacement {
 pub struct ResourceAwarePlacement;
 
 impl PlacementAlgorithm for ResourceAwarePlacement {
-    fn calculate_placement(&self, workload: &EdgeWorkload, available_nodes: &[EdgeNode]) -> Result<String> {
+    fn calculate_placement(
+        &self,
+        workload: &EdgeWorkload,
+        available_nodes: &[EdgeNode],
+    ) -> Result<String> {
         let mut best_node = None;
         let mut best_score = f64::NEG_INFINITY;
 
@@ -343,7 +360,9 @@ impl PlacementAlgorithm for ResourceAwarePlacement {
 
         match best_node {
             Some(node) => Ok(node.node_id.clone()),
-            None => Err(DlsError::ResourceExhausted("No suitable node found for workload".to_string())),
+            None => Err(DlsError::ResourceExhausted(
+                "No suitable node found for workload".to_string(),
+            )),
         }
     }
 
@@ -364,16 +383,21 @@ impl ResourceAwarePlacement {
         let storage_capacity = 1.0 - storage_utilization;
 
         // Check if node can accommodate the workload
-        let cpu_fits = workload.resource_allocation.cpu_cores as f64 <= node.capabilities.cpu_cores as f64 * cpu_capacity;
-        let memory_fits = workload.resource_allocation.memory_mb as f64 <= node.capabilities.memory_gb as f64 * 1024.0 * memory_capacity;
+        let cpu_fits = workload.resource_allocation.cpu_cores as f64
+            <= node.capabilities.cpu_cores as f64 * cpu_capacity;
+        let memory_fits = workload.resource_allocation.memory_mb as f64
+            <= node.capabilities.memory_gb as f64 * 1024.0 * memory_capacity;
 
         if !cpu_fits || !memory_fits {
             return f64::NEG_INFINITY; // Cannot fit
         }
 
         // Score based on remaining capacity after placement
-        let remaining_cpu = cpu_capacity - (workload.resource_allocation.cpu_cores as f64 / node.capabilities.cpu_cores as f64);
-        let remaining_memory = memory_capacity - (workload.resource_allocation.memory_mb as f64 / (node.capabilities.memory_gb as f64 * 1024.0));
+        let remaining_cpu = cpu_capacity
+            - (workload.resource_allocation.cpu_cores as f64 / node.capabilities.cpu_cores as f64);
+        let remaining_memory = memory_capacity
+            - (workload.resource_allocation.memory_mb as f64
+                / (node.capabilities.memory_gb as f64 * 1024.0));
 
         // Weighted score favoring balanced utilization
         remaining_cpu * 0.4 + remaining_memory * 0.4 + storage_capacity * 0.2
@@ -386,11 +410,18 @@ impl EdgeOrchestrator {
         ai_engine: Arc<IntelligentOpsEngine>,
         analytics_engine: Arc<PredictiveAnalyticsEngine>,
     ) -> Result<Self> {
-        let placement_algorithms: Arc<DashMap<String, Box<dyn PlacementAlgorithm + Send + Sync>>> = Arc::new(DashMap::new());
+        let placement_algorithms: Arc<DashMap<String, Box<dyn PlacementAlgorithm + Send + Sync>>> =
+            Arc::new(DashMap::new());
 
         // Register default placement algorithms
-        placement_algorithms.insert("round_robin".to_string(), Box::new(RoundRobinPlacement::new()));
-        placement_algorithms.insert("resource_aware".to_string(), Box::new(ResourceAwarePlacement));
+        placement_algorithms.insert(
+            "round_robin".to_string(),
+            Box::new(RoundRobinPlacement::new()),
+        );
+        placement_algorithms.insert(
+            "resource_aware".to_string(),
+            Box::new(ResourceAwarePlacement),
+        );
 
         Ok(Self {
             clusters: Arc::new(DashMap::new()),
@@ -416,7 +447,14 @@ impl EdgeOrchestrator {
         self.clusters.insert(cluster_id.clone(), cluster);
 
         // Log orchestration event
-        self.log_orchestration_event(OrchestrationEventType::PolicyUpdated, &cluster_id, None, None, "Cluster created".to_string()).await;
+        self.log_orchestration_event(
+            OrchestrationEventType::PolicyUpdated,
+            &cluster_id,
+            None,
+            None,
+            "Cluster created".to_string(),
+        )
+        .await;
 
         tracing::info!("Edge cluster {} created successfully", cluster_id);
         Ok(cluster_id)
@@ -425,18 +463,26 @@ impl EdgeOrchestrator {
     async fn validate_cluster_config(&self, cluster: &EdgeCluster) -> Result<()> {
         // Validate auto-scaling configuration
         if cluster.auto_scaling.min_nodes > cluster.auto_scaling.max_nodes {
-            return Err(DlsError::InvalidInput("Min nodes cannot exceed max nodes".to_string()));
+            return Err(DlsError::InvalidInput(
+                "Min nodes cannot exceed max nodes".to_string(),
+            ));
         }
 
         // Validate thresholds
         if cluster.auto_scaling.scale_up_threshold <= cluster.auto_scaling.scale_down_threshold {
-            return Err(DlsError::InvalidInput("Scale up threshold must be greater than scale down threshold".to_string()));
+            return Err(DlsError::InvalidInput(
+                "Scale up threshold must be greater than scale down threshold".to_string(),
+            ));
         }
 
         // Validate resource allocation ratios
         let resource_policy = &cluster.cluster_policies.resource_allocation;
-        if resource_policy.cpu_overcommit_ratio < 1.0 || resource_policy.memory_overcommit_ratio < 1.0 {
-            return Err(DlsError::InvalidInput("Overcommit ratios must be >= 1.0".to_string()));
+        if resource_policy.cpu_overcommit_ratio < 1.0
+            || resource_policy.memory_overcommit_ratio < 1.0
+        {
+            return Err(DlsError::InvalidInput(
+                "Overcommit ratios must be >= 1.0".to_string(),
+            ));
         }
 
         Ok(())
@@ -446,7 +492,10 @@ impl EdgeOrchestrator {
         // Verify node exists
         let node_status = self.node_manager.get_node_status(node_id).await?;
         if node_status != crate::edge::edge_node::EdgeNodeStatus::Active {
-            return Err(DlsError::InvalidState(format!("Node {} is not active", node_id)));
+            return Err(DlsError::InvalidState(format!(
+                "Node {} is not active",
+                node_id
+            )));
         }
 
         // Add to cluster
@@ -456,7 +505,10 @@ impl EdgeOrchestrator {
                 cluster.last_updated = Utc::now();
             }
         } else {
-            return Err(DlsError::NotFound(format!("Cluster {} not found", cluster_id)));
+            return Err(DlsError::NotFound(format!(
+                "Cluster {} not found",
+                cluster_id
+            )));
         }
 
         // Log event
@@ -466,7 +518,8 @@ impl EdgeOrchestrator {
             Some(node_id.to_string()),
             None,
             format!("Node {} added to cluster", node_id),
-        ).await;
+        )
+        .await;
 
         // Trigger rebalancing if needed
         self.trigger_rebalancing(cluster_id).await?;
@@ -481,11 +534,15 @@ impl EdgeOrchestrator {
             cluster.member_nodes.retain(|id| id != node_id);
             cluster.last_updated = Utc::now();
         } else {
-            return Err(DlsError::NotFound(format!("Cluster {} not found", cluster_id)));
+            return Err(DlsError::NotFound(format!(
+                "Cluster {} not found",
+                cluster_id
+            )));
         }
 
         // Migrate workloads from the node
-        self.migrate_workloads_from_node(cluster_id, node_id).await?;
+        self.migrate_workloads_from_node(cluster_id, node_id)
+            .await?;
 
         // Log event
         self.log_orchestration_event(
@@ -494,38 +551,53 @@ impl EdgeOrchestrator {
             Some(node_id.to_string()),
             None,
             format!("Node {} removed from cluster", node_id),
-        ).await;
+        )
+        .await;
 
         tracing::info!("Node {} removed from cluster {}", node_id, cluster_id);
         Ok(())
     }
 
-    async fn migrate_workloads_from_node(&self, cluster_id: &str, source_node_id: &str) -> Result<()> {
+    async fn migrate_workloads_from_node(
+        &self,
+        cluster_id: &str,
+        source_node_id: &str,
+    ) -> Result<()> {
         // Get cluster nodes (excluding the source node)
-        let cluster = self.clusters.get(cluster_id)
+        let cluster = self
+            .clusters
+            .get(cluster_id)
             .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
 
-        let target_nodes: Vec<String> = cluster.member_nodes
+        let target_nodes: Vec<String> = cluster
+            .member_nodes
             .iter()
             .filter(|&id| id != source_node_id)
             .cloned()
             .collect();
 
         if target_nodes.is_empty() {
-            return Err(DlsError::ResourceExhausted("No target nodes available for workload migration".to_string()));
+            return Err(DlsError::ResourceExhausted(
+                "No target nodes available for workload migration".to_string(),
+            ));
         }
 
         // Get workloads on the source node
         let source_node_list = self.node_manager.list_nodes().await;
-        let source_node = source_node_list.iter().find(|n| n.node_id == source_node_id);
+        let source_node = source_node_list
+            .iter()
+            .find(|n| n.node_id == source_node_id);
 
         if let Some(node) = source_node {
             for workload in &node.active_workloads {
                 // Find best target node for each workload
-                let target_node_id = self.select_target_node_for_migration(&target_nodes, workload).await?;
+                let target_node_id = self
+                    .select_target_node_for_migration(&target_nodes, workload)
+                    .await?;
 
                 // Migrate workload
-                self.migrate_workload(&workload.workload_id, source_node_id, &target_node_id).await?;
+                self.migrate_workload(&workload.workload_id, source_node_id, &target_node_id)
+                    .await?;
 
                 // Log migration event
                 self.log_orchestration_event(
@@ -533,15 +605,23 @@ impl EdgeOrchestrator {
                     cluster_id,
                     Some(target_node_id.clone()),
                     Some(workload.workload_id.clone()),
-                    format!("Workload migrated from {} to {}", source_node_id, target_node_id),
-                ).await;
+                    format!(
+                        "Workload migrated from {} to {}",
+                        source_node_id, target_node_id
+                    ),
+                )
+                .await;
             }
         }
 
         Ok(())
     }
 
-    async fn select_target_node_for_migration(&self, target_nodes: &[String], workload: &EdgeWorkload) -> Result<String> {
+    async fn select_target_node_for_migration(
+        &self,
+        target_nodes: &[String],
+        workload: &EdgeWorkload,
+    ) -> Result<String> {
         // Get node details for target nodes
         let all_nodes = self.node_manager.list_nodes().await;
         let available_nodes: Vec<EdgeNode> = all_nodes
@@ -550,7 +630,9 @@ impl EdgeOrchestrator {
             .collect();
 
         if available_nodes.is_empty() {
-            return Err(DlsError::ResourceExhausted("No available target nodes for migration".to_string()));
+            return Err(DlsError::ResourceExhausted(
+                "No available target nodes for migration".to_string(),
+            ));
         }
 
         // Use resource-aware placement for migration
@@ -558,22 +640,40 @@ impl EdgeOrchestrator {
         placement_algorithm.calculate_placement(workload, &available_nodes)
     }
 
-    async fn migrate_workload(&self, workload_id: &str, source_node_id: &str, target_node_id: &str) -> Result<()> {
+    async fn migrate_workload(
+        &self,
+        workload_id: &str,
+        source_node_id: &str,
+        target_node_id: &str,
+    ) -> Result<()> {
         // This would implement the actual workload migration logic
         // For now, we'll simulate the migration by removing from source and adding to target
 
         // Remove from source
-        self.node_manager.remove_workload(source_node_id, workload_id).await?;
+        self.node_manager
+            .remove_workload(source_node_id, workload_id)
+            .await?;
 
         // Add to target (would need to get the workload details first)
         // In a real implementation, this would involve more complex orchestration
 
-        tracing::info!("Workload {} migrated from {} to {}", workload_id, source_node_id, target_node_id);
+        tracing::info!(
+            "Workload {} migrated from {} to {}",
+            workload_id,
+            source_node_id,
+            target_node_id
+        );
         Ok(())
     }
 
-    pub async fn schedule_workload(&self, cluster_id: &str, workload: EdgeWorkload) -> Result<String> {
-        let cluster = self.clusters.get(cluster_id)
+    pub async fn schedule_workload(
+        &self,
+        cluster_id: &str,
+        workload: EdgeWorkload,
+    ) -> Result<String> {
+        let cluster = self
+            .clusters
+            .get(cluster_id)
             .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
 
         // Get available nodes in cluster
@@ -585,7 +685,9 @@ impl EdgeOrchestrator {
             .collect();
 
         if available_nodes.is_empty() {
-            return Err(DlsError::ResourceExhausted("No available nodes in cluster".to_string()));
+            return Err(DlsError::ResourceExhausted(
+                "No available nodes in cluster".to_string(),
+            ));
         }
 
         // Select placement algorithm based on cluster policy
@@ -593,20 +695,26 @@ impl EdgeOrchestrator {
             DistributionPolicy::RoundRobin => "round_robin",
             DistributionPolicy::ResourceAware => "resource_aware",
             DistributionPolicy::LeastLoaded => "resource_aware", // Fallback to resource aware
-            _ => "round_robin", // Default fallback
+            _ => "round_robin",                                  // Default fallback
         };
 
-        let selected_node_id = if let Some(algorithm) = self.placement_algorithms.get(algorithm_name) {
-            algorithm.calculate_placement(&workload, &available_nodes)?
-        } else {
-            return Err(DlsError::InternalError("Placement algorithm not found".to_string()));
-        };
+        let selected_node_id =
+            if let Some(algorithm) = self.placement_algorithms.get(algorithm_name) {
+                algorithm.calculate_placement(&workload, &available_nodes)?
+            } else {
+                return Err(DlsError::InternalError(
+                    "Placement algorithm not found".to_string(),
+                ));
+            };
 
         // Assign workload to selected node
-        self.node_manager.assign_workload(&selected_node_id, workload.clone()).await?;
+        self.node_manager
+            .assign_workload(&selected_node_id, workload.clone())
+            .await?;
 
         // Update workload distribution
-        self.update_workload_distribution(cluster_id, &selected_node_id, &workload.workload_id).await?;
+        self.update_workload_distribution(cluster_id, &selected_node_id, &workload.workload_id)
+            .await?;
 
         // Log scheduling event
         self.log_orchestration_event(
@@ -615,13 +723,24 @@ impl EdgeOrchestrator {
             Some(selected_node_id.clone()),
             Some(workload.workload_id.clone()),
             format!("Workload scheduled to node {}", selected_node_id),
-        ).await;
+        )
+        .await;
 
-        tracing::info!("Workload {} scheduled to node {} in cluster {}", workload.workload_id, selected_node_id, cluster_id);
+        tracing::info!(
+            "Workload {} scheduled to node {} in cluster {}",
+            workload.workload_id,
+            selected_node_id,
+            cluster_id
+        );
         Ok(selected_node_id)
     }
 
-    async fn update_workload_distribution(&self, cluster_id: &str, node_id: &str, workload_id: &str) -> Result<()> {
+    async fn update_workload_distribution(
+        &self,
+        cluster_id: &str,
+        node_id: &str,
+        workload_id: &str,
+    ) -> Result<()> {
         let distribution_id = format!("{}-distribution", cluster_id);
 
         if let Some(mut distribution) = self.workload_distributions.get_mut(&distribution_id) {
@@ -651,14 +770,17 @@ impl EdgeOrchestrator {
                 created_at: Utc::now(),
             };
 
-            self.workload_distributions.insert(distribution_id, distribution);
+            self.workload_distributions
+                .insert(distribution_id, distribution);
         }
 
         Ok(())
     }
 
     pub async fn trigger_auto_scaling(&self, cluster_id: &str) -> Result<()> {
-        let cluster = self.clusters.get(cluster_id)
+        let cluster = self
+            .clusters
+            .get(cluster_id)
             .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
 
         if !cluster.auto_scaling.enabled {
@@ -673,23 +795,27 @@ impl EdgeOrchestrator {
         // Calculate current cluster utilization
         let cluster_utilization = self.calculate_cluster_utilization(cluster_id).await?;
 
-        let should_scale_up = cluster_utilization > cluster.auto_scaling.scale_up_threshold &&
-                              cluster.member_nodes.len() < cluster.auto_scaling.max_nodes as usize;
+        let should_scale_up = cluster_utilization > cluster.auto_scaling.scale_up_threshold
+            && cluster.member_nodes.len() < cluster.auto_scaling.max_nodes as usize;
 
-        let should_scale_down = cluster_utilization < cluster.auto_scaling.scale_down_threshold &&
-                                cluster.member_nodes.len() > cluster.auto_scaling.min_nodes as usize;
+        let should_scale_down = cluster_utilization < cluster.auto_scaling.scale_down_threshold
+            && cluster.member_nodes.len() > cluster.auto_scaling.min_nodes as usize;
 
         if should_scale_up {
-            self.initiate_scale_up(cluster_id, cluster_utilization).await?;
+            self.initiate_scale_up(cluster_id, cluster_utilization)
+                .await?;
         } else if should_scale_down {
-            self.initiate_scale_down(cluster_id, cluster_utilization).await?;
+            self.initiate_scale_down(cluster_id, cluster_utilization)
+                .await?;
         }
 
         Ok(())
     }
 
     async fn calculate_cluster_utilization(&self, cluster_id: &str) -> Result<f64> {
-        let cluster = self.clusters.get(cluster_id)
+        let cluster = self
+            .clusters
+            .get(cluster_id)
             .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
 
         let nodes = self.node_manager.list_nodes_by_cluster(cluster_id).await;
@@ -698,16 +824,19 @@ impl EdgeOrchestrator {
             return Ok(0.0);
         }
 
-        let total_utilization: f64 = nodes.iter().map(|n| {
-            // Weight different metrics according to auto-scaling configuration
-            let cpu_weight = 0.4;
-            let memory_weight = 0.4;
-            let network_weight = 0.2;
+        let total_utilization: f64 = nodes
+            .iter()
+            .map(|n| {
+                // Weight different metrics according to auto-scaling configuration
+                let cpu_weight = 0.4;
+                let memory_weight = 0.4;
+                let network_weight = 0.2;
 
-            (n.health_metrics.cpu_utilization * cpu_weight) +
-            (n.health_metrics.memory_utilization * memory_weight) +
-            (n.health_metrics.network_utilization * network_weight)
-        }).sum();
+                (n.health_metrics.cpu_utilization * cpu_weight)
+                    + (n.health_metrics.memory_utilization * memory_weight)
+                    + (n.health_metrics.network_utilization * network_weight)
+            })
+            .sum();
 
         Ok(total_utilization / nodes.len() as f64)
     }
@@ -717,15 +846,19 @@ impl EdgeOrchestrator {
             operation_id: Uuid::new_v4().to_string(),
             cluster_id: cluster_id.to_string(),
             operation_type: ScalingOperationType::ScaleUp,
-            target_nodes: 0, // Will be determined by scaling algorithm
+            target_nodes: 0,  // Will be determined by scaling algorithm
             current_nodes: 0, // Will be set below
             status: ScalingStatus::Pending,
             started_at: Utc::now(),
             estimated_completion: Utc::now() + Duration::minutes(10),
-            reason: format!("Cluster utilization ({:.1}%) exceeds scale-up threshold", current_utilization),
+            reason: format!(
+                "Cluster utilization ({:.1}%) exceeds scale-up threshold",
+                current_utilization
+            ),
         };
 
-        self.active_scaling_operations.insert(cluster_id.to_string(), operation);
+        self.active_scaling_operations
+            .insert(cluster_id.to_string(), operation);
 
         // Log scaling event
         self.log_orchestration_event(
@@ -734,7 +867,8 @@ impl EdgeOrchestrator {
             None,
             None,
             "Scale-up operation initiated".to_string(),
-        ).await;
+        )
+        .await;
 
         // Here you would implement the actual node provisioning logic
         tracing::info!("Scale-up operation initiated for cluster {}", cluster_id);
@@ -751,10 +885,14 @@ impl EdgeOrchestrator {
             status: ScalingStatus::Pending,
             started_at: Utc::now(),
             estimated_completion: Utc::now() + Duration::minutes(15),
-            reason: format!("Cluster utilization ({:.1}%) below scale-down threshold", current_utilization),
+            reason: format!(
+                "Cluster utilization ({:.1}%) below scale-down threshold",
+                current_utilization
+            ),
         };
 
-        self.active_scaling_operations.insert(cluster_id.to_string(), operation);
+        self.active_scaling_operations
+            .insert(cluster_id.to_string(), operation);
 
         // Log scaling event
         self.log_orchestration_event(
@@ -763,7 +901,8 @@ impl EdgeOrchestrator {
             None,
             None,
             "Scale-down operation initiated".to_string(),
-        ).await;
+        )
+        .await;
 
         tracing::info!("Scale-down operation initiated for cluster {}", cluster_id);
         Ok(())
@@ -774,7 +913,8 @@ impl EdgeOrchestrator {
         let load_imbalance = self.calculate_load_imbalance(cluster_id).await?;
 
         // Trigger rebalancing if imbalance exceeds threshold
-        if load_imbalance > 0.3 { // 30% imbalance threshold
+        if load_imbalance > 0.3 {
+            // 30% imbalance threshold
             self.perform_load_rebalancing(cluster_id).await?;
         }
 
@@ -788,10 +928,14 @@ impl EdgeOrchestrator {
             return Ok(0.0); // No imbalance with single node
         }
 
-        let utilizations: Vec<f64> = nodes.iter().map(|n| n.health_metrics.cpu_utilization).collect();
+        let utilizations: Vec<f64> = nodes
+            .iter()
+            .map(|n| n.health_metrics.cpu_utilization)
+            .collect();
         let avg_utilization: f64 = utilizations.iter().sum::<f64>() / utilizations.len() as f64;
 
-        let max_deviation = utilizations.iter()
+        let max_deviation = utilizations
+            .iter()
             .map(|u| (u - avg_utilization).abs())
             .fold(0.0, f64::max);
 
@@ -808,7 +952,8 @@ impl EdgeOrchestrator {
             None,
             None,
             "Load rebalancing performed".to_string(),
-        ).await;
+        )
+        .await;
 
         tracing::info!("Load rebalancing performed for cluster {}", cluster_id);
         Ok(())
@@ -844,14 +989,22 @@ impl EdgeOrchestrator {
     }
 
     pub async fn get_cluster_status(&self, cluster_id: &str) -> Result<ClusterStatus> {
-        let cluster = self.clusters.get(cluster_id)
+        let cluster = self
+            .clusters
+            .get(cluster_id)
             .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
 
         let nodes = self.node_manager.list_nodes_by_cluster(cluster_id).await;
-        let active_nodes = nodes.iter().filter(|n| n.status == crate::edge::edge_node::EdgeNodeStatus::Active).count();
+        let active_nodes = nodes
+            .iter()
+            .filter(|n| n.status == crate::edge::edge_node::EdgeNodeStatus::Active)
+            .count();
 
         let total_workloads: usize = nodes.iter().map(|n| n.active_workloads.len()).sum();
-        let current_utilization = self.calculate_cluster_utilization(cluster_id).await.unwrap_or(0.0);
+        let current_utilization = self
+            .calculate_cluster_utilization(cluster_id)
+            .await
+            .unwrap_or(0.0);
 
         Ok(ClusterStatus {
             cluster_id: cluster_id.to_string(),
@@ -865,10 +1018,17 @@ impl EdgeOrchestrator {
     }
 
     pub async fn list_clusters(&self) -> Vec<EdgeCluster> {
-        self.clusters.iter().map(|entry| entry.value().clone()).collect()
+        self.clusters
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
     }
 
-    pub async fn get_orchestration_events(&self, cluster_id: Option<&str>, limit: Option<usize>) -> Vec<EdgeOrchestrationEvent> {
+    pub async fn get_orchestration_events(
+        &self,
+        cluster_id: Option<&str>,
+        limit: Option<usize>,
+    ) -> Vec<EdgeOrchestrationEvent> {
         let events = self.orchestration_events.read();
         let filtered_events: Vec<EdgeOrchestrationEvent> = events
             .iter()

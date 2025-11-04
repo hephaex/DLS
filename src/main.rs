@@ -9,10 +9,10 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 struct Cli {
     #[arg(short, long, default_value = "0.0.0.0:8080")]
     bind: SocketAddr,
-    
+
     #[arg(short, long, default_value = "info")]
     log_level: String,
-    
+
     #[arg(short, long, default_value = "config.toml")]
     config: String,
 }
@@ -20,7 +20,7 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    
+
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()

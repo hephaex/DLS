@@ -27,13 +27,8 @@ enum Commands {
 #[derive(Subcommand)]
 enum ImageCommands {
     List,
-    Create {
-        name: String,
-        size: String,
-    },
-    Delete {
-        name: String,
-    },
+    Create { name: String, size: String },
+    Delete { name: String },
 }
 
 fn main() -> Result<()> {

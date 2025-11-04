@@ -1,11 +1,11 @@
 // Multi-Cloud Provider Management & Abstraction Layer
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, PerformanceProfiler};
+use crate::optimization::{AsyncDataStore, LightweightStore, PerformanceProfiler};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -1132,7 +1132,13 @@ pub enum MitigationType {
 impl MultiCloudManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mcm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mcm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             cloud_providers: Arc::new(DashMap::new()),
             deployment_strategies: LightweightStore::new(Some(1000)),
             resource_orchestrator: Arc::new(ResourceOrchestrator::new()),
@@ -1160,22 +1166,34 @@ impl MultiCloudManager {
 
     pub async fn create_deployment_strategy(&self, strategy: DeploymentStrategy) -> Result<String> {
         let strategy_id = strategy.strategy_id.clone();
-        self.deployment_strategies.insert(strategy_id.clone(), strategy);
+        self.deployment_strategies
+            .insert(strategy_id.clone(), strategy);
         Ok(strategy_id)
     }
 
-    pub async fn deploy_workload(&self, workload_request: WorkloadRequest, strategy_id: &str) -> Result<String> {
+    pub async fn deploy_workload(
+        &self,
+        workload_request: WorkloadRequest,
+        strategy_id: &str,
+    ) -> Result<String> {
         // Implement multi-cloud workload deployment
         let deployment_id = format!("dep_{}", Uuid::new_v4());
 
         // Use resource orchestrator to handle deployment
-        self.resource_orchestrator.schedule_workload(workload_request, strategy_id).await?;
+        self.resource_orchestrator
+            .schedule_workload(workload_request, strategy_id)
+            .await?;
 
         Ok(deployment_id)
     }
 
     pub async fn get_deployment_status(&self, deployment_id: &str) -> Result<DeploymentStatus> {
-        if let Some(deployment) = self.resource_orchestrator.active_deployments.get(&deployment_id.to_string()).await {
+        if let Some(deployment) = self
+            .resource_orchestrator
+            .active_deployments
+            .get(&deployment_id.to_string())
+            .await
+        {
             Ok(deployment.deployment_status)
         } else {
             Ok(DeploymentStatus::Failed)
@@ -1186,8 +1204,13 @@ impl MultiCloudManager {
         self.cost_optimizer.generate_recommendations().await
     }
 
-    pub async fn ensure_compliance(&self, compliance_requirements: Vec<ComplianceRequirement>) -> Result<ComplianceReport> {
-        self.compliance_manager.validate_compliance(compliance_requirements).await
+    pub async fn ensure_compliance(
+        &self,
+        compliance_requirements: Vec<ComplianceRequirement>,
+    ) -> Result<ComplianceReport> {
+        self.compliance_manager
+            .validate_compliance(compliance_requirements)
+            .await
     }
 
     pub async fn monitor_performance(&self) -> Result<CloudPerformanceReport> {
@@ -1266,7 +1289,13 @@ impl MultiCloudManager {
 impl ResourceOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("ro_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "ro_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             active_deployments: AsyncDataStore::new(),
             resource_inventory: Arc::new(ResourceInventory::new()),
             workload_scheduler: Arc::new(WorkloadScheduler::new()),
@@ -1274,11 +1303,17 @@ impl ResourceOrchestrator {
         }
     }
 
-    pub async fn schedule_workload(&self, workload_request: WorkloadRequest, strategy_id: &str) -> Result<String> {
+    pub async fn schedule_workload(
+        &self,
+        workload_request: WorkloadRequest,
+        strategy_id: &str,
+    ) -> Result<String> {
         let deployment_id = format!("dep_{}", Uuid::new_v4());
 
         // Add workload to scheduler queue
-        self.workload_scheduler.add_workload(workload_request).await?;
+        self.workload_scheduler
+            .add_workload(workload_request)
+            .await?;
 
         // Create active deployment record
         let deployment = ActiveDeployment {
@@ -1298,7 +1333,9 @@ impl ResourceOrchestrator {
             last_updated: SystemTime::now(),
         };
 
-        self.active_deployments.insert(deployment_id.clone(), deployment).await;
+        self.active_deployments
+            .insert(deployment_id.clone(), deployment)
+            .await;
 
         Ok(deployment_id)
     }
@@ -1327,7 +1364,13 @@ impl PricingDatabase {
 impl CostCalculator {
     pub fn new() -> Self {
         Self {
-            calculator_id: format!("cc_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            calculator_id: format!(
+                "cc_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             calculation_engine: Arc::new(CalculationEngine {
                 engine_type: CalculationEngineType::Advanced,
                 optimization_level: OptimizationLevel::Standard,
@@ -1341,7 +1384,13 @@ impl CostCalculator {
 impl WorkloadScheduler {
     pub fn new() -> Self {
         Self {
-            scheduler_id: format!("ws_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            scheduler_id: format!(
+                "ws_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             scheduling_algorithm: SchedulingAlgorithm::Hybrid,
             workload_queue: AsyncDataStore::new(),
             resource_matcher: Arc::new(ResourceMatcher::new()),
@@ -1351,7 +1400,9 @@ impl WorkloadScheduler {
 
     pub async fn add_workload(&self, workload_request: WorkloadRequest) -> Result<()> {
         let request_id = workload_request.request_id.clone();
-        self.workload_queue.insert(request_id, workload_request).await;
+        self.workload_queue
+            .insert(request_id, workload_request)
+            .await;
         Ok(())
     }
 }
@@ -1359,7 +1410,13 @@ impl WorkloadScheduler {
 impl ResourceMatcher {
     pub fn new() -> Self {
         Self {
-            matcher_id: format!("rm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            matcher_id: format!(
+                "rm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             matching_algorithm: MatchingAlgorithm::Hybrid,
             compatibility_matrix: Arc::new(CompatibilityMatrix {
                 matrix_data: Arc::new(DashMap::new()),
@@ -1373,7 +1430,13 @@ impl ResourceMatcher {
 impl PerformancePredictor {
     pub fn new() -> Self {
         Self {
-            predictor_id: format!("pp_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            predictor_id: format!(
+                "pp_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             prediction_models: Arc::new(DashMap::new()),
             historical_data: AsyncDataStore::new(),
         }
@@ -1383,7 +1446,13 @@ impl PerformancePredictor {
 impl PriorityManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("pm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "pm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             priority_queues: Arc::new(DashMap::new()),
             aging_algorithm: AgingAlgorithm::LinearAging,
             fairness_policy: FairnessPolicy {
@@ -1398,10 +1467,25 @@ impl PriorityManager {
 impl CapacityPlanner {
     pub fn new() -> Self {
         Self {
-            planner_id: format!("cp_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            planner_id: format!(
+                "cp_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             forecasting_engine: Arc::new(ForecastingEngine {
-                engine_id: format!("fe_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
-                forecasting_algorithms: vec![ForecastingAlgorithm::Prophet, ForecastingAlgorithm::LSTM],
+                engine_id: format!(
+                    "fe_{}",
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                ),
+                forecasting_algorithms: vec![
+                    ForecastingAlgorithm::Prophet,
+                    ForecastingAlgorithm::LSTM,
+                ],
                 ensemble_method: EnsembleMethod::WeightedAverage,
                 forecast_horizon: Duration::from_secs(30 * 24 * 3600), // 30 days
             }),
@@ -1415,10 +1499,22 @@ impl CapacityPlanner {
 impl GrowthAnalyzer {
     pub fn new() -> Self {
         Self {
-            analyzer_id: format!("ga_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            analyzer_id: format!(
+                "ga_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             growth_models: Arc::new(DashMap::new()),
             anomaly_detector: Arc::new(GrowthAnomalyDetector {
-                detector_id: format!("gad_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                detector_id: format!(
+                    "gad_{}",
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                ),
                 detection_algorithms: vec![AnomalyDetectionAlgorithm::IsolationForest],
                 thresholds: AnomalyThresholds {
                     mild_anomaly: 1.5,
@@ -1439,7 +1535,13 @@ pub struct CostOptimizer {
 impl CostOptimizer {
     pub fn new() -> Self {
         Self {
-            optimizer_id: format!("co_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            optimizer_id: format!(
+                "co_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1464,11 +1566,20 @@ pub struct ComplianceManager {
 impl ComplianceManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn validate_compliance(&self, _requirements: Vec<ComplianceRequirement>) -> Result<ComplianceReport> {
+    pub async fn validate_compliance(
+        &self,
+        _requirements: Vec<ComplianceRequirement>,
+    ) -> Result<ComplianceReport> {
         Ok(ComplianceReport {
             report_id: format!("cr_{}", Uuid::new_v4()),
             compliance_status: ComplianceStatus::Compliant,
@@ -1507,7 +1618,13 @@ pub struct CloudPerformanceMonitor {
 impl CloudPerformanceMonitor {
     pub fn new() -> Self {
         Self {
-            monitor_id: format!("cpm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitor_id: format!(
+                "cpm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1535,7 +1652,13 @@ pub struct DisasterRecoveryManager {
 impl DisasterRecoveryManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("drm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "drm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

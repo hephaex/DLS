@@ -5,9 +5,9 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
+use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::sync::RwLock;
-use tokio::io::AsyncWriteExt;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 
@@ -128,42 +128,47 @@ impl ProvisioningManager {
 
     pub async fn start(&mut self) -> Result<()> {
         info!("Starting provisioning manager");
-        
+
         // Create work directory if it doesn't exist
         if !self.work_directory.exists() {
             fs::create_dir_all(&self.work_directory).await?;
         }
-        
+
         // Load existing templates and jobs
         self.load_templates().await?;
         self.load_jobs().await?;
-        
+
         info!("Provisioning manager started successfully");
         Ok(())
     }
 
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping provisioning manager");
-        
+
         // Cancel all running jobs
         let mut running_jobs = self.running_jobs.write().await;
         for (job_id, handle) in running_jobs.drain() {
             warn!("Cancelling running job: {}", job_id);
             handle.abort();
-            
+
             // Update job status
             let mut jobs = self.jobs.write().await;
             if let Some(job) = jobs.get_mut(&job_id) {
                 job.status = JobStatus::Cancelled;
                 job.completed_at = Some(chrono::Utc::now());
-                self.add_job_log(job, LogLevel::Warning, "Job cancelled during shutdown".to_string()).await;
+                self.add_job_log(
+                    job,
+                    LogLevel::Warning,
+                    "Job cancelled during shutdown".to_string(),
+                )
+                .await;
             }
         }
-        
+
         // Save current state
         self.save_templates().await?;
         self.save_jobs().await?;
-        
+
         info!("Provisioning manager stopped successfully");
         Ok(())
     }
@@ -171,13 +176,13 @@ impl ProvisioningManager {
     // Template Management
     pub async fn create_template(&self, template: ImageTemplate) -> Result<String> {
         info!("Creating image template: {}", template.name);
-        
+
         let template_id = template.id.clone();
         let mut templates = self.templates.write().await;
         templates.insert(template_id.clone(), template);
-        
+
         self.save_templates().await?;
-        
+
         debug!("Template created with ID: {}", template_id);
         Ok(template_id)
     }
@@ -194,7 +199,7 @@ impl ProvisioningManager {
 
     pub async fn update_template(&self, template_id: &str, template: ImageTemplate) -> Result<()> {
         info!("Updating template: {}", template_id);
-        
+
         let mut templates = self.templates.write().await;
         if templates.contains_key(template_id) {
             templates.insert(template_id.to_string(), template);
@@ -202,20 +207,24 @@ impl ProvisioningManager {
             debug!("Template updated: {}", template_id);
             Ok(())
         } else {
-            Err(crate::error::DlsError::NotFound("Template not found".to_string()))
+            Err(crate::error::DlsError::NotFound(
+                "Template not found".to_string(),
+            ))
         }
     }
 
     pub async fn delete_template(&self, template_id: &str) -> Result<()> {
         info!("Deleting template: {}", template_id);
-        
+
         let mut templates = self.templates.write().await;
         if templates.remove(template_id).is_some() {
             self.save_templates().await?;
             debug!("Template deleted: {}", template_id);
             Ok(())
         } else {
-            Err(crate::error::DlsError::NotFound("Template not found".to_string()))
+            Err(crate::error::DlsError::NotFound(
+                "Template not found".to_string(),
+            ))
         }
     }
 
@@ -228,10 +237,12 @@ impl ProvisioningManager {
         customizations: Vec<ImageCustomization>,
     ) -> Result<String> {
         info!("Creating provisioning job for template: {}", template_id);
-        
+
         // Verify template exists
         if !self.templates.read().await.contains_key(&template_id) {
-            return Err(crate::error::DlsError::NotFound("Template not found".to_string()));
+            return Err(crate::error::DlsError::NotFound(
+                "Template not found".to_string(),
+            ));
         }
 
         let job_id = Uuid::new_v4().to_string();
@@ -252,9 +263,9 @@ impl ProvisioningManager {
 
         let mut jobs = self.jobs.write().await;
         jobs.insert(job_id.clone(), job);
-        
+
         self.save_jobs().await?;
-        
+
         debug!("Provisioning job created with ID: {}", job_id);
         Ok(job_id)
     }
@@ -271,35 +282,39 @@ impl ProvisioningManager {
 
     pub async fn start_job(&self, job_id: &str) -> Result<()> {
         info!("Starting provisioning job: {}", job_id);
-        
+
         // Check if we've reached max concurrent jobs
         let running_count = self.running_jobs.read().await.len();
         if running_count >= self.max_concurrent_jobs {
-            return Err(crate::error::DlsError::ResourceExhausted(
-                format!("Maximum concurrent jobs ({}) reached", self.max_concurrent_jobs)
-            ));
+            return Err(crate::error::DlsError::ResourceExhausted(format!(
+                "Maximum concurrent jobs ({}) reached",
+                self.max_concurrent_jobs
+            )));
         }
 
         // Get job and template
         let (job, template) = {
             let jobs = self.jobs.read().await;
             let templates = self.templates.read().await;
-            
-            let job = jobs.get(job_id)
+
+            let job = jobs
+                .get(job_id)
                 .ok_or_else(|| crate::error::DlsError::NotFound("Job not found".to_string()))?
                 .clone();
-            
-            let template = templates.get(&job.template_id)
+
+            let template = templates
+                .get(&job.template_id)
                 .ok_or_else(|| crate::error::DlsError::NotFound("Template not found".to_string()))?
                 .clone();
-            
+
             (job, template)
         };
 
         if job.status != JobStatus::Pending {
-            return Err(crate::error::DlsError::InvalidOperation(
-                format!("Job is not in pending state: {:?}", job.status)
-            ));
+            return Err(crate::error::DlsError::InvalidOperation(format!(
+                "Job is not in pending state: {:?}",
+                job.status
+            )));
         }
 
         // Update job status to running
@@ -308,13 +323,14 @@ impl ProvisioningManager {
             if let Some(job) = jobs.get_mut(job_id) {
                 job.status = JobStatus::Running;
                 job.started_at = Some(chrono::Utc::now());
-                self.add_job_log(job, LogLevel::Info, "Job started".to_string()).await;
+                self.add_job_log(job, LogLevel::Info, "Job started".to_string())
+                    .await;
             }
         }
 
         // Spawn job execution task
         let job_handle = self.spawn_job_execution(job, template).await;
-        
+
         let mut running_jobs = self.running_jobs.write().await;
         running_jobs.insert(job_id.to_string(), job_handle);
 
@@ -324,7 +340,7 @@ impl ProvisioningManager {
 
     pub async fn cancel_job(&self, job_id: &str) -> Result<()> {
         info!("Cancelling job: {}", job_id);
-        
+
         // Cancel the running task if it exists
         let mut running_jobs = self.running_jobs.write().await;
         if let Some(handle) = running_jobs.remove(job_id) {
@@ -336,7 +352,8 @@ impl ProvisioningManager {
         if let Some(job) = jobs.get_mut(job_id) {
             job.status = JobStatus::Cancelled;
             job.completed_at = Some(chrono::Utc::now());
-            self.add_job_log(job, LogLevel::Warning, "Job cancelled".to_string()).await;
+            self.add_job_log(job, LogLevel::Warning, "Job cancelled".to_string())
+                .await;
         }
 
         debug!("Job cancelled: {}", job_id);
@@ -344,7 +361,11 @@ impl ProvisioningManager {
     }
 
     // Private helper methods
-    async fn spawn_job_execution(&self, mut job: ProvisioningJob, template: ImageTemplate) -> tokio::task::JoinHandle<()> {
+    async fn spawn_job_execution(
+        &self,
+        mut job: ProvisioningJob,
+        template: ImageTemplate,
+    ) -> tokio::task::JoinHandle<()> {
         let jobs = Arc::clone(&self.jobs);
         let storage_manager = Arc::clone(&self.storage_manager);
         let work_directory = self.work_directory.clone();
@@ -352,13 +373,14 @@ impl ProvisioningManager {
 
         tokio::spawn(async move {
             let job_id = job.id.clone();
-            
+
             let result = Self::execute_provisioning_job(
                 &mut job,
                 &template,
                 &storage_manager,
                 &work_directory,
-            ).await;
+            )
+            .await;
 
             // Update job status based on result
             let mut jobs_guard = jobs.write().await;
@@ -368,13 +390,23 @@ impl ProvisioningManager {
                         stored_job.status = JobStatus::Completed;
                         stored_job.progress = 100.0;
                         stored_job.completed_at = Some(chrono::Utc::now());
-                        Self::add_job_log_static(stored_job, LogLevel::Info, "Job completed successfully".to_string()).await;
+                        Self::add_job_log_static(
+                            stored_job,
+                            LogLevel::Info,
+                            "Job completed successfully".to_string(),
+                        )
+                        .await;
                     }
                     Err(e) => {
                         stored_job.status = JobStatus::Failed;
                         stored_job.completed_at = Some(chrono::Utc::now());
                         stored_job.error_message = Some(e.to_string());
-                        Self::add_job_log_static(stored_job, LogLevel::Error, format!("Job failed: {}", e)).await;
+                        Self::add_job_log_static(
+                            stored_job,
+                            LogLevel::Error,
+                            format!("Job failed: {}", e),
+                        )
+                        .await;
                     }
                 }
             }
@@ -396,58 +428,88 @@ impl ProvisioningManager {
         // Step 1: Create base image copy
         Self::add_job_log_static(job, LogLevel::Info, "Creating base image copy".to_string()).await;
         job.progress = 10.0;
-        
+
         let target_path = work_directory.join(format!("{}.img", job.target_name));
         Self::copy_base_image(&template.base_image_path, &target_path, job.target_size_gb).await?;
 
         // Step 2: Mount image for customization
-        Self::add_job_log_static(job, LogLevel::Info, "Mounting image for customization".to_string()).await;
+        Self::add_job_log_static(
+            job,
+            LogLevel::Info,
+            "Mounting image for customization".to_string(),
+        )
+        .await;
         job.progress = 20.0;
-        
+
         let mount_point = work_directory.join(format!("mount_{}", job.id));
         fs::create_dir_all(&mount_point).await?;
-        
+
         Self::mount_image(&target_path, &mount_point, &template.os_type).await?;
 
         // Step 3: Apply customizations
         job.progress = 30.0;
         let customization_count = job.customizations.len();
         let customizations = job.customizations.clone(); // Clone to avoid borrowing issues
-        
+
         for (i, customization) in customizations.iter().enumerate() {
-            Self::add_job_log_static(job, LogLevel::Info, format!("Applying customization: {:?}", customization.customization_type)).await;
-            
+            Self::add_job_log_static(
+                job,
+                LogLevel::Info,
+                format!(
+                    "Applying customization: {:?}",
+                    customization.customization_type
+                ),
+            )
+            .await;
+
             Self::apply_customization(&mount_point, customization, &template.os_type).await?;
-            
+
             job.progress = 30.0 + (50.0 * (i + 1) as f32 / customization_count as f32);
         }
 
         // Step 4: Unmount image
         Self::add_job_log_static(job, LogLevel::Info, "Unmounting image".to_string()).await;
         job.progress = 80.0;
-        
+
         Self::unmount_image(&mount_point).await?;
         fs::remove_dir_all(&mount_point).await?;
 
         // Step 5: Register with storage manager
-        Self::add_job_log_static(job, LogLevel::Info, "Registering image with storage manager".to_string()).await;
+        Self::add_job_log_static(
+            job,
+            LogLevel::Info,
+            "Registering image with storage manager".to_string(),
+        )
+        .await;
         job.progress = 90.0;
-        
+
         let storage_guard = storage_manager.read().await;
         if let Some(storage) = storage_guard.as_ref() {
             // Register the new image (implementation depends on storage manager)
-            info!("Image registered with storage manager: {}", target_path.display());
+            info!(
+                "Image registered with storage manager: {}",
+                target_path.display()
+            );
         }
 
-        Self::add_job_log_static(job, LogLevel::Info, "Provisioning completed successfully".to_string()).await;
+        Self::add_job_log_static(
+            job,
+            LogLevel::Info,
+            "Provisioning completed successfully".to_string(),
+        )
+        .await;
         job.progress = 100.0;
 
         Ok(())
     }
 
     async fn copy_base_image(source: &Path, target: &Path, size_gb: u64) -> Result<()> {
-        debug!("Copying base image from {} to {}", source.display(), target.display());
-        
+        debug!(
+            "Copying base image from {} to {}",
+            source.display(),
+            target.display()
+        );
+
         // Use dd command for efficient copying and resizing
         let output = Command::new("dd")
             .arg(format!("if={}", source.display()))
@@ -459,7 +521,10 @@ impl ProvisioningManager {
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(crate::error::DlsError::CommandFailed(format!("dd failed: {}", error_msg)));
+            return Err(crate::error::DlsError::CommandFailed(format!(
+                "dd failed: {}",
+                error_msg
+            )));
         }
 
         // Resize image if needed
@@ -473,7 +538,10 @@ impl ProvisioningManager {
 
             if !output.status.success() {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
-                return Err(crate::error::DlsError::CommandFailed(format!("qemu-img resize failed: {}", error_msg)));
+                return Err(crate::error::DlsError::CommandFailed(format!(
+                    "qemu-img resize failed: {}",
+                    error_msg
+                )));
             }
         }
 
@@ -481,8 +549,12 @@ impl ProvisioningManager {
     }
 
     async fn mount_image(image_path: &Path, mount_point: &Path, os_type: &OsType) -> Result<()> {
-        debug!("Mounting image {} at {}", image_path.display(), mount_point.display());
-        
+        debug!(
+            "Mounting image {} at {}",
+            image_path.display(),
+            mount_point.display()
+        );
+
         match os_type {
             OsType::Linux => {
                 // Mount using loop device
@@ -497,7 +569,10 @@ impl ProvisioningManager {
 
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
-                    return Err(crate::error::DlsError::CommandFailed(format!("mount failed: {}", error_msg)));
+                    return Err(crate::error::DlsError::CommandFailed(format!(
+                        "mount failed: {}",
+                        error_msg
+                    )));
                 }
             }
             OsType::Windows => {
@@ -513,11 +588,16 @@ impl ProvisioningManager {
 
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
-                    return Err(crate::error::DlsError::CommandFailed(format!("guestmount failed: {}", error_msg)));
+                    return Err(crate::error::DlsError::CommandFailed(format!(
+                        "guestmount failed: {}",
+                        error_msg
+                    )));
                 }
             }
             _ => {
-                return Err(crate::error::DlsError::UnsupportedOperation("Unknown OS type for mounting".to_string()));
+                return Err(crate::error::DlsError::UnsupportedOperation(
+                    "Unknown OS type for mounting".to_string(),
+                ));
             }
         }
 
@@ -526,7 +606,7 @@ impl ProvisioningManager {
 
     async fn unmount_image(mount_point: &Path) -> Result<()> {
         debug!("Unmounting {}", mount_point.display());
-        
+
         let output = Command::new("sudo")
             .arg("umount")
             .arg(mount_point)
@@ -535,7 +615,10 @@ impl ProvisioningManager {
 
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
-            return Err(crate::error::DlsError::CommandFailed(format!("umount failed: {}", error_msg)));
+            return Err(crate::error::DlsError::CommandFailed(format!(
+                "umount failed: {}",
+                error_msg
+            )));
         }
 
         Ok(())
@@ -546,7 +629,10 @@ impl ProvisioningManager {
         customization: &ImageCustomization,
         os_type: &OsType,
     ) -> Result<()> {
-        debug!("Applying customization: {:?}", customization.customization_type);
+        debug!(
+            "Applying customization: {:?}",
+            customization.customization_type
+        );
 
         match &customization.customization_type {
             CustomizationType::InjectFiles => {
@@ -568,7 +654,10 @@ impl ProvisioningManager {
                 Self::create_users(mount_point, &customization.parameters, os_type).await?;
             }
             _ => {
-                warn!("Customization type not yet implemented: {:?}", customization.customization_type);
+                warn!(
+                    "Customization type not yet implemented: {:?}",
+                    customization.customization_type
+                );
             }
         }
 
@@ -578,28 +667,32 @@ impl ProvisioningManager {
     async fn inject_files(mount_point: &Path, parameters: &HashMap<String, String>) -> Result<()> {
         for (source, target) in parameters {
             let target_path = mount_point.join(target.trim_start_matches('/'));
-            
+
             // Create parent directories if they don't exist
             if let Some(parent) = target_path.parent() {
                 fs::create_dir_all(parent).await?;
             }
-            
+
             fs::copy(source, &target_path).await?;
             debug!("Injected file: {} -> {}", source, target_path.display());
         }
         Ok(())
     }
 
-    async fn run_script(mount_point: &Path, parameters: &HashMap<String, String>, os_type: &OsType) -> Result<()> {
+    async fn run_script(
+        mount_point: &Path,
+        parameters: &HashMap<String, String>,
+        os_type: &OsType,
+    ) -> Result<()> {
         if let Some(script_content) = parameters.get("content") {
             let script_path = mount_point.join("tmp/provisioning_script");
-            
+
             // Create tmp directory
             fs::create_dir_all(mount_point.join("tmp")).await?;
-            
+
             // Write script content
             fs::write(&script_path, script_content).await?;
-            
+
             // Make executable (for Linux)
             if matches!(os_type, OsType::Linux) {
                 Command::new("chmod")
@@ -607,7 +700,7 @@ impl ProvisioningManager {
                     .arg(&script_path)
                     .output()
                     .await?;
-                
+
                 // Execute in chroot
                 let output = Command::new("sudo")
                     .arg("chroot")
@@ -615,23 +708,30 @@ impl ProvisioningManager {
                     .arg("/tmp/provisioning_script")
                     .output()
                     .await?;
-                
+
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
-                    return Err(crate::error::DlsError::CommandFailed(format!("Script execution failed: {}", error_msg)));
+                    return Err(crate::error::DlsError::CommandFailed(format!(
+                        "Script execution failed: {}",
+                        error_msg
+                    )));
                 }
             }
-            
+
             // Clean up script
             fs::remove_file(&script_path).await?;
         }
         Ok(())
     }
 
-    async fn install_packages(mount_point: &Path, parameters: &HashMap<String, String>, os_type: &OsType) -> Result<()> {
+    async fn install_packages(
+        mount_point: &Path,
+        parameters: &HashMap<String, String>,
+        os_type: &OsType,
+    ) -> Result<()> {
         if let Some(packages) = parameters.get("packages") {
             let package_list: Vec<&str> = packages.split(',').map(|p| p.trim()).collect();
-            
+
             match os_type {
                 OsType::Linux => {
                     // Use apt-get for Debian/Ubuntu
@@ -642,7 +742,7 @@ impl ProvisioningManager {
                         .arg("update")
                         .output()
                         .await?;
-                    
+
                     if output.status.success() {
                         for package in package_list {
                             Command::new("sudo")
@@ -658,52 +758,75 @@ impl ProvisioningManager {
                     }
                 }
                 _ => {
-                    warn!("Package installation not implemented for OS type: {:?}", os_type);
+                    warn!(
+                        "Package installation not implemented for OS type: {:?}",
+                        os_type
+                    );
                 }
             }
         }
         Ok(())
     }
 
-    async fn configure_network(mount_point: &Path, parameters: &HashMap<String, String>, os_type: &OsType) -> Result<()> {
+    async fn configure_network(
+        mount_point: &Path,
+        parameters: &HashMap<String, String>,
+        os_type: &OsType,
+    ) -> Result<()> {
         match os_type {
             OsType::Linux => {
-                if let (Some(interface), Some(ip)) = (parameters.get("interface"), parameters.get("ip")) {
+                if let (Some(interface), Some(ip)) =
+                    (parameters.get("interface"), parameters.get("ip"))
+                {
                     let netplan_config = format!(
                         "network:\n  version: 2\n  ethernets:\n    {}:\n      dhcp4: false\n      addresses:\n        - {}\n",
                         interface, ip
                     );
-                    
+
                     let config_path = mount_point.join("etc/netplan/00-installer-config.yaml");
                     fs::write(&config_path, netplan_config).await?;
                 }
             }
             _ => {
-                warn!("Network configuration not implemented for OS type: {:?}", os_type);
+                warn!(
+                    "Network configuration not implemented for OS type: {:?}",
+                    os_type
+                );
             }
         }
         Ok(())
     }
 
-    async fn set_hostname(mount_point: &Path, parameters: &HashMap<String, String>, os_type: &OsType) -> Result<()> {
+    async fn set_hostname(
+        mount_point: &Path,
+        parameters: &HashMap<String, String>,
+        os_type: &OsType,
+    ) -> Result<()> {
         if let Some(hostname) = parameters.get("hostname") {
             match os_type {
                 OsType::Linux => {
                     fs::write(mount_point.join("etc/hostname"), hostname).await?;
-                    
+
                     // Update /etc/hosts
                     let hosts_content = format!("127.0.0.1 localhost {}\n", hostname);
                     fs::write(mount_point.join("etc/hosts"), hosts_content).await?;
                 }
                 _ => {
-                    warn!("Hostname configuration not implemented for OS type: {:?}", os_type);
+                    warn!(
+                        "Hostname configuration not implemented for OS type: {:?}",
+                        os_type
+                    );
                 }
             }
         }
         Ok(())
     }
 
-    async fn create_users(mount_point: &Path, parameters: &HashMap<String, String>, os_type: &OsType) -> Result<()> {
+    async fn create_users(
+        mount_point: &Path,
+        parameters: &HashMap<String, String>,
+        os_type: &OsType,
+    ) -> Result<()> {
         if let Some(username) = parameters.get("username") {
             match os_type {
                 OsType::Linux => {
@@ -718,12 +841,12 @@ impl ProvisioningManager {
                         .arg(username)
                         .output()
                         .await?;
-                    
+
                     if !output.status.success() {
                         let error_msg = String::from_utf8_lossy(&output.stderr);
                         warn!("User creation warning: {}", error_msg);
                     }
-                    
+
                     // Set password if provided
                     if let Some(password) = parameters.get("password") {
                         let passwd_input = format!("{}:{}", username, password);
@@ -772,12 +895,12 @@ impl ProvisioningManager {
         let templates_file = self.work_directory.join("templates.json");
         if templates_file.exists() {
             let content = fs::read_to_string(&templates_file).await?;
-            let templates: HashMap<String, ImageTemplate> = serde_json::from_str(&content)
-                .unwrap_or_default();
-            
+            let templates: HashMap<String, ImageTemplate> =
+                serde_json::from_str(&content).unwrap_or_default();
+
             let mut templates_guard = self.templates.write().await;
             *templates_guard = templates;
-            
+
             debug!("Loaded {} templates", templates_guard.len());
         }
         Ok(())
@@ -795,12 +918,12 @@ impl ProvisioningManager {
         let jobs_file = self.work_directory.join("jobs.json");
         if jobs_file.exists() {
             let content = fs::read_to_string(&jobs_file).await?;
-            let jobs: HashMap<String, ProvisioningJob> = serde_json::from_str(&content)
-                .unwrap_or_default();
-            
+            let jobs: HashMap<String, ProvisioningJob> =
+                serde_json::from_str(&content).unwrap_or_default();
+
             let mut jobs_guard = self.jobs.write().await;
             *jobs_guard = jobs;
-            
+
             debug!("Loaded {} jobs", jobs_guard.len());
         }
         Ok(())
@@ -849,7 +972,7 @@ mod tests {
     async fn test_provisioning_manager_creation() {
         let temp_dir = TempDir::new().unwrap();
         let manager = ProvisioningManager::new(temp_dir.path().to_path_buf(), 2);
-        
+
         assert_eq!(manager.max_concurrent_jobs, 2);
         assert_eq!(manager.work_directory, temp_dir.path());
     }
@@ -858,7 +981,7 @@ mod tests {
     async fn test_template_creation() {
         let temp_dir = TempDir::new().unwrap();
         let manager = ProvisioningManager::new(temp_dir.path().to_path_buf(), 2);
-        
+
         let template = ImageTemplate {
             id: "test-template".to_string(),
             name: "Test Template".to_string(),
@@ -872,10 +995,10 @@ mod tests {
             tags: vec!["test".to_string()],
             metadata: HashMap::new(),
         };
-        
+
         let template_id = manager.create_template(template).await.unwrap();
         assert_eq!(template_id, "test-template");
-        
+
         let retrieved = manager.get_template(&template_id).await;
         assert!(retrieved.is_some());
         assert_eq!(retrieved.unwrap().name, "Test Template");
@@ -885,24 +1008,22 @@ mod tests {
     async fn test_job_creation() {
         let temp_dir = TempDir::new().unwrap();
         let manager = ProvisioningManager::new(temp_dir.path().to_path_buf(), 2);
-        
+
         // Create a template first
         let template = ImageTemplate {
             id: "test-template".to_string(),
             name: "Test Template".to_string(),
             ..Default::default()
         };
-        
+
         let template_id = manager.create_template(template).await.unwrap();
-        
+
         // Create a job
-        let job_id = manager.create_provisioning_job(
-            template_id,
-            "test-image".to_string(),
-            20,
-            vec![],
-        ).await.unwrap();
-        
+        let job_id = manager
+            .create_provisioning_job(template_id, "test-image".to_string(), 20, vec![])
+            .await
+            .unwrap();
+
         let job = manager.get_job(&job_id).await;
         assert!(job.is_some());
         assert_eq!(job.unwrap().target_name, "test-image");
@@ -918,7 +1039,7 @@ mod tests {
             ]),
             priority: 1,
         };
-        
+
         assert_eq!(customization.priority, 1);
         assert!(customization.parameters.contains_key("source"));
     }
@@ -955,7 +1076,7 @@ mod tests {
             CustomizationType::SetHostname,
             CustomizationType::CreateUsers,
         ];
-        
+
         assert_eq!(customizations.len(), 6);
     }
 
@@ -963,7 +1084,7 @@ mod tests {
     async fn test_template_listing() {
         let temp_dir = TempDir::new().unwrap();
         let manager = ProvisioningManager::new(temp_dir.path().to_path_buf(), 2);
-        
+
         // Create multiple templates
         for i in 0..3 {
             let template = ImageTemplate {
@@ -973,7 +1094,7 @@ mod tests {
             };
             manager.create_template(template).await.unwrap();
         }
-        
+
         let templates = manager.list_templates().await;
         assert_eq!(templates.len(), 3);
     }
@@ -982,21 +1103,24 @@ mod tests {
     async fn test_job_listing() {
         let temp_dir = TempDir::new().unwrap();
         let manager = ProvisioningManager::new(temp_dir.path().to_path_buf(), 2);
-        
+
         // Create a template
         let template = ImageTemplate::default();
         let template_id = manager.create_template(template).await.unwrap();
-        
+
         // Create multiple jobs
         for i in 0..3 {
-            manager.create_provisioning_job(
-                template_id.clone(),
-                format!("image-{}", i),
-                10 + i as u64,
-                vec![],
-            ).await.unwrap();
+            manager
+                .create_provisioning_job(
+                    template_id.clone(),
+                    format!("image-{}", i),
+                    10 + i as u64,
+                    vec![],
+                )
+                .await
+                .unwrap();
         }
-        
+
         let jobs = manager.list_jobs().await;
         assert_eq!(jobs.len(), 3);
     }

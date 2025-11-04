@@ -31,11 +31,11 @@ impl UserRecord {
     pub fn get_role(&self) -> Result<UserRole> {
         self.role.parse()
     }
-    
+
     pub fn set_role(&mut self, role: UserRole) {
         self.role = role.to_string();
     }
-    
+
     pub fn to_user(&self) -> Result<User> {
         Ok(User {
             id: self.id,
@@ -90,7 +90,7 @@ impl ClientConfiguration {
     pub fn get_boot_mode(&self) -> Result<BootMode> {
         self.boot_mode.parse()
     }
-    
+
     pub fn set_boot_mode(&mut self, mode: BootMode) {
         self.boot_mode = mode.to_string();
     }
@@ -144,7 +144,7 @@ impl BootSession {
     pub fn get_status(&self) -> Result<SessionStatus> {
         self.status.parse()
     }
-    
+
     pub fn set_status(&mut self, status: SessionStatus) {
         self.status = status.to_string();
     }
@@ -215,8 +215,11 @@ pub struct NetworkRange {
 
 impl DatabaseManager {
     pub async fn new(database_url: &str) -> Result<Self> {
-        info!("Connecting to database: {}", database_url.split('@').last().unwrap_or("****"));
-        
+        info!(
+            "Connecting to database: {}",
+            database_url.split('@').last().unwrap_or("****")
+        );
+
         let pool = PgPoolOptions::new()
             .max_connections(20)
             .min_connections(2)
@@ -226,14 +229,14 @@ impl DatabaseManager {
 
         let db = Self { pool };
         db.run_migrations().await?;
-        
+
         info!("Database connection established and migrations completed");
         Ok(db)
     }
 
     pub async fn run_migrations(&self) -> Result<()> {
         info!("Running database migrations");
-        
+
         // Enable UUID extension
         sqlx::query("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
             .execute(&self.pool)
@@ -262,7 +265,8 @@ impl DatabaseManager {
         .map_err(|e| DlsError::Database(format!("Failed to create users table: {}", e)))?;
 
         // Create images table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS images (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 name VARCHAR(255) NOT NULL UNIQUE,
@@ -280,7 +284,8 @@ impl DatabaseManager {
                 parent_image_id UUID REFERENCES images(id) ON DELETE SET NULL,
                 CONSTRAINT valid_size CHECK (size_bytes > 0)
             )
-        "#)
+        "#,
+        )
         .execute(&self.pool)
         .await
         .map_err(|e| DlsError::Database(format!("Failed to create images table: {}", e)))?;
@@ -329,7 +334,8 @@ impl DatabaseManager {
         .map_err(|e| DlsError::Database(format!("Failed to create boot_sessions table: {}", e)))?;
 
         // Create image_snapshots table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS image_snapshots (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 image_id UUID NOT NULL REFERENCES images(id) ON DELETE CASCADE,
@@ -341,13 +347,17 @@ impl DatabaseManager {
                 created_by UUID,
                 UNIQUE(image_id, name)
             )
-        "#)
+        "#,
+        )
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create image_snapshots table: {}", e)))?;
+        .map_err(|e| {
+            DlsError::Database(format!("Failed to create image_snapshots table: {}", e))
+        })?;
 
         // Create network_ranges table
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             CREATE TABLE IF NOT EXISTS network_ranges (
                 id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
                 name VARCHAR(255) NOT NULL UNIQUE,
@@ -361,7 +371,8 @@ impl DatabaseManager {
                 created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
                 updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
             )
-        "#)
+        "#,
+        )
         .execute(&self.pool)
         .await
         .map_err(|e| DlsError::Database(format!("Failed to create network_ranges table: {}", e)))?;
@@ -414,16 +425,20 @@ impl DatabaseManager {
             sqlx::query(function_sql)
                 .execute(&self.pool)
                 .await
-                .map_err(|e| DlsError::Database(format!("Failed to create trigger function: {}", e)))?;
+                .map_err(|e| {
+                    DlsError::Database(format!("Failed to create trigger function: {}", e))
+                })?;
         }
 
         for trigger_sql in triggers {
-            sqlx::query(&format!("DROP TRIGGER IF EXISTS {} ON {}", 
+            sqlx::query(&format!(
+                "DROP TRIGGER IF EXISTS {} ON {}",
                 trigger_sql.split_whitespace().nth(2).unwrap(),
-                trigger_sql.split_whitespace().nth(5).unwrap()))
-                .execute(&self.pool)
-                .await
-                .ok(); // Ignore errors for non-existent triggers
+                trigger_sql.split_whitespace().nth(5).unwrap()
+            ))
+            .execute(&self.pool)
+            .await
+            .ok(); // Ignore errors for non-existent triggers
 
             sqlx::query(trigger_sql)
                 .execute(&self.pool)
@@ -438,7 +453,7 @@ impl DatabaseManager {
     // Image metadata operations
     pub async fn save_image_metadata(&self, image: &DiskImage) -> Result<()> {
         debug!("Saving image metadata for: {}", image.id);
-        
+
         sqlx::query(r#"
             INSERT INTO images (id, name, description, os_type, size_bytes, format, path, zfs_dataset, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -472,26 +487,33 @@ impl DatabaseManager {
 
     pub async fn get_image_metadata(&self, id: Uuid) -> Result<Option<ImageMetadata>> {
         debug!("Getting image metadata for: {}", id);
-        
-        let result = sqlx::query_as::<_, ImageMetadata>(
-            "SELECT * FROM images WHERE id = $1"
-        )
-        .bind(id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DlsError::Database(format!("Failed to get image metadata: {}", e)))?;
+
+        let result = sqlx::query_as::<_, ImageMetadata>("SELECT * FROM images WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DlsError::Database(format!("Failed to get image metadata: {}", e)))?;
 
         Ok(result)
     }
 
-    pub async fn list_images(&self, limit: Option<i64>, offset: Option<i64>) -> Result<Vec<ImageMetadata>> {
-        debug!("Listing images with limit: {:?}, offset: {:?}", limit, offset);
-        
-        let images = sqlx::query_as::<_, ImageMetadata>(r#"
+    pub async fn list_images(
+        &self,
+        limit: Option<i64>,
+        offset: Option<i64>,
+    ) -> Result<Vec<ImageMetadata>> {
+        debug!(
+            "Listing images with limit: {:?}, offset: {:?}",
+            limit, offset
+        );
+
+        let images = sqlx::query_as::<_, ImageMetadata>(
+            r#"
             SELECT * FROM images 
             ORDER BY created_at DESC 
             LIMIT $1 OFFSET $2
-        "#)
+        "#,
+        )
         .bind(limit.unwrap_or(100))
         .bind(offset.unwrap_or(0))
         .fetch_all(&self.pool)
@@ -504,7 +526,7 @@ impl DatabaseManager {
 
     pub async fn delete_image_metadata(&self, id: Uuid) -> Result<()> {
         debug!("Deleting image metadata for: {}", id);
-        
+
         let result = sqlx::query("DELETE FROM images WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
@@ -520,13 +542,22 @@ impl DatabaseManager {
     }
 
     // Client configuration operations
-    pub async fn save_client_config(&self, client_id: Uuid, mac_address: &str, hostname: &str, 
-                                    ip_address: Option<&str>, assigned_image_id: Option<Uuid>, 
-                                    boot_mode: BootMode, cpu_cores: i32, memory_mb: i32,
-                                    network_config: Option<&serde_json::Value>, 
-                                    custom_boot_params: Option<&str>, enabled: bool) -> Result<()> {
+    pub async fn save_client_config(
+        &self,
+        client_id: Uuid,
+        mac_address: &str,
+        hostname: &str,
+        ip_address: Option<&str>,
+        assigned_image_id: Option<Uuid>,
+        boot_mode: BootMode,
+        cpu_cores: i32,
+        memory_mb: i32,
+        network_config: Option<&serde_json::Value>,
+        custom_boot_params: Option<&str>,
+        enabled: bool,
+    ) -> Result<()> {
         debug!("Saving client configuration for: {}", mac_address);
-        
+
         sqlx::query(r#"
             INSERT INTO clients (id, mac_address, hostname, ip_address, assigned_image_id, boot_mode, 
                                cpu_cores, memory_mb, network_config, custom_boot_params, enabled)
@@ -559,15 +590,21 @@ impl DatabaseManager {
         .await
         .map_err(|e| DlsError::Database(format!("Failed to save client configuration: {}", e)))?;
 
-        debug!("Successfully saved client configuration for: {}", mac_address);
+        debug!(
+            "Successfully saved client configuration for: {}",
+            mac_address
+        );
         Ok(())
     }
 
-    pub async fn get_client_by_mac(&self, mac_address: &str) -> Result<Option<ClientConfiguration>> {
+    pub async fn get_client_by_mac(
+        &self,
+        mac_address: &str,
+    ) -> Result<Option<ClientConfiguration>> {
         debug!("Getting client configuration for MAC: {}", mac_address);
-        
+
         let client = sqlx::query_as::<_, ClientConfiguration>(
-            "SELECT * FROM clients WHERE mac_address = $1"
+            "SELECT * FROM clients WHERE mac_address = $1",
         )
         .bind(mac_address)
         .fetch_optional(&self.pool)
@@ -579,7 +616,7 @@ impl DatabaseManager {
 
     pub async fn list_clients(&self, enabled_only: bool) -> Result<Vec<ClientConfiguration>> {
         debug!("Listing clients (enabled_only: {})", enabled_only);
-        
+
         let query = if enabled_only {
             "SELECT * FROM clients WHERE enabled = true ORDER BY hostname"
         } else {
@@ -596,15 +633,26 @@ impl DatabaseManager {
     }
 
     // Boot session tracking
-    pub async fn create_boot_session(&self, client_id: Uuid, image_id: Uuid, client_ip: Option<String>, boot_server_ip: Option<String>) -> Result<Uuid> {
-        debug!("Creating boot session for client: {}, image: {}", client_id, image_id);
-        
+    pub async fn create_boot_session(
+        &self,
+        client_id: Uuid,
+        image_id: Uuid,
+        client_ip: Option<String>,
+        boot_server_ip: Option<String>,
+    ) -> Result<Uuid> {
+        debug!(
+            "Creating boot session for client: {}, image: {}",
+            client_id, image_id
+        );
+
         let session_id = Uuid::new_v4();
-        
-        sqlx::query(r#"
+
+        sqlx::query(
+            r#"
             INSERT INTO boot_sessions (id, client_id, image_id, client_ip, boot_server_ip)
             VALUES ($1, $2, $3, $4, $5)
-        "#)
+        "#,
+        )
         .bind(session_id)
         .bind(client_id)
         .bind(image_id)
@@ -615,11 +663,13 @@ impl DatabaseManager {
         .map_err(|e| DlsError::Database(format!("Failed to create boot session: {}", e)))?;
 
         // Update client boot count and last boot time
-        sqlx::query(r#"
+        sqlx::query(
+            r#"
             UPDATE clients 
             SET boot_count = boot_count + 1, last_boot_at = NOW(), updated_at = NOW()
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(client_id)
         .execute(&self.pool)
         .await
@@ -629,17 +679,27 @@ impl DatabaseManager {
         Ok(session_id)
     }
 
-    pub async fn update_boot_session_status(&self, session_id: Uuid, status: SessionStatus, error_message: Option<String>) -> Result<()> {
-        debug!("Updating boot session {} status to: {:?}", session_id, status);
-        
-        let ended_at = matches!(status, SessionStatus::Shutdown | SessionStatus::Error)
-            .then(|| Utc::now());
+    pub async fn update_boot_session_status(
+        &self,
+        session_id: Uuid,
+        status: SessionStatus,
+        error_message: Option<String>,
+    ) -> Result<()> {
+        debug!(
+            "Updating boot session {} status to: {:?}",
+            session_id, status
+        );
 
-        sqlx::query(r#"
+        let ended_at =
+            matches!(status, SessionStatus::Shutdown | SessionStatus::Error).then(|| Utc::now());
+
+        sqlx::query(
+            r#"
             UPDATE boot_sessions 
             SET status = $2, error_message = $3, ended_at = $4
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(session_id)
         .bind(status.to_string())
         .bind(&error_message)
@@ -654,12 +714,14 @@ impl DatabaseManager {
 
     pub async fn get_active_sessions(&self) -> Result<Vec<BootSession>> {
         debug!("Getting active boot sessions");
-        
-        let sessions = sqlx::query_as::<_, BootSession>(r#"
+
+        let sessions = sqlx::query_as::<_, BootSession>(
+            r#"
             SELECT * FROM boot_sessions 
             WHERE status IN ('starting', 'booting', 'running')
             ORDER BY started_at DESC
-        "#)
+        "#,
+        )
         .fetch_all(&self.pool)
         .await
         .map_err(|e| DlsError::Database(format!("Failed to get active sessions: {}", e)))?;
@@ -669,16 +731,24 @@ impl DatabaseManager {
     }
 
     // User management operations
-    pub async fn create_user(&self, username: &str, password_hash: &str, role: UserRole, 
-                             email: Option<&str>, created_by: Option<Uuid>) -> Result<Uuid> {
+    pub async fn create_user(
+        &self,
+        username: &str,
+        password_hash: &str,
+        role: UserRole,
+        email: Option<&str>,
+        created_by: Option<Uuid>,
+    ) -> Result<Uuid> {
         debug!("Creating user: {}", username);
-        
+
         let user_id = Uuid::new_v4();
-        
-        sqlx::query(r#"
+
+        sqlx::query(
+            r#"
             INSERT INTO users (id, username, password_hash, role, email, created_by)
             VALUES ($1, $2, $3, $4, $5, $6)
-        "#)
+        "#,
+        )
         .bind(user_id)
         .bind(username)
         .bind(password_hash)
@@ -689,15 +759,18 @@ impl DatabaseManager {
         .await
         .map_err(|e| DlsError::Database(format!("Failed to create user: {}", e)))?;
 
-        debug!("Successfully created user: {} with ID: {}", username, user_id);
+        debug!(
+            "Successfully created user: {} with ID: {}",
+            username, user_id
+        );
         Ok(user_id)
     }
 
     pub async fn get_user_by_username(&self, username: &str) -> Result<Option<UserRecord>> {
         debug!("Getting user by username: {}", username);
-        
+
         let user = sqlx::query_as::<_, UserRecord>(
-            "SELECT * FROM users WHERE username = $1 AND active = true"
+            "SELECT * FROM users WHERE username = $1 AND active = true",
         )
         .bind(username)
         .fetch_optional(&self.pool)
@@ -709,21 +782,19 @@ impl DatabaseManager {
 
     pub async fn get_user_by_id(&self, user_id: Uuid) -> Result<Option<UserRecord>> {
         debug!("Getting user by ID: {}", user_id);
-        
-        let user = sqlx::query_as::<_, UserRecord>(
-            "SELECT * FROM users WHERE id = $1"
-        )
-        .bind(user_id)
-        .fetch_optional(&self.pool)
-        .await
-        .map_err(|e| DlsError::Database(format!("Failed to get user by ID: {}", e)))?;
+
+        let user = sqlx::query_as::<_, UserRecord>("SELECT * FROM users WHERE id = $1")
+            .bind(user_id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| DlsError::Database(format!("Failed to get user by ID: {}", e)))?;
 
         Ok(user)
     }
 
     pub async fn list_users(&self, active_only: bool) -> Result<Vec<UserRecord>> {
         debug!("Listing users (active_only: {})", active_only);
-        
+
         let query = if active_only {
             "SELECT * FROM users WHERE active = true ORDER BY username"
         } else {
@@ -741,12 +812,14 @@ impl DatabaseManager {
 
     pub async fn update_user_password(&self, user_id: Uuid, password_hash: &str) -> Result<()> {
         debug!("Updating password for user: {}", user_id);
-        
-        let result = sqlx::query(r#"
+
+        let result = sqlx::query(
+            r#"
             UPDATE users 
             SET password_hash = $2, updated_at = NOW()
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(user_id)
         .bind(password_hash)
         .execute(&self.pool)
@@ -763,12 +836,14 @@ impl DatabaseManager {
 
     pub async fn update_user_role(&self, user_id: Uuid, role: UserRole) -> Result<()> {
         debug!("Updating role for user: {} to {:?}", user_id, role);
-        
-        let result = sqlx::query(r#"
+
+        let result = sqlx::query(
+            r#"
             UPDATE users 
             SET role = $2, updated_at = NOW()
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(user_id)
         .bind(role.to_string())
         .execute(&self.pool)
@@ -785,12 +860,14 @@ impl DatabaseManager {
 
     pub async fn update_user_last_login(&self, user_id: Uuid) -> Result<()> {
         debug!("Updating last login for user: {}", user_id);
-        
-        sqlx::query(r#"
+
+        sqlx::query(
+            r#"
             UPDATE users 
             SET last_login = NOW(), updated_at = NOW()
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(user_id)
         .execute(&self.pool)
         .await
@@ -802,12 +879,14 @@ impl DatabaseManager {
 
     pub async fn deactivate_user(&self, user_id: Uuid) -> Result<()> {
         debug!("Deactivating user: {}", user_id);
-        
-        let result = sqlx::query(r#"
+
+        let result = sqlx::query(
+            r#"
             UPDATE users 
             SET active = false, updated_at = NOW()
             WHERE id = $1
-        "#)
+        "#,
+        )
         .bind(user_id)
         .execute(&self.pool)
         .await
@@ -823,25 +902,25 @@ impl DatabaseManager {
 
     pub async fn create_default_admin(&self, username: &str, password_hash: &str) -> Result<Uuid> {
         info!("Creating default admin user: {}", username);
-        
+
         // Check if any admin users exist
-        let admin_count: (i64,) = sqlx::query_as(
-            "SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = true"
-        )
-        .fetch_one(&self.pool)
-        .await
-        .map_err(|e| DlsError::Database(format!("Failed to check admin users: {}", e)))?;
+        let admin_count: (i64,) =
+            sqlx::query_as("SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = true")
+                .fetch_one(&self.pool)
+                .await
+                .map_err(|e| DlsError::Database(format!("Failed to check admin users: {}", e)))?;
 
         if admin_count.0 > 0 {
             return Err(DlsError::Database("Admin user already exists".to_string()));
         }
 
-        self.create_user(username, password_hash, UserRole::Admin, None, None).await
+        self.create_user(username, password_hash, UserRole::Admin, None, None)
+            .await
     }
 
     pub async fn health_check(&self) -> Result<()> {
         debug!("Performing database health check");
-        
+
         sqlx::query("SELECT 1")
             .fetch_one(&self.pool)
             .await

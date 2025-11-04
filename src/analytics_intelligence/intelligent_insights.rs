@@ -1,11 +1,11 @@
 // Intelligent Insights Engine for Automated Analytics and Decision Support
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -574,7 +574,13 @@ pub enum RulePriority {
 impl IntelligentInsightsEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("iie_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "iie_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             insight_generator: Arc::new(InsightGenerator::new()),
             pattern_analyzer: Arc::new(PatternAnalyzer::new()),
             recommendation_engine: Arc::new(RecommendationEngine::new()),
@@ -586,12 +592,23 @@ impl IntelligentInsightsEngine {
         }
     }
 
-    pub async fn generate_insights(&self, data_reference: DataReference, insight_types: Vec<InsightType>) -> Result<Vec<GeneratedInsight>> {
-        self.insight_generator.generate_insights(data_reference, insight_types).await
+    pub async fn generate_insights(
+        &self,
+        data_reference: DataReference,
+        insight_types: Vec<InsightType>,
+    ) -> Result<Vec<GeneratedInsight>> {
+        self.insight_generator
+            .generate_insights(data_reference, insight_types)
+            .await
     }
 
-    pub async fn get_recommendations(&self, context: RecommendationContext) -> Result<Vec<ActionableRecommendation>> {
-        self.recommendation_engine.get_recommendations(context).await
+    pub async fn get_recommendations(
+        &self,
+        context: RecommendationContext,
+    ) -> Result<Vec<ActionableRecommendation>> {
+        self.recommendation_engine
+            .get_recommendations(context)
+            .await
     }
 
     pub async fn create_narrative(&self, insights: Vec<GeneratedInsight>) -> Result<String> {
@@ -602,15 +619,27 @@ impl IntelligentInsightsEngine {
         self.pattern_analyzer.analyze_patterns(data_reference).await
     }
 
-    pub async fn generate_forecast(&self, data_reference: DataReference, forecast_config: ForecastConfig) -> Result<ForecastResult> {
-        self.forecasting_engine.generate_forecast(data_reference, forecast_config).await
+    pub async fn generate_forecast(
+        &self,
+        data_reference: DataReference,
+        forecast_config: ForecastConfig,
+    ) -> Result<ForecastResult> {
+        self.forecasting_engine
+            .generate_forecast(data_reference, forecast_config)
+            .await
     }
 }
 
 impl InsightGenerator {
     pub fn new() -> Self {
         Self {
-            generator_id: format!("ig_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            generator_id: format!(
+                "ig_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             insight_models: Arc::new(DashMap::new()),
             insight_cache: AsyncDataStore::new(),
             insight_rules: LightweightStore::new(Some(1000)),
@@ -620,7 +649,11 @@ impl InsightGenerator {
         }
     }
 
-    pub async fn generate_insights(&self, _data_reference: DataReference, _insight_types: Vec<InsightType>) -> Result<Vec<GeneratedInsight>> {
+    pub async fn generate_insights(
+        &self,
+        _data_reference: DataReference,
+        _insight_types: Vec<InsightType>,
+    ) -> Result<Vec<GeneratedInsight>> {
         // Implementation for insight generation
         Ok(vec![GeneratedInsight {
             insight_id: format!("insight_{}", Uuid::new_v4()),
@@ -835,7 +868,13 @@ pub struct PatternAnalyzer {
 impl PatternAnalyzer {
     pub fn new() -> Self {
         Self {
-            analyzer_id: format!("pa_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            analyzer_id: format!(
+                "pa_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -852,11 +891,20 @@ pub struct RecommendationEngine {
 impl RecommendationEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("re_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "re_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn get_recommendations(&self, _context: RecommendationContext) -> Result<Vec<ActionableRecommendation>> {
+    pub async fn get_recommendations(
+        &self,
+        _context: RecommendationContext,
+    ) -> Result<Vec<ActionableRecommendation>> {
         Ok(vec![])
     }
 }
@@ -869,11 +917,21 @@ pub struct ForecastingEngine {
 impl ForecastingEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("fe_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "fe_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn generate_forecast(&self, _data_reference: DataReference, _config: ForecastConfig) -> Result<ForecastResult> {
+    pub async fn generate_forecast(
+        &self,
+        _data_reference: DataReference,
+        _config: ForecastConfig,
+    ) -> Result<ForecastResult> {
         Ok(ForecastResult {
             forecast_id: format!("forecast_{}", Uuid::new_v4()),
             predictions: vec![],
@@ -884,7 +942,10 @@ impl ForecastingEngine {
                 rmse: 0.07,
                 r_squared: 0.92,
             },
-            assumptions: vec!["Trend continues".to_string(), "No major external factors".to_string()],
+            assumptions: vec![
+                "Trend continues".to_string(),
+                "No major external factors".to_string(),
+            ],
         })
     }
 }
@@ -897,7 +958,13 @@ pub struct CausalInferenceEngine {
 impl CausalInferenceEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("cie_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "cie_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -910,7 +977,13 @@ pub struct NarrativeGenerator {
 impl NarrativeGenerator {
     pub fn new() -> Self {
         Self {
-            generator_id: format!("ng_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            generator_id: format!(
+                "ng_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -927,7 +1000,13 @@ pub struct DecisionSupportSystem {
 impl DecisionSupportSystem {
     pub fn new() -> Self {
         Self {
-            system_id: format!("dss_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            system_id: format!(
+                "dss_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -940,7 +1019,13 @@ pub struct InsightOrchestrator {
 impl InsightOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("io_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "io_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -953,7 +1038,13 @@ pub struct StatisticalAnalyzer {
 impl StatisticalAnalyzer {
     pub fn new() -> Self {
         Self {
-            analyzer_id: format!("sa_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            analyzer_id: format!(
+                "sa_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -966,7 +1057,13 @@ pub struct TrendDetector {
 impl TrendDetector {
     pub fn new() -> Self {
         Self {
-            detector_id: format!("td_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            detector_id: format!(
+                "td_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -979,7 +1076,13 @@ pub struct AnomalyAnalyzer {
 impl AnomalyAnalyzer {
     pub fn new() -> Self {
         Self {
-            analyzer_id: format!("aa_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            analyzer_id: format!(
+                "aa_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

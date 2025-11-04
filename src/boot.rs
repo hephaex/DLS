@@ -1,11 +1,11 @@
-use crate::error::{Result, DlsError};
+use crate::error::{DlsError, Result};
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use log::{info, warn, debug};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BootType {
@@ -117,13 +117,13 @@ pub struct BootSession {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BootStage {
-    Initial,           // Boot request received
-    ProfileAssigned,   // Boot profile selected
-    PxeLoaderSent,     // Initial bootloader transferred
-    KernelLoading,     // Kernel/OS loading in progress
-    IscsiConnecting,   // Connecting to iSCSI storage
-    BootComplete,      // Boot process completed
-    Failed,            // Boot process failed
+    Initial,         // Boot request received
+    ProfileAssigned, // Boot profile selected
+    PxeLoaderSent,   // Initial bootloader transferred
+    KernelLoading,   // Kernel/OS loading in progress
+    IscsiConnecting, // Connecting to iSCSI storage
+    BootComplete,    // Boot process completed
+    Failed,          // Boot process failed
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -187,31 +187,31 @@ impl PxeOrchestrator {
         }
 
         info!("Starting PXE boot orchestrator");
-        
+
         // Load default boot profiles
         self.load_default_profiles().await?;
-        
+
         // Start session cleanup task
         self.start_session_cleanup().await;
-        
+
         info!("PXE boot orchestrator started successfully");
         Ok(())
     }
 
     pub async fn stop(&mut self) -> Result<()> {
         info!("Stopping PXE boot orchestrator");
-        
+
         // Clear active sessions
         let mut sessions = self.sessions.write().await;
         sessions.clear();
-        
+
         info!("PXE boot orchestrator stopped");
         Ok(())
     }
 
     async fn load_default_profiles(&mut self) -> Result<()> {
         let mut profiles = self.profiles.write().await;
-        
+
         // Legacy BIOS Profile for Linux
         let legacy_linux = BootProfile {
             profile_id: "legacy-linux-ubuntu".to_string(),
@@ -336,19 +336,28 @@ impl PxeOrchestrator {
     }
 
     pub async fn handle_boot_request(&self, request: ClientBootRequest) -> Result<BootSession> {
-        info!("Processing boot request from client {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-              request.client_mac[0], request.client_mac[1], request.client_mac[2],
-              request.client_mac[3], request.client_mac[4], request.client_mac[5]);
+        info!(
+            "Processing boot request from client {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+            request.client_mac[0],
+            request.client_mac[1],
+            request.client_mac[2],
+            request.client_mac[3],
+            request.client_mac[4],
+            request.client_mac[5]
+        );
 
         // Check for existing session
         if let Some(existing_session) = self.get_active_session(request.client_mac).await? {
-            debug!("Found existing boot session for client: {}", existing_session.session_id);
+            debug!(
+                "Found existing boot session for client: {}",
+                existing_session.session_id
+            );
             return Ok(existing_session);
         }
 
         // Select appropriate boot profile
         let profile = self.select_boot_profile(&request).await?;
-        
+
         // Create new boot session
         let session_id = self.generate_session_id();
         let boot_session = BootSession {
@@ -367,9 +376,11 @@ impl PxeOrchestrator {
         // Store session
         let mut sessions = self.sessions.write().await;
         sessions.insert(session_id, boot_session.clone());
-        
-        info!("Created boot session {} for client using profile '{}'", 
-              boot_session.session_id, boot_session.assigned_profile.name);
+
+        info!(
+            "Created boot session {} for client using profile '{}'",
+            boot_session.session_id, boot_session.assigned_profile.name
+        );
 
         Ok(boot_session)
     }
@@ -402,10 +413,11 @@ impl PxeOrchestrator {
             let architecture = self.detect_architecture_from_arch(client_arch)?;
 
             for profile in profiles.values() {
-                if profile.enabled 
-                   && profile.default_for_architecture 
-                   && profile.boot_type == boot_type 
-                   && profile.architecture == architecture {
+                if profile.enabled
+                    && profile.default_for_architecture
+                    && profile.boot_type == boot_type
+                    && profile.architecture == architecture
+                {
                     return Ok(profile.clone());
                 }
             }
@@ -422,58 +434,60 @@ impl PxeOrchestrator {
             }
         }
 
-        Err(DlsError::NotFound("No suitable boot profile found for client".to_string()))
+        Err(DlsError::NotFound(
+            "No suitable boot profile found for client".to_string(),
+        ))
     }
 
     fn detect_boot_type_from_arch(&self, client_arch: u16) -> Result<BootType> {
         match client_arch {
-            0x0000 => Ok(BootType::LegacyBios),      // Intel x86PC
-            0x0001 => Ok(BootType::LegacyBios),      // NEC/PC98
-            0x0002 => Ok(BootType::LegacyBios),      // EFI Itanium
-            0x0006 => Ok(BootType::Uefi),            // EFI IA32
-            0x0007 => Ok(BootType::Uefi),            // EFI BC (Byte Code)
-            0x0009 => Ok(BootType::Uefi),            // EFI x86-64
-            0x000B => Ok(BootType::Uefi),            // EFI ARM32
-            0x000C => Ok(BootType::Uefi),            // EFI ARM64
+            0x0000 => Ok(BootType::LegacyBios), // Intel x86PC
+            0x0001 => Ok(BootType::LegacyBios), // NEC/PC98
+            0x0002 => Ok(BootType::LegacyBios), // EFI Itanium
+            0x0006 => Ok(BootType::Uefi),       // EFI IA32
+            0x0007 => Ok(BootType::Uefi),       // EFI BC (Byte Code)
+            0x0009 => Ok(BootType::Uefi),       // EFI x86-64
+            0x000B => Ok(BootType::Uefi),       // EFI ARM32
+            0x000C => Ok(BootType::Uefi),       // EFI ARM64
             _ => Ok(BootType::Auto),
         }
     }
 
     fn detect_architecture_from_arch(&self, client_arch: u16) -> Result<ArchitectureType> {
         match client_arch {
-            0x0000 => Ok(ArchitectureType::X86),     // Intel x86PC
-            0x0001 => Ok(ArchitectureType::X86),     // NEC/PC98
-            0x0002 => Ok(ArchitectureType::X64),     // EFI Itanium
-            0x0006 => Ok(ArchitectureType::X86),     // EFI IA32
-            0x0007 => Ok(ArchitectureType::Auto),    // EFI BC (Byte Code)
-            0x0009 => Ok(ArchitectureType::X64),     // EFI x86-64
-            0x000B => Ok(ArchitectureType::Arm64),   // EFI ARM32
-            0x000C => Ok(ArchitectureType::Arm64),   // EFI ARM64
+            0x0000 => Ok(ArchitectureType::X86),   // Intel x86PC
+            0x0001 => Ok(ArchitectureType::X86),   // NEC/PC98
+            0x0002 => Ok(ArchitectureType::X64),   // EFI Itanium
+            0x0006 => Ok(ArchitectureType::X86),   // EFI IA32
+            0x0007 => Ok(ArchitectureType::Auto),  // EFI BC (Byte Code)
+            0x0009 => Ok(ArchitectureType::X64),   // EFI x86-64
+            0x000B => Ok(ArchitectureType::Arm64), // EFI ARM32
+            0x000C => Ok(ArchitectureType::Arm64), // EFI ARM64
             _ => Ok(ArchitectureType::Auto),
         }
     }
 
     async fn get_active_session(&self, client_mac: [u8; 6]) -> Result<Option<BootSession>> {
         let sessions = self.sessions.read().await;
-        
+
         for session in sessions.values() {
             if session.client_mac == client_mac && session.status == BootStatus::Active {
                 return Ok(Some(session.clone()));
             }
         }
-        
+
         Ok(None)
     }
 
     pub async fn update_boot_stage(&self, session_id: &str, stage: BootStage) -> Result<()> {
         let mut sessions = self.sessions.write().await;
-        
+
         if let Some(session) = sessions.get_mut(session_id) {
             session.boot_stage = stage;
             session.last_activity = chrono::Utc::now().timestamp() as u64;
-            
+
             info!("Boot session {} updated to stage: {:?}", session_id, stage);
-            
+
             // Update status based on stage
             match stage {
                 BootStage::BootComplete => {
@@ -486,61 +500,80 @@ impl PxeOrchestrator {
                 _ => {}
             }
         }
-        
+
         Ok(())
     }
 
     pub async fn get_boot_files_for_session(&self, session_id: &str) -> Result<BootFiles> {
         let sessions = self.sessions.read().await;
-        
+
         if let Some(session) = sessions.get(session_id) {
             Ok(session.assigned_profile.boot_files.clone())
         } else {
-            Err(DlsError::NotFound(format!("Boot session not found: {}", session_id)))
+            Err(DlsError::NotFound(format!(
+                "Boot session not found: {}",
+                session_id
+            )))
         }
     }
 
     pub async fn add_boot_profile(&self, profile: BootProfile) -> Result<()> {
         let mut profiles = self.profiles.write().await;
-        
-        info!("Adding boot profile: {} ({})", profile.name, profile.profile_id);
+
+        info!(
+            "Adding boot profile: {} ({})",
+            profile.name, profile.profile_id
+        );
         profiles.insert(profile.profile_id.clone(), profile);
-        
+
         Ok(())
     }
 
     pub async fn remove_boot_profile(&self, profile_id: &str) -> Result<()> {
         let mut profiles = self.profiles.write().await;
-        
+
         if profiles.remove(profile_id).is_some() {
             info!("Removed boot profile: {}", profile_id);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!("Boot profile not found: {}", profile_id)))
+            Err(DlsError::NotFound(format!(
+                "Boot profile not found: {}",
+                profile_id
+            )))
         }
     }
 
-    pub async fn assign_profile_to_client(&self, client_mac: [u8; 6], profile_id: String) -> Result<()> {
+    pub async fn assign_profile_to_client(
+        &self,
+        client_mac: [u8; 6],
+        profile_id: String,
+    ) -> Result<()> {
         let mut client_mappings = self.client_mappings.write().await;
-        
+
         client_mappings.insert(client_mac, profile_id.clone());
-        
-        info!("Assigned profile '{}' to client {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-              profile_id,
-              client_mac[0], client_mac[1], client_mac[2],
-              client_mac[3], client_mac[4], client_mac[5]);
-        
+
+        info!(
+            "Assigned profile '{}' to client {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+            profile_id,
+            client_mac[0],
+            client_mac[1],
+            client_mac[2],
+            client_mac[3],
+            client_mac[4],
+            client_mac[5]
+        );
+
         Ok(())
     }
 
     pub async fn get_session_stats(&self) -> Result<(usize, usize, usize, usize)> {
         let sessions = self.sessions.read().await;
-        
+
         let mut active = 0;
         let mut completed = 0;
         let mut failed = 0;
         let mut expired = 0;
-        
+
         for session in sessions.values() {
             match session.status {
                 BootStatus::Active => active += 1,
@@ -549,41 +582,41 @@ impl PxeOrchestrator {
                 BootStatus::Expired => expired += 1,
             }
         }
-        
+
         Ok((active, completed, failed, expired))
     }
 
     fn generate_session_id(&self) -> String {
-        use std::time::{SystemTime, UNIX_EPOCH};
         use std::collections::hash_map::DefaultHasher;
         use std::hash::{Hash, Hasher};
-        
+        use std::time::{SystemTime, UNIX_EPOCH};
+
         let timestamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_millis();
-            
+
         let mut hasher = DefaultHasher::new();
         timestamp.hash(&mut hasher);
         rand::random::<u32>().hash(&mut hasher);
-        
+
         format!("boot-{:016x}", hasher.finish())
     }
 
     async fn start_session_cleanup(&self) {
         let sessions_clone = Arc::clone(&self.sessions);
         let timeout = self.config.session_timeout;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(300)); // 5 minutes
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let mut sessions_guard = sessions_clone.write().await;
                 let current_time = chrono::Utc::now().timestamp() as u64;
                 let initial_count = sessions_guard.len();
-                
+
                 sessions_guard.retain(|_, session| {
                     let expired = current_time - session.last_activity > timeout;
                     if expired && session.status == BootStatus::Active {
@@ -591,7 +624,7 @@ impl PxeOrchestrator {
                     }
                     !expired || session.status == BootStatus::Completed
                 });
-                
+
                 let cleaned = initial_count - sessions_guard.len();
                 if cleaned > 0 {
                     info!("Cleaned up {} expired boot sessions", cleaned);
@@ -658,7 +691,7 @@ mod tests {
             enabled: true,
             default_for_architecture: false,
         };
-        
+
         assert_eq!(profile.profile_id, "test-profile");
         assert_eq!(profile.boot_type, BootType::LegacyBios);
         assert!(profile.enabled);
@@ -668,11 +701,11 @@ mod tests {
     async fn test_pxe_orchestrator_creation() {
         let config = BootOrchestratorConfig::default();
         let orchestrator = PxeOrchestrator::new(config);
-        
+
         // Test initial state
         let profiles = orchestrator.profiles.read().await;
         let sessions = orchestrator.sessions.read().await;
-        
+
         assert!(profiles.is_empty());
         assert!(sessions.is_empty());
     }
@@ -681,28 +714,46 @@ mod tests {
     fn test_boot_type_detection() {
         let config = BootOrchestratorConfig::default();
         let orchestrator = PxeOrchestrator::new(config);
-        
+
         // Test Legacy BIOS detection
-        assert_eq!(orchestrator.detect_boot_type_from_arch(0x0000).unwrap(), BootType::LegacyBios);
-        
+        assert_eq!(
+            orchestrator.detect_boot_type_from_arch(0x0000).unwrap(),
+            BootType::LegacyBios
+        );
+
         // Test UEFI detection
-        assert_eq!(orchestrator.detect_boot_type_from_arch(0x0009).unwrap(), BootType::Uefi);
-        assert_eq!(orchestrator.detect_boot_type_from_arch(0x0006).unwrap(), BootType::Uefi);
+        assert_eq!(
+            orchestrator.detect_boot_type_from_arch(0x0009).unwrap(),
+            BootType::Uefi
+        );
+        assert_eq!(
+            orchestrator.detect_boot_type_from_arch(0x0006).unwrap(),
+            BootType::Uefi
+        );
     }
 
     #[test]
     fn test_architecture_detection() {
         let config = BootOrchestratorConfig::default();
         let orchestrator = PxeOrchestrator::new(config);
-        
+
         // Test x86 detection
-        assert_eq!(orchestrator.detect_architecture_from_arch(0x0000).unwrap(), ArchitectureType::X86);
-        
+        assert_eq!(
+            orchestrator.detect_architecture_from_arch(0x0000).unwrap(),
+            ArchitectureType::X86
+        );
+
         // Test x64 detection
-        assert_eq!(orchestrator.detect_architecture_from_arch(0x0009).unwrap(), ArchitectureType::X64);
-        
+        assert_eq!(
+            orchestrator.detect_architecture_from_arch(0x0009).unwrap(),
+            ArchitectureType::X64
+        );
+
         // Test ARM64 detection
-        assert_eq!(orchestrator.detect_architecture_from_arch(0x000C).unwrap(), ArchitectureType::Arm64);
+        assert_eq!(
+            orchestrator.detect_architecture_from_arch(0x000C).unwrap(),
+            ArchitectureType::Arm64
+        );
     }
 
     #[test]
@@ -715,7 +766,7 @@ mod tests {
             user_class: None,
             requested_profile: None,
         };
-        
+
         assert_eq!(request.client_mac, [0x00, 0x11, 0x22, 0x33, 0x44, 0x55]);
         assert_eq!(request.client_arch, Some(0x0009));
     }
@@ -759,7 +810,7 @@ mod tests {
             error_count: 0,
             status: BootStatus::Active,
         };
-        
+
         assert_eq!(session.boot_stage, BootStage::Initial);
         assert_eq!(session.status, BootStatus::Active);
     }
@@ -768,7 +819,7 @@ mod tests {
     async fn test_session_stats() {
         let config = BootOrchestratorConfig::default();
         let orchestrator = PxeOrchestrator::new(config);
-        
+
         let (active, completed, failed, expired) = orchestrator.get_session_stats().await.unwrap();
         assert_eq!(active, 0);
         assert_eq!(completed, 0);
@@ -786,7 +837,7 @@ mod tests {
             username: Some("testuser".to_string()),
             password: Some("testpass".to_string()),
         };
-        
+
         assert_eq!(target.target_port, 3260);
         assert_eq!(target.lun, 0);
         assert!(target.username.is_some());
@@ -795,7 +846,7 @@ mod tests {
     #[test]
     fn test_boot_orchestrator_config_default() {
         let config = BootOrchestratorConfig::default();
-        
+
         assert!(config.enabled);
         assert!(config.auto_assignment);
         assert_eq!(config.session_timeout, 3600);

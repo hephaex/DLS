@@ -1,11 +1,11 @@
 // Enterprise Compliance Management System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -937,7 +937,13 @@ pub enum PolicyStatus {
 impl ComplianceManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             regulatory_framework: Arc::new(RegulatoryFramework::new()),
             audit_trail_manager: Arc::new(AuditTrailManager::new()),
             compliance_monitoring: Arc::new(ComplianceMonitoring::new()),
@@ -950,18 +956,28 @@ impl ComplianceManager {
     }
 
     pub async fn register_regulation(&self, regulation: Regulation) -> Result<String> {
-        self.regulatory_framework.register_regulation(regulation).await
+        self.regulatory_framework
+            .register_regulation(regulation)
+            .await
     }
 
     pub async fn create_audit_event(&self, event: AuditEvent) -> Result<()> {
         self.audit_trail_manager.log_event(event).await
     }
 
-    pub async fn assess_compliance_risk(&self, assessment_request: RiskAssessmentRequest) -> Result<ComplianceRiskAssessment> {
-        self.risk_assessment.conduct_assessment(assessment_request).await
+    pub async fn assess_compliance_risk(
+        &self,
+        assessment_request: RiskAssessmentRequest,
+    ) -> Result<ComplianceRiskAssessment> {
+        self.risk_assessment
+            .conduct_assessment(assessment_request)
+            .await
     }
 
-    pub async fn generate_compliance_report(&self, report_type: ComplianceReportType) -> Result<ComplianceReport> {
+    pub async fn generate_compliance_report(
+        &self,
+        report_type: ComplianceReportType,
+    ) -> Result<ComplianceReport> {
         self.reporting_engine.generate_report(report_type).await
     }
 }
@@ -969,7 +985,13 @@ impl ComplianceManager {
 impl RegulatoryFramework {
     pub fn new() -> Self {
         Self {
-            framework_id: format!("rf_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            framework_id: format!(
+                "rf_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             regulations: Arc::new(DashMap::new()),
             jurisdictions: Arc::new(DashMap::new()),
             compliance_requirements: AsyncDataStore::new(),
@@ -985,8 +1007,12 @@ impl RegulatoryFramework {
         Ok(regulation_id)
     }
 
-    pub async fn get_applicable_regulations(&self, context: ComplianceContext) -> Result<Vec<Regulation>> {
-        let regulations: Vec<Regulation> = self.regulations
+    pub async fn get_applicable_regulations(
+        &self,
+        context: ComplianceContext,
+    ) -> Result<Vec<Regulation>> {
+        let regulations: Vec<Regulation> = self
+            .regulations
             .iter()
             .filter(|entry| self.is_applicable(entry.value(), &context))
             .map(|entry| entry.value().clone())
@@ -1002,7 +1028,13 @@ impl RegulatoryFramework {
 impl AuditTrailManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("atm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "atm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             audit_events: AsyncDataStore::new(),
             audit_policies: Arc::new(DashMap::new()),
             audit_retention: Arc::new(AuditRetentionManager::new()),
@@ -1336,8 +1368,14 @@ macro_rules! impl_compliance_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1359,7 +1397,10 @@ impl_compliance_component!(AuditIntegrityMonitor);
 impl_compliance_component!(AuditExportManager);
 
 impl ComplianceRiskAssessmentEngine {
-    pub async fn conduct_assessment(&self, _request: RiskAssessmentRequest) -> Result<ComplianceRiskAssessment> {
+    pub async fn conduct_assessment(
+        &self,
+        _request: RiskAssessmentRequest,
+    ) -> Result<ComplianceRiskAssessment> {
         Ok(ComplianceRiskAssessment {
             assessment_id: Uuid::new_v4().to_string(),
             assessment_date: SystemTime::now(),
@@ -1381,13 +1422,19 @@ impl ComplianceRiskAssessmentEngine {
 }
 
 impl ComplianceReportingEngine {
-    pub async fn generate_report(&self, _report_type: ComplianceReportType) -> Result<ComplianceReport> {
+    pub async fn generate_report(
+        &self,
+        _report_type: ComplianceReportType,
+    ) -> Result<ComplianceReport> {
         Ok(ComplianceReport {
             report_id: Uuid::new_v4().to_string(),
             report_type: ComplianceReportType::Executive,
             title: "Executive Compliance Report".to_string(),
             generated_at: SystemTime::now(),
-            report_period: (SystemTime::now() - Duration::from_secs(30 * 24 * 3600), SystemTime::now()),
+            report_period: (
+                SystemTime::now() - Duration::from_secs(30 * 24 * 3600),
+                SystemTime::now(),
+            ),
             scope: "Enterprise-wide compliance assessment".to_string(),
             summary: ReportSummary {
                 overall_status: "Compliant".to_string(),

@@ -1,14 +1,14 @@
+use crate::ai::{AnomalyDetectionEngine, PredictiveAnalyticsEngine};
 use crate::error::{DlsError, Result};
-use crate::security::zero_trust::{ZeroTrustManager, DeviceIdentity, TrustScore};
-use crate::ai::{PredictiveAnalyticsEngine, AnomalyDetectionEngine};
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
-use uuid::Uuid;
+use crate::security::zero_trust::{DeviceIdentity, TrustScore, ZeroTrustManager};
+use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
 use parking_lot::RwLock;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum EdgeNodeStatus {
@@ -349,7 +349,9 @@ impl EdgeNodeManager {
         let health = self.initialize_node_health(&node).await?;
 
         // Register with zero-trust framework
-        self.zero_trust_manager.register_device(node.security_profile.device_identity.clone()).await?;
+        self.zero_trust_manager
+            .register_device(node.security_profile.device_identity.clone())
+            .await?;
 
         // Store node and health information
         let node_id = node.node_id.clone();
@@ -357,7 +359,9 @@ impl EdgeNodeManager {
         self.node_health.insert(node_id.clone(), health);
 
         // Set default heartbeat interval
-        self.heartbeat_intervals.write().insert(node_id.clone(), Duration::minutes(1));
+        self.heartbeat_intervals
+            .write()
+            .insert(node_id.clone(), Duration::minutes(1));
 
         tracing::info!("Edge node {} registered successfully", node_id);
         Ok(node_id)
@@ -366,7 +370,9 @@ impl EdgeNodeManager {
     async fn validate_node_security(&self, node: &mut EdgeNode) -> Result<()> {
         // Verify device identity and certificates
         if node.security_profile.certificate_fingerprint.is_empty() {
-            return Err(DlsError::Security("Node certificate fingerprint required".to_string()));
+            return Err(DlsError::Security(
+                "Node certificate fingerprint required".to_string(),
+            ));
         }
 
         // Validate trust score
@@ -385,7 +391,9 @@ impl EdgeNodeManager {
 
         // Ensure minimum security requirements
         if !node.security_profile.encryption_enabled {
-            return Err(DlsError::Security("Encryption must be enabled for edge nodes".to_string()));
+            return Err(DlsError::Security(
+                "Encryption must be enabled for edge nodes".to_string(),
+            ));
         }
 
         Ok(())
@@ -395,41 +403,53 @@ impl EdgeNodeManager {
         let mut component_health = HashMap::new();
 
         // Initialize component health tracking
-        component_health.insert("cpu".to_string(), ComponentHealth {
-            component_name: "CPU".to_string(),
-            health_percentage: 100.0,
-            status: ComponentStatus::Healthy,
-            metrics: HashMap::new(),
-            issues: Vec::new(),
-            last_check: Utc::now(),
-        });
+        component_health.insert(
+            "cpu".to_string(),
+            ComponentHealth {
+                component_name: "CPU".to_string(),
+                health_percentage: 100.0,
+                status: ComponentStatus::Healthy,
+                metrics: HashMap::new(),
+                issues: Vec::new(),
+                last_check: Utc::now(),
+            },
+        );
 
-        component_health.insert("memory".to_string(), ComponentHealth {
-            component_name: "Memory".to_string(),
-            health_percentage: 100.0,
-            status: ComponentStatus::Healthy,
-            metrics: HashMap::new(),
-            issues: Vec::new(),
-            last_check: Utc::now(),
-        });
+        component_health.insert(
+            "memory".to_string(),
+            ComponentHealth {
+                component_name: "Memory".to_string(),
+                health_percentage: 100.0,
+                status: ComponentStatus::Healthy,
+                metrics: HashMap::new(),
+                issues: Vec::new(),
+                last_check: Utc::now(),
+            },
+        );
 
-        component_health.insert("storage".to_string(), ComponentHealth {
-            component_name: "Storage".to_string(),
-            health_percentage: 100.0,
-            status: ComponentStatus::Healthy,
-            metrics: HashMap::new(),
-            issues: Vec::new(),
-            last_check: Utc::now(),
-        });
+        component_health.insert(
+            "storage".to_string(),
+            ComponentHealth {
+                component_name: "Storage".to_string(),
+                health_percentage: 100.0,
+                status: ComponentStatus::Healthy,
+                metrics: HashMap::new(),
+                issues: Vec::new(),
+                last_check: Utc::now(),
+            },
+        );
 
-        component_health.insert("network".to_string(), ComponentHealth {
-            component_name: "Network".to_string(),
-            health_percentage: 100.0,
-            status: ComponentStatus::Healthy,
-            metrics: HashMap::new(),
-            issues: Vec::new(),
-            last_check: Utc::now(),
-        });
+        component_health.insert(
+            "network".to_string(),
+            ComponentHealth {
+                component_name: "Network".to_string(),
+                health_percentage: 100.0,
+                status: ComponentStatus::Healthy,
+                metrics: HashMap::new(),
+                issues: Vec::new(),
+                last_check: Utc::now(),
+            },
+        );
 
         Ok(EdgeNodeHealth {
             node_id: node.node_id.clone(),
@@ -462,7 +482,10 @@ impl EdgeNodeManager {
             // Update predictive models
             self.update_predictive_models(node_id, &metrics).await?;
         } else {
-            return Err(DlsError::NotFound(format!("Edge node {} not found", node_id)));
+            return Err(DlsError::NotFound(format!(
+                "Edge node {} not found",
+                node_id
+            )));
         }
 
         Ok(())
@@ -473,10 +496,30 @@ impl EdgeNodeManager {
 
         if let Some(mut health) = self.node_health.get_mut(node_id) {
             // Update component health based on metrics
-            self.update_component_health(&mut health, "cpu", metrics.cpu_utilization, thresholds.get("cpu_threshold").copied().unwrap_or(80.0));
-            self.update_component_health(&mut health, "memory", metrics.memory_utilization, thresholds.get("memory_threshold").copied().unwrap_or(85.0));
-            self.update_component_health(&mut health, "storage", metrics.storage_utilization, thresholds.get("storage_threshold").copied().unwrap_or(90.0));
-            self.update_component_health(&mut health, "network", metrics.network_utilization, thresholds.get("network_threshold").copied().unwrap_or(75.0));
+            self.update_component_health(
+                &mut health,
+                "cpu",
+                metrics.cpu_utilization,
+                thresholds.get("cpu_threshold").copied().unwrap_or(80.0),
+            );
+            self.update_component_health(
+                &mut health,
+                "memory",
+                metrics.memory_utilization,
+                thresholds.get("memory_threshold").copied().unwrap_or(85.0),
+            );
+            self.update_component_health(
+                &mut health,
+                "storage",
+                metrics.storage_utilization,
+                thresholds.get("storage_threshold").copied().unwrap_or(90.0),
+            );
+            self.update_component_health(
+                &mut health,
+                "network",
+                metrics.network_utilization,
+                thresholds.get("network_threshold").copied().unwrap_or(75.0),
+            );
 
             // Calculate overall health score
             health.health_score = self.calculate_health_score(&health.component_health);
@@ -489,9 +532,17 @@ impl EdgeNodeManager {
         Ok(())
     }
 
-    fn update_component_health(&self, health: &mut EdgeNodeHealth, component: &str, utilization: f64, threshold: f64) {
+    fn update_component_health(
+        &self,
+        health: &mut EdgeNodeHealth,
+        component: &str,
+        utilization: f64,
+        threshold: f64,
+    ) {
         if let Some(comp_health) = health.component_health.get_mut(component) {
-            comp_health.metrics.insert("utilization".to_string(), utilization);
+            comp_health
+                .metrics
+                .insert("utilization".to_string(), utilization);
 
             comp_health.status = if utilization > threshold * 1.1 {
                 ComponentStatus::Critical
@@ -520,7 +571,11 @@ impl EdgeNodeManager {
         total / component_health.len() as f64
     }
 
-    async fn generate_health_alerts(&self, health: &mut EdgeNodeHealth, metrics: &EdgeNodeMetrics) -> Result<()> {
+    async fn generate_health_alerts(
+        &self,
+        health: &mut EdgeNodeHealth,
+        metrics: &EdgeNodeMetrics,
+    ) -> Result<()> {
         let mut new_alerts = Vec::new();
 
         // Check response time
@@ -557,7 +612,8 @@ impl EdgeNodeManager {
                 component: "system".to_string(),
                 message: format!("Low uptime: {:.2}%", metrics.uptime_percentage),
                 threshold_exceeded: Some(99.0),
-                recommended_action: "Schedule maintenance to address reliability issues".to_string(),
+                recommended_action: "Schedule maintenance to address reliability issues"
+                    .to_string(),
                 triggered_at: Utc::now(),
             });
         }
@@ -571,7 +627,11 @@ impl EdgeNodeManager {
         Ok(())
     }
 
-    async fn detect_performance_anomalies(&self, node_id: &str, metrics: &EdgeNodeMetrics) -> Result<()> {
+    async fn detect_performance_anomalies(
+        &self,
+        node_id: &str,
+        metrics: &EdgeNodeMetrics,
+    ) -> Result<()> {
         // Use anomaly detection engine to identify unusual patterns
         let mut metric_values = std::collections::HashMap::new();
         metric_values.insert("cpu_utilization".to_string(), metrics.cpu_utilization);
@@ -581,12 +641,17 @@ impl EdgeNodeManager {
 
         // This would integrate with the anomaly detection engine
         // For now, we'll implement basic threshold-based detection
-        self.check_anomaly_thresholds(node_id, &metric_values).await?;
+        self.check_anomaly_thresholds(node_id, &metric_values)
+            .await?;
 
         Ok(())
     }
 
-    async fn check_anomaly_thresholds(&self, node_id: &str, metrics: &HashMap<String, f64>) -> Result<()> {
+    async fn check_anomaly_thresholds(
+        &self,
+        node_id: &str,
+        metrics: &HashMap<String, f64>,
+    ) -> Result<()> {
         for (metric_name, value) in metrics {
             let anomaly_detected = match metric_name.as_str() {
                 "cpu_utilization" => *value > 95.0 || *value < 1.0,
@@ -599,7 +664,9 @@ impl EdgeNodeManager {
             if anomaly_detected {
                 tracing::warn!(
                     "Anomaly detected in node {} for metric {}: {}",
-                    node_id, metric_name, value
+                    node_id,
+                    metric_name,
+                    value
                 );
 
                 // Generate anomaly alert
@@ -620,7 +687,11 @@ impl EdgeNodeManager {
         Ok(())
     }
 
-    async fn update_predictive_models(&self, node_id: &str, metrics: &EdgeNodeMetrics) -> Result<()> {
+    async fn update_predictive_models(
+        &self,
+        node_id: &str,
+        metrics: &EdgeNodeMetrics,
+    ) -> Result<()> {
         // Update predictive analytics with new data point
         // This would integrate with the predictive analytics engine
 
@@ -630,13 +701,18 @@ impl EdgeNodeManager {
             self.update_performance_trends(&mut health, metrics).await?;
 
             // Generate predictive maintenance recommendations
-            self.generate_maintenance_recommendations(&mut health, metrics).await?;
+            self.generate_maintenance_recommendations(&mut health, metrics)
+                .await?;
         }
 
         Ok(())
     }
 
-    async fn update_performance_trends(&self, health: &mut EdgeNodeHealth, metrics: &EdgeNodeMetrics) -> Result<()> {
+    async fn update_performance_trends(
+        &self,
+        health: &mut EdgeNodeHealth,
+        metrics: &EdgeNodeMetrics,
+    ) -> Result<()> {
         // Simple trend analysis - in production this would use the predictive analytics engine
         let trends = vec![
             ("cpu_utilization", metrics.cpu_utilization),
@@ -668,7 +744,11 @@ impl EdgeNodeManager {
         Ok(())
     }
 
-    async fn generate_maintenance_recommendations(&self, health: &mut EdgeNodeHealth, metrics: &EdgeNodeMetrics) -> Result<()> {
+    async fn generate_maintenance_recommendations(
+        &self,
+        health: &mut EdgeNodeHealth,
+        metrics: &EdgeNodeMetrics,
+    ) -> Result<()> {
         let mut recommendations = Vec::new();
         let mut urgency = UrgencyLevel::Low;
 
@@ -715,7 +795,10 @@ impl EdgeNodeManager {
         if let Some(node) = self.nodes.get(node_id) {
             Ok(node.status.clone())
         } else {
-            Err(DlsError::NotFound(format!("Edge node {} not found", node_id)))
+            Err(DlsError::NotFound(format!(
+                "Edge node {} not found",
+                node_id
+            )))
         }
     }
 
@@ -723,12 +806,18 @@ impl EdgeNodeManager {
         if let Some(health) = self.node_health.get(node_id) {
             Ok(health.clone())
         } else {
-            Err(DlsError::NotFound(format!("Health data for node {} not found", node_id)))
+            Err(DlsError::NotFound(format!(
+                "Health data for node {} not found",
+                node_id
+            )))
         }
     }
 
     pub async fn list_nodes(&self) -> Vec<EdgeNode> {
-        self.nodes.iter().map(|entry| entry.value().clone()).collect()
+        self.nodes
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
     }
 
     pub async fn list_nodes_by_cluster(&self, cluster_id: &str) -> Vec<EdgeNode> {
@@ -745,7 +834,10 @@ impl EdgeNodeManager {
             tracing::info!("Node {} status updated to {:?}", node_id, node.status);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!("Edge node {} not found", node_id)))
+            Err(DlsError::NotFound(format!(
+                "Edge node {} not found",
+                node_id
+            )))
         }
     }
 
@@ -757,37 +849,59 @@ impl EdgeNodeManager {
                 tracing::info!("Workload assigned to node {}", node_id);
                 Ok(())
             } else {
-                Err(DlsError::ResourceExhausted("Node does not have capacity for workload".to_string()))
+                Err(DlsError::ResourceExhausted(
+                    "Node does not have capacity for workload".to_string(),
+                ))
             }
         } else {
-            Err(DlsError::NotFound(format!("Edge node {} not found", node_id)))
+            Err(DlsError::NotFound(format!(
+                "Edge node {} not found",
+                node_id
+            )))
         }
     }
 
-    async fn check_workload_capacity(&self, node: &EdgeNode, workload: &EdgeWorkload) -> Result<bool> {
-        let current_cpu: u32 = node.active_workloads.iter().map(|w| w.resource_allocation.cpu_cores).sum();
-        let current_memory: u32 = node.active_workloads.iter().map(|w| w.resource_allocation.memory_mb).sum();
+    async fn check_workload_capacity(
+        &self,
+        node: &EdgeNode,
+        workload: &EdgeWorkload,
+    ) -> Result<bool> {
+        let current_cpu: u32 = node
+            .active_workloads
+            .iter()
+            .map(|w| w.resource_allocation.cpu_cores)
+            .sum();
+        let current_memory: u32 = node
+            .active_workloads
+            .iter()
+            .map(|w| w.resource_allocation.memory_mb)
+            .sum();
 
         let available_cpu = node.capabilities.cpu_cores.saturating_sub(current_cpu);
         let available_memory = (node.capabilities.memory_gb * 1024).saturating_sub(current_memory);
 
-        Ok(workload.resource_allocation.cpu_cores <= available_cpu &&
-           workload.resource_allocation.memory_mb <= available_memory)
+        Ok(workload.resource_allocation.cpu_cores <= available_cpu
+            && workload.resource_allocation.memory_mb <= available_memory)
     }
 
     pub async fn remove_workload(&self, node_id: &str, workload_id: &str) -> Result<()> {
         if let Some(mut node) = self.nodes.get_mut(node_id) {
-            node.active_workloads.retain(|w| w.workload_id != workload_id);
+            node.active_workloads
+                .retain(|w| w.workload_id != workload_id);
             tracing::info!("Workload {} removed from node {}", workload_id, node_id);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!("Edge node {} not found", node_id)))
+            Err(DlsError::NotFound(format!(
+                "Edge node {} not found",
+                node_id
+            )))
         }
     }
 
     pub async fn decommission_node(&self, node_id: &str) -> Result<()> {
         // Update node status
-        self.update_node_status(node_id, EdgeNodeStatus::Decommissioned).await?;
+        self.update_node_status(node_id, EdgeNodeStatus::Decommissioned)
+            .await?;
 
         // Remove from clusters
         for mut cluster_entry in self.cluster_memberships.iter_mut() {
@@ -817,7 +931,10 @@ impl EdgeNodeManager {
         let nodes = self.list_nodes_by_cluster(cluster_id).await;
 
         if nodes.is_empty() {
-            return Err(DlsError::NotFound(format!("No nodes found in cluster {}", cluster_id)));
+            return Err(DlsError::NotFound(format!(
+                "No nodes found in cluster {}",
+                cluster_id
+            )));
         }
 
         let mut total_health = 0.0;
@@ -840,12 +957,19 @@ impl EdgeNodeManager {
             }
         }
 
-        let average_health = if total_nodes > 0 { total_health / total_nodes as f64 } else { 0.0 };
+        let average_health = if total_nodes > 0 {
+            total_health / total_nodes as f64
+        } else {
+            0.0
+        };
 
         Ok(ClusterHealthSummary {
             cluster_id: cluster_id.to_string(),
             total_nodes: nodes.len(),
-            healthy_nodes: nodes.iter().filter(|n| n.status == EdgeNodeStatus::Active).count(),
+            healthy_nodes: nodes
+                .iter()
+                .filter(|n| n.status == EdgeNodeStatus::Active)
+                .count(),
             average_health_score: average_health,
             critical_alerts,
             warning_alerts,

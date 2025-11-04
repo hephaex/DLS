@@ -1,11 +1,11 @@
 // Enterprise Authorization & Access Control System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -518,7 +518,13 @@ pub enum ValidationType {
 impl AuthorizationEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("ae_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "ae_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             policy_engine: Arc::new(PolicyEngine::new()),
             access_control_manager: Arc::new(AccessControlManager::new()),
             rbac_manager: Arc::new(RBACManager::new()),
@@ -543,15 +549,16 @@ impl AuthorizationEngine {
         let rbac_decision = self.rbac_manager.check_access(&request).await?;
         let abac_decision = self.abac_manager.evaluate_attributes(&request).await?;
 
-        let final_decision = self.combine_decisions(vec![
-            policy_decision,
-            rbac_decision,
-            abac_decision,
-        ])?;
+        let final_decision =
+            self.combine_decisions(vec![policy_decision, rbac_decision, abac_decision])?;
 
-        self.decision_cache.store(decision_key, final_decision.clone()).await?;
+        self.decision_cache
+            .store(decision_key, final_decision.clone())
+            .await?;
 
-        self.audit_logger.log_authorization(&request, &final_decision).await?;
+        self.audit_logger
+            .log_authorization(&request, &final_decision)
+            .await?;
 
         Ok(final_decision)
     }
@@ -569,15 +576,23 @@ impl AuthorizationEngine {
     }
 
     fn generate_decision_key(&self, request: &AuthorizationRequest) -> String {
-        format!("{}:{}:{}:{}",
+        format!(
+            "{}:{}:{}:{}",
             request.subject.subject_id,
             request.resource.resource_id,
             request.action.action_id,
-            request.context.session_id.as_ref().unwrap_or(&"none".to_string())
+            request
+                .context
+                .session_id
+                .as_ref()
+                .unwrap_or(&"none".to_string())
         )
     }
 
-    fn combine_decisions(&self, decisions: Vec<AuthorizationDecision>) -> Result<AuthorizationDecision> {
+    fn combine_decisions(
+        &self,
+        decisions: Vec<AuthorizationDecision>,
+    ) -> Result<AuthorizationDecision> {
         let mut permit_count = 0;
         let mut deny_count = 0;
         let mut obligations = Vec::new();
@@ -617,7 +632,13 @@ impl AuthorizationEngine {
 impl PolicyEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("pe_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "pe_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             policies: Arc::new(DashMap::new()),
             policy_sets: Arc::new(DashMap::new()),
             policy_evaluator: Arc::new(PolicyEvaluator::new()),
@@ -649,11 +670,19 @@ impl PolicyEngine {
             });
         }
 
-        let policy_decisions = self.policy_evaluator.evaluate_policies(&applicable_policies, request).await?;
-        self.policy_combiner.combine_decisions(policy_decisions, CombiningAlgorithm::DenyOverrides).await
+        let policy_decisions = self
+            .policy_evaluator
+            .evaluate_policies(&applicable_policies, request)
+            .await?;
+        self.policy_combiner
+            .combine_decisions(policy_decisions, CombiningAlgorithm::DenyOverrides)
+            .await
     }
 
-    async fn find_applicable_policies(&self, _request: &AuthorizationRequest) -> Result<Vec<Policy>> {
+    async fn find_applicable_policies(
+        &self,
+        _request: &AuthorizationRequest,
+    ) -> Result<Vec<Policy>> {
         Ok(vec![])
     }
 }
@@ -661,7 +690,13 @@ impl PolicyEngine {
 impl AccessControlManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("acm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "acm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             access_control_lists: Arc::new(DashMap::new()),
             access_matrices: Arc::new(DashMap::new()),
             capability_lists: Arc::new(DashMap::new()),
@@ -671,8 +706,7 @@ impl AccessControlManager {
     }
 
     pub async fn check_access(&self, request: &AuthorizationRequest) -> Result<bool> {
-        let acl = self.access_control_lists
-            .get(&request.resource.resource_id);
+        let acl = self.access_control_lists.get(&request.resource.resource_id);
 
         if let Some(acl) = acl {
             return self.evaluate_acl(&acl, request).await;
@@ -681,7 +715,11 @@ impl AccessControlManager {
         Ok(false)
     }
 
-    async fn evaluate_acl(&self, _acl: &AccessControlList, _request: &AuthorizationRequest) -> Result<bool> {
+    async fn evaluate_acl(
+        &self,
+        _acl: &AccessControlList,
+        _request: &AuthorizationRequest,
+    ) -> Result<bool> {
         Ok(true)
     }
 }
@@ -689,7 +727,13 @@ impl AccessControlManager {
 impl RBACManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("rbac_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "rbac_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             roles: Arc::new(DashMap::new()),
             role_hierarchies: Arc::new(DashMap::new()),
             user_roles: AsyncDataStore::new(),
@@ -705,7 +749,10 @@ impl RBACManager {
     }
 
     pub async fn assign_role(&self, user_id: &str, role_id: &str) -> Result<()> {
-        let mut assignments = self.user_roles.get(&user_id.to_string()).await
+        let mut assignments = self
+            .user_roles
+            .get(&user_id.to_string())
+            .await
             .unwrap_or_else(|| UserRoleAssignments {
                 user_id: user_id.to_string(),
                 role_assignments: vec![],
@@ -721,17 +768,25 @@ impl RBACManager {
             constraints: vec![],
         });
 
-        self.user_roles.insert(user_id.to_string(), assignments).await;
+        self.user_roles
+            .insert(user_id.to_string(), assignments)
+            .await;
         Ok(())
     }
 
-    pub async fn check_access(&self, request: &AuthorizationRequest) -> Result<AuthorizationDecision> {
+    pub async fn check_access(
+        &self,
+        request: &AuthorizationRequest,
+    ) -> Result<AuthorizationDecision> {
         let user_roles = self.user_roles.get(&request.subject.subject_id).await;
 
         if let Some(assignments) = user_roles {
             for assignment in &assignments.role_assignments {
                 if let Some(role) = self.roles.get(&assignment.role_id) {
-                    if self.role_has_permission(&role, &request.action.action_id).await? {
+                    if self
+                        .role_has_permission(&role, &request.action.action_id)
+                        .await?
+                    {
                         return Ok(AuthorizationDecision {
                             decision: DecisionType::Permit,
                             obligations: vec![],
@@ -767,7 +822,13 @@ impl RBACManager {
 impl ABACManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("abac_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "abac_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             attribute_definitions: Arc::new(DashMap::new()),
             attribute_stores: Arc::new(DashMap::new()),
             policy_information_points: Arc::new(DashMap::new()),
@@ -776,7 +837,10 @@ impl ABACManager {
         }
     }
 
-    pub async fn evaluate_attributes(&self, _request: &AuthorizationRequest) -> Result<AuthorizationDecision> {
+    pub async fn evaluate_attributes(
+        &self,
+        _request: &AuthorizationRequest,
+    ) -> Result<AuthorizationDecision> {
         Ok(AuthorizationDecision {
             decision: DecisionType::NotApplicable,
             obligations: vec![],
@@ -980,8 +1044,14 @@ macro_rules! impl_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1002,13 +1072,21 @@ impl_component!(AttributeResolver);
 impl_component!(ContextManager);
 
 impl PolicyEvaluator {
-    pub async fn evaluate_policies(&self, _policies: &[Policy], _request: &AuthorizationRequest) -> Result<Vec<AuthorizationDecision>> {
+    pub async fn evaluate_policies(
+        &self,
+        _policies: &[Policy],
+        _request: &AuthorizationRequest,
+    ) -> Result<Vec<AuthorizationDecision>> {
         Ok(vec![])
     }
 }
 
 impl PolicyCombiner {
-    pub async fn combine_decisions(&self, _decisions: Vec<AuthorizationDecision>, _algorithm: CombiningAlgorithm) -> Result<AuthorizationDecision> {
+    pub async fn combine_decisions(
+        &self,
+        _decisions: Vec<AuthorizationDecision>,
+        _algorithm: CombiningAlgorithm,
+    ) -> Result<AuthorizationDecision> {
         Ok(AuthorizationDecision {
             decision: DecisionType::NotApplicable,
             obligations: vec![],
@@ -1033,7 +1111,11 @@ impl DecisionCache {
 }
 
 impl AuthorizationAuditLogger {
-    pub async fn log_authorization(&self, _request: &AuthorizationRequest, _decision: &AuthorizationDecision) -> Result<()> {
+    pub async fn log_authorization(
+        &self,
+        _request: &AuthorizationRequest,
+        _decision: &AuthorizationDecision,
+    ) -> Result<()> {
         Ok(())
     }
 }

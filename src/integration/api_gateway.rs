@@ -1,12 +1,12 @@
 // API Gateway & Management for Centralized API Operations
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, BatchProcessor};
 use crate::integration::service_mesh::CircuitBreakerConfig;
+use crate::optimization::{AsyncDataStore, BatchProcessor, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 
 #[derive(Debug, Clone)]
 pub struct ApiGateway {
@@ -1430,7 +1430,13 @@ pub enum AuthorizationAction {
 impl ApiGateway {
     pub fn new(config: ApiGatewayConfig) -> Self {
         Self {
-            gateway_id: format!("gateway_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            gateway_id: format!(
+                "gateway_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             gateway_config: config,
             route_manager: Arc::new(RouteManager::new()),
             rate_limiter: Arc::new(RateLimiter::new()),
@@ -1505,7 +1511,13 @@ pub struct RequestContext {
 impl RouteManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("route_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "route_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             api_routes: LightweightStore::new(Some(10000)),
             route_groups: Arc::new(DashMap::new()),
             upstream_services: AsyncDataStore::new(),
@@ -1527,7 +1539,13 @@ impl RouteManager {
 impl GatewayLoadBalancer {
     pub fn new() -> Self {
         Self {
-            balancer_id: format!("gw_lb_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            balancer_id: format!(
+                "gw_lb_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             algorithms: Arc::new(DashMap::new()),
             sticky_sessions: Arc::new(StickySessionManager::new()),
             health_checker: Arc::new(UpstreamHealthChecker::new()),
@@ -1538,7 +1556,13 @@ impl GatewayLoadBalancer {
 impl StickySessionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sticky_session_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "sticky_session_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             session_store: AsyncDataStore::new(),
             cookie_config: CookieConfig::default(),
         }
@@ -1548,7 +1572,13 @@ impl StickySessionManager {
 impl UpstreamHealthChecker {
     pub fn new() -> Self {
         Self {
-            checker_id: format!("upstream_health_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            checker_id: format!(
+                "upstream_health_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             health_checks: Arc::new(DashMap::new()),
             health_results: AsyncDataStore::new(),
         }
@@ -1558,7 +1588,13 @@ impl UpstreamHealthChecker {
 impl RateLimiter {
     pub fn new() -> Self {
         Self {
-            limiter_id: format!("rate_limiter_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            limiter_id: format!(
+                "rate_limiter_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             rate_limit_rules: Arc::new(DashMap::new()),
             rate_counters: AsyncDataStore::new(),
             distributed_cache: Arc::new(DistributedRateCache::new()),
@@ -1574,7 +1610,13 @@ impl RateLimiter {
 impl DistributedRateCache {
     pub fn new() -> Self {
         Self {
-            cache_id: format!("rate_cache_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            cache_id: format!(
+                "rate_cache_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             local_cache: AsyncDataStore::new(),
             cluster_sync: Arc::new(ClusterSyncManager::new()),
         }
@@ -1584,7 +1626,13 @@ impl DistributedRateCache {
 impl ClusterSyncManager {
     pub fn new() -> Self {
         Self {
-            sync_id: format!("cluster_sync_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            sync_id: format!(
+                "cluster_sync_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             peer_nodes: vec![],
             sync_interval: Duration::from_secs(30),
             conflict_resolution: ConflictResolution::LastWriteWins,
@@ -1595,7 +1643,13 @@ impl ClusterSyncManager {
 impl QuotaManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("quota_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "quota_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             quota_policies: Arc::new(DashMap::new()),
             quota_usage: AsyncDataStore::new(),
         }
@@ -1605,7 +1659,13 @@ impl QuotaManager {
 impl AuthenticationProvider {
     pub fn new() -> Self {
         Self {
-            provider_id: format!("auth_provider_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            provider_id: format!(
+                "auth_provider_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             auth_methods: Arc::new(DashMap::new()),
             token_validator: Arc::new(TokenValidator::new()),
             session_manager: Arc::new(SessionManager::new()),
@@ -1621,7 +1681,13 @@ impl AuthenticationProvider {
 impl TokenValidator {
     pub fn new() -> Self {
         Self {
-            validator_id: format!("token_validator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            validator_id: format!(
+                "token_validator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             jwt_validators: Arc::new(DashMap::new()),
             api_key_store: AsyncDataStore::new(),
             token_cache: AsyncDataStore::new(),
@@ -1632,7 +1698,13 @@ impl TokenValidator {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("session_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "session_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             active_sessions: AsyncDataStore::new(),
             session_store: Arc::new(SessionStore::new()),
             session_config: SessionConfig::default(),
@@ -1643,7 +1715,13 @@ impl SessionManager {
 impl SessionStore {
     pub fn new() -> Self {
         Self {
-            store_id: format!("session_store_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            store_id: format!(
+                "session_store_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             store_type: SessionStoreType::Memory,
             connection_pool: Arc::new(ConnectionPool::new()),
         }
@@ -1653,7 +1731,13 @@ impl SessionStore {
 impl ConnectionPool {
     pub fn new() -> Self {
         Self {
-            pool_id: format!("conn_pool_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            pool_id: format!(
+                "conn_pool_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             max_connections: 100,
             min_connections: 10,
             connection_timeout: Duration::from_secs(30),
@@ -1665,7 +1749,13 @@ impl ConnectionPool {
 impl IdentityProvider {
     pub fn new() -> Self {
         Self {
-            provider_id: format!("identity_provider_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            provider_id: format!(
+                "identity_provider_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             provider_type: IdentityProviderType::Local,
             configuration: IdentityProviderConfig::default(),
             user_store: AsyncDataStore::new(),
@@ -1676,7 +1766,13 @@ impl IdentityProvider {
 impl RequestProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("req_processor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "req_processor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             middleware_chain: vec![],
             request_transformer: Arc::new(RequestTransformer::new()),
             content_validator: Arc::new(ContentValidator::new()),
@@ -1703,7 +1799,13 @@ impl RequestProcessor {
 impl RequestTransformer {
     pub fn new() -> Self {
         Self {
-            transformer_id: format!("req_transformer_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            transformer_id: format!(
+                "req_transformer_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             transformation_rules: Arc::new(DashMap::new()),
             template_engine: Arc::new(TemplateEngine::new()),
         }
@@ -1713,7 +1815,13 @@ impl RequestTransformer {
 impl TemplateEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("template_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "template_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             templates: Arc::new(DashMap::new()),
             template_cache: AsyncDataStore::new(),
         }
@@ -1723,7 +1831,13 @@ impl TemplateEngine {
 impl ContentValidator {
     pub fn new() -> Self {
         Self {
-            validator_id: format!("content_validator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            validator_id: format!(
+                "content_validator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             validation_schemas: Arc::new(DashMap::new()),
             custom_validators: Arc::new(DashMap::new()),
         }
@@ -1733,7 +1847,13 @@ impl ContentValidator {
 impl RequestLogger {
     pub fn new() -> Self {
         Self {
-            logger_id: format!("req_logger_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            logger_id: format!(
+                "req_logger_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             log_config: LoggingConfig::default(),
             log_processor: BatchProcessor::new(100, Duration::from_secs(10)),
             log_storage: AsyncDataStore::new(),
@@ -1744,7 +1864,13 @@ impl RequestLogger {
 impl ResponseProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("resp_processor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "resp_processor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             response_transformer: Arc::new(ResponseTransformer::new()),
             cache_manager: Arc::new(ResponseCacheManager::new()),
             compression_engine: Arc::new(CompressionEngine::new()),
@@ -1759,7 +1885,13 @@ impl ResponseProcessor {
 impl ResponseTransformer {
     pub fn new() -> Self {
         Self {
-            transformer_id: format!("resp_transformer_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            transformer_id: format!(
+                "resp_transformer_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             transformation_rules: Arc::new(DashMap::new()),
         }
     }
@@ -1768,7 +1900,13 @@ impl ResponseTransformer {
 impl ResponseCacheManager {
     pub fn new() -> Self {
         Self {
-            cache_id: format!("resp_cache_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            cache_id: format!(
+                "resp_cache_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             cache_storage: AsyncDataStore::new(),
             cache_policies: Arc::new(DashMap::new()),
             cache_invalidator: Arc::new(CacheInvalidator::new()),
@@ -1779,7 +1917,13 @@ impl ResponseCacheManager {
 impl CacheInvalidator {
     pub fn new() -> Self {
         Self {
-            invalidator_id: format!("cache_invalidator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            invalidator_id: format!(
+                "cache_invalidator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             invalidation_queue: BatchProcessor::new(50, Duration::from_secs(5)),
             invalidation_stats: AsyncDataStore::new(),
         }
@@ -1789,7 +1933,13 @@ impl CacheInvalidator {
 impl CompressionEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("compression_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "compression_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             compression_algorithms: Arc::new(DashMap::new()),
             compression_policies: Arc::new(DashMap::new()),
         }
@@ -1799,7 +1949,13 @@ impl CompressionEngine {
 impl ApiAnalyticsEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("api_analytics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "api_analytics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             metrics_collector: Arc::new(ApiMetricsCollector::new()),
             usage_tracker: Arc::new(UsageTracker::new()),
             performance_monitor: Arc::new(PerformanceMonitor::new()),
@@ -1815,7 +1971,13 @@ impl ApiAnalyticsEngine {
 impl ApiMetricsCollector {
     pub fn new() -> Self {
         Self {
-            collector_id: format!("api_metrics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            collector_id: format!(
+                "api_metrics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             request_metrics: AsyncDataStore::new(),
             endpoint_metrics: Arc::new(DashMap::new()),
             error_metrics: Arc::new(DashMap::new()),
@@ -1826,7 +1988,13 @@ impl ApiMetricsCollector {
 impl UsageTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("usage_tracker_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "usage_tracker_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             user_usage: AsyncDataStore::new(),
             api_key_usage: AsyncDataStore::new(),
             tenant_usage: AsyncDataStore::new(),
@@ -1837,7 +2005,13 @@ impl UsageTracker {
 impl PerformanceMonitor {
     pub fn new() -> Self {
         Self {
-            monitor_id: format!("perf_monitor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitor_id: format!(
+                "perf_monitor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             performance_profiles: Arc::new(DashMap::new()),
             bottleneck_detector: Arc::new(BottleneckDetector::new()),
             sla_monitor: Arc::new(SlaMonitor::new()),
@@ -1848,7 +2022,13 @@ impl PerformanceMonitor {
 impl BottleneckDetector {
     pub fn new() -> Self {
         Self {
-            detector_id: format!("bottleneck_detector_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            detector_id: format!(
+                "bottleneck_detector_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             bottleneck_patterns: Arc::new(DashMap::new()),
             active_bottlenecks: AsyncDataStore::new(),
         }
@@ -1858,7 +2038,13 @@ impl BottleneckDetector {
 impl SlaMonitor {
     pub fn new() -> Self {
         Self {
-            monitor_id: format!("sla_monitor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitor_id: format!(
+                "sla_monitor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             sla_definitions: Arc::new(DashMap::new()),
             sla_violations: AsyncDataStore::new(),
         }
@@ -1868,7 +2054,13 @@ impl SlaMonitor {
 impl BusinessMetricsCollector {
     pub fn new() -> Self {
         Self {
-            collector_id: format!("business_metrics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            collector_id: format!(
+                "business_metrics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             revenue_metrics: AsyncDataStore::new(),
             customer_metrics: AsyncDataStore::new(),
             product_metrics: AsyncDataStore::new(),

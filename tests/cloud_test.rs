@@ -1,20 +1,20 @@
 mod common;
 
+use chrono::Utc;
 use dls_server::cloud::{
-    CloudManager, CloudConfig, CloudProvider, DeploymentMode, ResourceType, HybridDeployment,
-    HybridNetworkConfig, LoadBalancingConfig, DataSyncConfig, FailoverConfig, DnsConfig,
+    CloudConfig, CloudManager, CloudProvider, DataSyncConfig, DeploymentMode, DnsConfig,
+    FailoverConfig, HybridDeployment, HybridNetworkConfig, LoadBalancingConfig, ResourceType,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
-use chrono::Utc;
 
 #[tokio::test]
 async fn test_cloud_manager_creation() {
     common::setup();
-    
+
     let config = CloudConfig::default();
     let manager = CloudManager::new(config.clone());
-    
+
     assert!(!manager.config.enabled);
     assert_eq!(manager.config.deployment_mode, DeploymentMode::OnPremises);
     assert_eq!(manager.config.primary_provider, CloudProvider::OnPremises);
@@ -23,7 +23,7 @@ async fn test_cloud_manager_creation() {
 #[tokio::test]
 async fn test_cloud_config_creation() {
     common::setup();
-    
+
     let mut config = CloudConfig::default();
     config.enabled = true;
     config.deployment_mode = DeploymentMode::HybridCloud;
@@ -31,7 +31,7 @@ async fn test_cloud_config_creation() {
     config.failover_providers = vec![CloudProvider::Azure, CloudProvider::GoogleCloud];
     config.auto_scaling_enabled = true;
     config.multi_region_enabled = true;
-    
+
     assert!(config.enabled);
     assert_eq!(config.deployment_mode, DeploymentMode::HybridCloud);
     assert_eq!(config.primary_provider, CloudProvider::Aws);
@@ -41,18 +41,15 @@ async fn test_cloud_config_creation() {
 #[tokio::test]
 async fn test_hybrid_deployment_creation() {
     common::setup();
-    
+
     let manager = CloudManager::default();
     let deployment_id = Uuid::new_v4();
-    
+
     let deployment = HybridDeployment {
         id: deployment_id,
         name: "test-hybrid-deployment".to_string(),
         tenant_id: Some(Uuid::new_v4()),
-        on_premises_resources: vec![
-            "server-1".to_string(),
-            "storage-1".to_string(),
-        ],
+        on_premises_resources: vec!["server-1".to_string(), "storage-1".to_string()],
         cloud_resources: {
             let mut resources = HashMap::new();
             resources.insert(CloudProvider::Aws, vec!["ec2-instance-1".to_string()]);
@@ -105,7 +102,10 @@ async fn test_hybrid_deployment_creation() {
         updated_at: Utc::now(),
     };
 
-    let created_deployment_id = manager.create_hybrid_deployment(deployment.clone()).await.unwrap();
+    let created_deployment_id = manager
+        .create_hybrid_deployment(deployment.clone())
+        .await
+        .unwrap();
     assert_eq!(created_deployment_id, deployment_id);
 
     let retrieved_deployment = manager.get_deployment(&deployment_id).unwrap();
@@ -121,9 +121,9 @@ async fn test_hybrid_deployment_creation() {
 #[tokio::test]
 async fn test_cloud_resource_provisioning() {
     common::setup();
-    
+
     let manager = CloudManager::default();
-    
+
     let config = serde_json::json!({
         "instance_type": "t3.micro",
         "ami_id": "ami-12345678",
@@ -131,11 +131,7 @@ async fn test_cloud_resource_provisioning() {
     });
 
     let resource_id = manager
-        .provision_cloud_resource(
-            ResourceType::Compute,
-            CloudProvider::Aws,
-            config,
-        )
+        .provision_cloud_resource(ResourceType::Compute, CloudProvider::Aws, config)
         .await
         .unwrap();
 
@@ -150,7 +146,7 @@ async fn test_cloud_resource_provisioning() {
 #[tokio::test]
 async fn test_multi_cloud_deployment() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     // Provision resources on different cloud providers
@@ -177,7 +173,11 @@ async fn test_multi_cloud_deployment() {
         "image_family": "ubuntu-1804-lts"
     });
     let gcp_resource_id = manager
-        .provision_cloud_resource(ResourceType::Compute, CloudProvider::GoogleCloud, gcp_config)
+        .provision_cloud_resource(
+            ResourceType::Compute,
+            CloudProvider::GoogleCloud,
+            gcp_config,
+        )
         .await
         .unwrap();
 
@@ -203,7 +203,7 @@ async fn test_multi_cloud_deployment() {
 #[tokio::test]
 async fn test_resource_migration() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let config = serde_json::json!({
@@ -234,7 +234,7 @@ async fn test_resource_migration() {
 #[tokio::test]
 async fn test_auto_scaling_configuration() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let config = serde_json::json!({
@@ -255,7 +255,7 @@ async fn test_auto_scaling_configuration() {
 #[tokio::test]
 async fn test_data_synchronization() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let source = "on-premises://storage/data";
@@ -268,7 +268,7 @@ async fn test_data_synchronization() {
 #[tokio::test]
 async fn test_cost_analysis() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     // Test cost analysis without tenant filter
@@ -285,7 +285,7 @@ async fn test_cost_analysis() {
 #[tokio::test]
 async fn test_cost_optimization() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let optimizations = manager.optimize_costs().await.unwrap();
@@ -295,7 +295,7 @@ async fn test_cost_optimization() {
 #[tokio::test]
 async fn test_resource_deletion() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let config = serde_json::json!({
@@ -321,7 +321,7 @@ async fn test_resource_deletion() {
 #[tokio::test]
 async fn test_deployment_listing() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     // Create multiple deployments
@@ -388,7 +388,7 @@ async fn test_deployment_listing() {
 #[tokio::test]
 async fn test_audit_logging() {
     common::setup();
-    
+
     let manager = CloudManager::default();
 
     let config = serde_json::json!({
@@ -410,6 +410,6 @@ async fn test_audit_logging() {
 
     // Check logs are ordered by timestamp (most recent first)
     for i in 1..logs.len() {
-        assert!(logs[i-1].timestamp >= logs[i].timestamp);
+        assert!(logs[i - 1].timestamp >= logs[i].timestamp);
     }
 }
