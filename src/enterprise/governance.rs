@@ -1,12 +1,12 @@
 // Enterprise Governance Framework
-use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
 use crate::enterprise::compliance::MonitoringRequirement;
+use crate::error::Result;
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -685,7 +685,13 @@ pub struct EffectivenessMetric {
 impl GovernanceFramework {
     pub fn new() -> Self {
         Self {
-            framework_id: format!("gf_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            framework_id: format!(
+                "gf_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             policy_manager: Arc::new(PolicyManager::new()),
             compliance_engine: Arc::new(ComplianceEngine::new()),
             risk_manager: Arc::new(RiskManager::new()),
@@ -702,10 +708,15 @@ impl GovernanceFramework {
     }
 
     pub async fn assess_compliance(&self, framework_id: &str) -> Result<ComplianceAssessment> {
-        self.compliance_engine.conduct_assessment(framework_id).await
+        self.compliance_engine
+            .conduct_assessment(framework_id)
+            .await
     }
 
-    pub async fn generate_governance_report(&self, report_type: GovernanceReportType) -> Result<GovernanceReport> {
+    pub async fn generate_governance_report(
+        &self,
+        report_type: GovernanceReportType,
+    ) -> Result<GovernanceReport> {
         self.governance_dashboard.generate_report(report_type).await
     }
 }
@@ -713,7 +724,13 @@ impl GovernanceFramework {
 impl PolicyManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("pm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "pm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             policy_catalog: Arc::new(DashMap::new()),
             policy_templates: Arc::new(DashMap::new()),
             policy_engine: Arc::new(PolicyEngine::new()),
@@ -729,19 +746,26 @@ impl PolicyManager {
 
         self.policy_validator.validate_policy(&policy).await?;
 
-        self.policy_catalog.insert(policy_id.clone(), policy.clone());
+        self.policy_catalog
+            .insert(policy_id.clone(), policy.clone());
 
         self.policy_lifecycle.initiate_lifecycle(&policy).await?;
 
         Ok(policy_id)
     }
 
-    pub async fn update_policy(&self, policy_id: &str, updated_policy: GovernancePolicy) -> Result<()> {
+    pub async fn update_policy(
+        &self,
+        policy_id: &str,
+        updated_policy: GovernancePolicy,
+    ) -> Result<()> {
         if let Some(mut existing_policy) = self.policy_catalog.get_mut(policy_id) {
             *existing_policy = updated_policy;
             Ok(())
         } else {
-            Err(crate::error::Error::NotFound("Policy not found".to_string()))
+            Err(crate::error::Error::NotFound(
+                "Policy not found".to_string(),
+            ))
         }
     }
 
@@ -750,7 +774,8 @@ impl PolicyManager {
     }
 
     pub async fn list_policies(&self, filter: PolicyFilter) -> Result<Vec<GovernancePolicy>> {
-        let policies: Vec<GovernancePolicy> = self.policy_catalog
+        let policies: Vec<GovernancePolicy> = self
+            .policy_catalog
             .iter()
             .filter(|entry| self.matches_filter(entry.value(), &filter))
             .map(|entry| entry.value().clone())
@@ -766,7 +791,13 @@ impl PolicyManager {
 impl ComplianceEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("ce_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "ce_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             compliance_frameworks: Arc::new(DashMap::new()),
             compliance_assessments: AsyncDataStore::new(),
             compliance_monitoring: Arc::new(ComplianceMonitoring::new()),
@@ -778,12 +809,14 @@ impl ComplianceEngine {
 
     pub async fn register_framework(&self, framework: ComplianceFramework) -> Result<String> {
         let framework_id = framework.framework_id.clone();
-        self.compliance_frameworks.insert(framework_id.clone(), framework);
+        self.compliance_frameworks
+            .insert(framework_id.clone(), framework);
         Ok(framework_id)
     }
 
     pub async fn conduct_assessment(&self, framework_id: &str) -> Result<ComplianceAssessment> {
-        let framework = self.compliance_frameworks
+        let framework = self
+            .compliance_frameworks
             .get(framework_id)
             .ok_or_else(|| crate::error::Error::NotFound("Framework not found".to_string()))?;
 
@@ -798,7 +831,7 @@ impl ComplianceEngine {
                 processes: vec!["All".to_string()],
                 time_period: (
                     SystemTime::now() - Duration::from_secs(365 * 24 * 3600),
-                    SystemTime::now()
+                    SystemTime::now(),
                 ),
             },
             methodology: framework.assessment_methodology.clone(),
@@ -815,12 +848,16 @@ impl ComplianceEngine {
             next_assessment_date: SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
         };
 
-        self.compliance_assessments.insert(assessment_id.clone(), assessment.clone()).await;
+        self.compliance_assessments
+            .insert(assessment_id.clone(), assessment.clone())
+            .await;
         Ok(assessment)
     }
 
     pub async fn monitor_compliance(&self, framework_id: &str) -> Result<ComplianceStatus> {
-        self.compliance_monitoring.get_current_status(framework_id).await
+        self.compliance_monitoring
+            .get_current_status(framework_id)
+            .await
     }
 }
 
@@ -1427,8 +1464,14 @@ macro_rules! impl_governance_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1482,16 +1525,23 @@ impl ComplianceMonitoring {
 }
 
 impl GovernanceDashboard {
-    pub async fn generate_report(&self, _report_type: GovernanceReportType) -> Result<GovernanceReport> {
+    pub async fn generate_report(
+        &self,
+        _report_type: GovernanceReportType,
+    ) -> Result<GovernanceReport> {
         Ok(GovernanceReport {
             report_id: Uuid::new_v4().to_string(),
             report_type: GovernanceReportType::Executive,
             title: "Governance Executive Report".to_string(),
             generated_at: SystemTime::now(),
             generated_by: "System".to_string(),
-            report_period: (SystemTime::now() - Duration::from_secs(30 * 24 * 3600), SystemTime::now()),
+            report_period: (
+                SystemTime::now() - Duration::from_secs(30 * 24 * 3600),
+                SystemTime::now(),
+            ),
             content: ReportContent {
-                executive_summary: "Overall governance posture is strong with 85% compliance.".to_string(),
+                executive_summary: "Overall governance posture is strong with 85% compliance."
+                    .to_string(),
                 detailed_findings: vec!["Finding 1".to_string(), "Finding 2".to_string()],
                 metrics: HashMap::new(),
                 charts: vec![],

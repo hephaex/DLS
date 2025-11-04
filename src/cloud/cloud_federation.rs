@@ -1,11 +1,11 @@
 // Cloud Federation for Cross-Provider Service Integration
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -871,7 +871,13 @@ pub struct ServicePerformanceMetrics {
 impl CloudFederationManager {
     pub fn new() -> Self {
         Self {
-            federation_id: format!("fed_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            federation_id: format!(
+                "fed_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             federation_members: Arc::new(DashMap::new()),
             service_registry: Arc::new(FederatedServiceRegistry::new()),
             identity_broker: Arc::new(FederatedIdentityBroker::new()),
@@ -892,10 +898,14 @@ impl CloudFederationManager {
         self.federation_members.insert(member_id.clone(), member);
 
         // Setup federation networking
-        self.network_fabric.setup_member_connectivity(&member_id).await?;
+        self.network_fabric
+            .setup_member_connectivity(&member_id)
+            .await?;
 
         // Register member services
-        self.service_registry.register_member_services(&member_id).await?;
+        self.service_registry
+            .register_member_services(&member_id)
+            .await?;
 
         Ok(())
     }
@@ -908,15 +918,27 @@ impl CloudFederationManager {
         self.resource_broker.allocate_resources(request).await
     }
 
-    pub async fn establish_trust(&self, member_id: &str, trust_credentials: TrustCredentials) -> Result<TrustLevel> {
-        self.trust_manager.establish_trust(member_id, trust_credentials).await
+    pub async fn establish_trust(
+        &self,
+        member_id: &str,
+        trust_credentials: TrustCredentials,
+    ) -> Result<TrustLevel> {
+        self.trust_manager
+            .establish_trust(member_id, trust_credentials)
+            .await
     }
 }
 
 impl FederatedServiceRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("fsr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "fsr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             registered_services: AsyncDataStore::new(),
             service_discovery: Arc::new(ServiceDiscoveryEngine::new()),
             service_mesh: Arc::new(FederatedServiceMesh::new()),
@@ -944,7 +966,13 @@ pub struct ServiceDiscoveryEngine {
 impl ServiceDiscoveryEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("sde_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "sde_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -957,7 +985,13 @@ pub struct FederatedServiceMesh {
 impl FederatedServiceMesh {
     pub fn new() -> Self {
         Self {
-            mesh_id: format!("fsm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            mesh_id: format!(
+                "fsm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -970,7 +1004,13 @@ pub struct FederatedLoadBalancer {
 impl FederatedLoadBalancer {
     pub fn new() -> Self {
         Self {
-            balancer_id: format!("flb_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            balancer_id: format!(
+                "flb_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -983,7 +1023,13 @@ pub struct FederatedIdentityBroker {
 impl FederatedIdentityBroker {
     pub fn new() -> Self {
         Self {
-            broker_id: format!("fib_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            broker_id: format!(
+                "fib_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -996,7 +1042,13 @@ pub struct FederatedNetworkFabric {
 impl FederatedNetworkFabric {
     pub fn new() -> Self {
         Self {
-            fabric_id: format!("fnf_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            fabric_id: format!(
+                "fnf_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1013,7 +1065,13 @@ pub struct FederationGovernanceEngine {
 impl FederationGovernanceEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("fge_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "fge_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1026,7 +1084,13 @@ pub struct FederationTrustManager {
 impl FederationTrustManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("ftm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "ftm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1034,7 +1098,11 @@ impl FederationTrustManager {
         Ok(())
     }
 
-    pub async fn establish_trust(&self, _member_id: &str, _credentials: TrustCredentials) -> Result<TrustLevel> {
+    pub async fn establish_trust(
+        &self,
+        _member_id: &str,
+        _credentials: TrustCredentials,
+    ) -> Result<TrustLevel> {
         Ok(TrustLevel::Verified)
     }
 }
@@ -1047,11 +1115,20 @@ pub struct FederatedResourceBroker {
 impl FederatedResourceBroker {
     pub fn new() -> Self {
         Self {
-            broker_id: format!("frb_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            broker_id: format!(
+                "frb_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn allocate_resources(&self, _request: ResourceRequest) -> Result<ResourceAllocation> {
+    pub async fn allocate_resources(
+        &self,
+        _request: ResourceRequest,
+    ) -> Result<ResourceAllocation> {
         Ok(ResourceAllocation {
             allocation_id: format!("alloc_{}", Uuid::new_v4()),
             allocated_resources: HashMap::new(),

@@ -149,13 +149,13 @@ impl SecurityManager {
 
     pub async fn start(&self) -> Result<()> {
         info!("Starting Security Manager");
-        
+
         // Load default security policies
         self.load_default_policies().await?;
-        
+
         // Initialize network segments
         self.initialize_network_segments().await?;
-        
+
         info!("Security Manager started successfully");
         Ok(())
     }
@@ -167,16 +167,14 @@ impl SecurityManager {
             description: "Default security policy for DLS".to_string(),
             security_level: SecurityLevel::Medium,
             enforcement_mode: EnforcementMode::Enforce,
-            rules: vec![
-                SecurityRule {
-                    rule_id: "rule-001".to_string(),
-                    rule_type: SecurityRuleType::NetworkAccess,
-                    condition: "source_ip not in trusted_networks".to_string(),
-                    action: "require_authentication".to_string(),
-                    severity: SecurityLevel::Medium,
-                    enabled: true,
-                },
-            ],
+            rules: vec![SecurityRule {
+                rule_id: "rule-001".to_string(),
+                rule_type: SecurityRuleType::NetworkAccess,
+                condition: "source_ip not in trusted_networks".to_string(),
+                action: "require_authentication".to_string(),
+                severity: SecurityLevel::Medium,
+                enabled: true,
+            }],
             created_at: SystemTime::now(),
             updated_at: SystemTime::now(),
             enabled: true,
@@ -184,7 +182,7 @@ impl SecurityManager {
 
         let mut policies = self.security_policies.write().await;
         policies.insert(default_policy.policy_id.clone(), default_policy);
-        
+
         Ok(())
     }
 
@@ -195,18 +193,16 @@ impl SecurityManager {
             description: "Default network segment for general access".to_string(),
             security_level: SecurityLevel::Medium,
             allowed_vlans: vec![1, 10, 100],
-            firewall_rules: vec![
-                FirewallRule {
-                    rule_id: "fw-001".to_string(),
-                    name: "Allow HTTP/HTTPS".to_string(),
-                    source: "any".to_string(),
-                    destination: "any".to_string(),
-                    ports: vec![80, 443],
-                    protocol: "tcp".to_string(),
-                    action: FirewallAction::Allow,
-                    enabled: true,
-                },
-            ],
+            firewall_rules: vec![FirewallRule {
+                rule_id: "fw-001".to_string(),
+                name: "Allow HTTP/HTTPS".to_string(),
+                source: "any".to_string(),
+                destination: "any".to_string(),
+                ports: vec![80, 443],
+                protocol: "tcp".to_string(),
+                action: FirewallAction::Allow,
+                enabled: true,
+            }],
             access_policies: Vec::new(),
             monitoring_enabled: true,
             encryption_required: false,
@@ -214,20 +210,20 @@ impl SecurityManager {
 
         let mut segments = self.network_segments.write().await;
         segments.insert(default_segment.segment_id.clone(), default_segment);
-        
+
         Ok(())
     }
 
     pub async fn log_security_event(&self, event: SecurityEvent) -> Result<()> {
         let mut events = self.security_events.write().await;
         events.push(event);
-        
+
         // Keep only last 10000 events
         if events.len() > 10000 {
             let excess = events.len() - 10000;
             events.drain(..excess);
         }
-        
+
         Ok(())
     }
 
@@ -235,11 +231,11 @@ impl SecurityManager {
         let events = self.security_events.read().await;
         let mut result = events.clone();
         result.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        
+
         if let Some(limit) = limit {
             result.truncate(limit);
         }
-        
+
         result
     }
 
@@ -265,20 +261,25 @@ impl SecurityManager {
         policies.get(policy_id).cloned()
     }
 
-    pub async fn validate_access(&self, source_ip: IpAddr, target: &str, action: &str) -> Result<bool> {
+    pub async fn validate_access(
+        &self,
+        source_ip: IpAddr,
+        target: &str,
+        action: &str,
+    ) -> Result<bool> {
         // Simple access validation based on security policies
         let policies = self.security_policies.read().await;
-        
+
         for policy in policies.values() {
             if !policy.enabled {
                 continue;
             }
-            
+
             for rule in &policy.rules {
                 if !rule.enabled {
                     continue;
                 }
-                
+
                 // Simple rule evaluation (in production, would use proper rule engine)
                 match rule.rule_type {
                     SecurityRuleType::NetworkAccess => {
@@ -288,12 +289,12 @@ impl SecurityManager {
                                 return Ok(true);
                             }
                         }
-                    },
+                    }
                     _ => continue,
                 }
             }
         }
-        
+
         // Default deny
         Ok(false)
     }

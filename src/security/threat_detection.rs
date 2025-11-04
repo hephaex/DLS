@@ -3,12 +3,12 @@ use crate::security::zero_trust::{SecurityEvent, SecuritySeverity};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 // IpAddr not currently used in this module
-use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
-use uuid::Uuid;
+use chrono::{DateTime, Duration, Utc};
 use dashmap::DashMap;
 use parking_lot::RwLock;
+use std::sync::Arc;
 use tokio::sync::mpsc;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ThreatSignature {
@@ -128,11 +128,11 @@ pub struct ThreatIntelligenceFeed {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum FeedType {
-    IoC,          // Indicators of Compromise
-    Reputation,   // IP/Domain reputation
-    Signatures,   // Detection signatures
-    Behavioral,   // Behavioral patterns
-    Malware,      // Malware samples
+    IoC,           // Indicators of Compromise
+    Reputation,    // IP/Domain reputation
+    Signatures,    // Detection signatures
+    Behavioral,    // Behavioral patterns
+    Malware,       // Malware samples
     Vulnerability, // Vulnerability data
 }
 
@@ -155,13 +155,13 @@ pub struct DetectionRule {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum RuleType {
-    Signature,    // Pattern-based detection
-    Behavioral,   // Behavioral anomaly detection
-    Statistical,  // Statistical anomaly detection
+    Signature,       // Pattern-based detection
+    Behavioral,      // Behavioral anomaly detection
+    Statistical,     // Statistical anomaly detection
     MachineLearning, // ML-based detection
-    Correlation,  // Event correlation
-    Threshold,    // Threshold-based
-    Custom,       // Custom logic
+    Correlation,     // Event correlation
+    Threshold,       // Threshold-based
+    Custom,          // Custom logic
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -434,7 +434,10 @@ pub struct MLPrediction {
 }
 
 impl ThreatDetectionEngine {
-    pub fn new(config: ThreatDetectionConfig, event_sender: mpsc::UnboundedSender<SecurityEvent>) -> Self {
+    pub fn new(
+        config: ThreatDetectionConfig,
+        event_sender: mpsc::UnboundedSender<SecurityEvent>,
+    ) -> Self {
         Self {
             config,
             signatures: Arc::new(DashMap::new()),
@@ -467,22 +470,22 @@ impl ThreatDetectionEngine {
         // Load default signatures and rules
         self.load_default_signatures().await?;
         self.load_default_rules().await?;
-        
+
         // Initialize anomaly detectors
         if self.config.anomaly_detection {
             self.initialize_anomaly_detectors().await?;
         }
-        
+
         // Start machine learning engine
         if self.config.machine_learning {
             self.start_ml_engine().await?;
         }
-        
+
         // Start threat intelligence feeds
         if self.config.threat_intelligence {
             self.start_intelligence_feeds().await?;
         }
-        
+
         // Start event correlation
         if self.config.correlation_analysis {
             self.start_event_correlation().await;
@@ -529,23 +532,21 @@ impl ThreatDetectionEngine {
     }
 
     async fn load_default_rules(&self) -> Result<()> {
-        let rules = vec![
-            DetectionRule {
-                rule_id: "RULE001".to_string(),
-                name: "High CPU Usage Anomaly".to_string(),
-                description: "Detects abnormally high CPU usage".to_string(),
-                rule_type: RuleType::Threshold,
-                logic: "cpu_usage > 90%".to_string(),
-                severity: SecuritySeverity::Medium,
-                enabled: true,
-                false_positive_rate: 0.1,
-                detection_rate: 0.85,
-                created_at: Utc::now(),
-                last_triggered: None,
-                trigger_count: 0,
-                tags: vec!["performance".to_string(), "anomaly".to_string()],
-            },
-        ];
+        let rules = vec![DetectionRule {
+            rule_id: "RULE001".to_string(),
+            name: "High CPU Usage Anomaly".to_string(),
+            description: "Detects abnormally high CPU usage".to_string(),
+            rule_type: RuleType::Threshold,
+            logic: "cpu_usage > 90%".to_string(),
+            severity: SecuritySeverity::Medium,
+            enabled: true,
+            false_positive_rate: 0.1,
+            detection_rate: 0.85,
+            created_at: Utc::now(),
+            last_triggered: None,
+            trigger_count: 0,
+            tags: vec!["performance".to_string(), "anomaly".to_string()],
+        }];
 
         for rule in rules {
             self.detection_rules.insert(rule.rule_id.clone(), rule);
@@ -596,16 +597,16 @@ impl ThreatDetectionEngine {
     async fn check_signatures(&self, event: &SecurityEvent) -> Result<Option<ThreatAlert>> {
         for signature_entry in self.signatures.iter() {
             let signature = signature_entry.value();
-            
+
             if !signature.active {
                 continue;
             }
 
             // Simple pattern matching (in production, would use proper regex engine)
-            if event.description.contains("malware") || 
-               event.description.contains("backdoor") || 
-               event.description.contains("trojan") {
-                
+            if event.description.contains("malware")
+                || event.description.contains("backdoor")
+                || event.description.contains("trojan")
+            {
                 return Ok(Some(ThreatAlert {
                     alert_id: Uuid::new_v4(),
                     alert_type: AlertType::SignatureMatch,
@@ -616,7 +617,10 @@ impl ThreatDetectionEngine {
                     source: "signature_engine".to_string(),
                     affected_assets: vec![format!("device_{:?}", event.device_id)],
                     indicators: vec![signature.id.clone()],
-                    recommendations: vec!["Investigate device".to_string(), "Check for malware".to_string()],
+                    recommendations: vec![
+                        "Investigate device".to_string(),
+                        "Check for malware".to_string(),
+                    ],
                     created_at: Utc::now(),
                     acknowledged: false,
                     resolved: false,
@@ -629,7 +633,10 @@ impl ThreatDetectionEngine {
         Ok(None)
     }
 
-    async fn check_threat_intelligence(&self, event: &SecurityEvent) -> Result<Option<ThreatAlert>> {
+    async fn check_threat_intelligence(
+        &self,
+        event: &SecurityEvent,
+    ) -> Result<Option<ThreatAlert>> {
         // Check if source IP is in threat intelligence
         if let Some(indicator) = self.threat_indicators.get(&event.source_ip.to_string()) {
             if indicator.active && indicator.confidence > 0.7 {
@@ -639,11 +646,17 @@ impl ThreatDetectionEngine {
                     severity: indicator.severity.clone(),
                     confidence: indicator.confidence,
                     title: "Threat Intelligence Match".to_string(),
-                    description: format!("Source IP {} matches threat intelligence", event.source_ip),
+                    description: format!(
+                        "Source IP {} matches threat intelligence",
+                        event.source_ip
+                    ),
                     source: "threat_intelligence".to_string(),
                     affected_assets: vec![format!("ip_{}", event.source_ip)],
                     indicators: vec![indicator.indicator_id.clone()],
-                    recommendations: vec!["Block IP address".to_string(), "Monitor related activity".to_string()],
+                    recommendations: vec![
+                        "Block IP address".to_string(),
+                        "Monitor related activity".to_string(),
+                    ],
                     created_at: Utc::now(),
                     acknowledged: false,
                     resolved: false,
@@ -669,36 +682,35 @@ impl ThreatDetectionEngine {
     async fn add_to_correlation_buffer(&self, event: SecurityEvent) {
         let mut buffer = self.event_correlator.event_buffer.write();
         buffer.push(event);
-        
+
         // Keep only recent events (last hour)
         let cutoff = Utc::now() - Duration::hours(1);
         buffer.retain(|e| e.timestamp > cutoff);
     }
 
     async fn initialize_anomaly_detectors(&self) -> Result<()> {
-        let detectors = vec![
-            AnomalyDetector {
-                detector_id: "AD001".to_string(),
-                detector_type: AnomalyType::TrafficVolume,
-                baseline: AnomalyBaseline {
-                    mean: 100.0,
-                    std_dev: 20.0,
-                    min_value: 0.0,
-                    max_value: 1000.0,
-                    sample_count: 1000,
-                    confidence_interval: (80.0, 120.0),
-                    last_calculated: Utc::now(),
-                },
-                current_window: Vec::new(),
-                detection_threshold: 3.0, // 3 standard deviations
-                learning_rate: 0.01,
-                last_updated: Utc::now(),
-                active: true,
+        let detectors = vec![AnomalyDetector {
+            detector_id: "AD001".to_string(),
+            detector_type: AnomalyType::TrafficVolume,
+            baseline: AnomalyBaseline {
+                mean: 100.0,
+                std_dev: 20.0,
+                min_value: 0.0,
+                max_value: 1000.0,
+                sample_count: 1000,
+                confidence_interval: (80.0, 120.0),
+                last_calculated: Utc::now(),
             },
-        ];
+            current_window: Vec::new(),
+            detection_threshold: 3.0, // 3 standard deviations
+            learning_rate: 0.01,
+            last_updated: Utc::now(),
+            active: true,
+        }];
 
         for detector in detectors {
-            self.anomaly_detectors.insert(detector.detector_id.clone(), detector);
+            self.anomaly_detectors
+                .insert(detector.detector_id.clone(), detector);
         }
 
         Ok(())
@@ -716,13 +728,13 @@ impl ThreatDetectionEngine {
 
     async fn start_event_correlation(&self) {
         let event_correlator = Arc::clone(&self.event_correlator);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::minutes(1).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Run correlation analysis
                 // TODO: Implement correlation logic
             }
@@ -733,13 +745,13 @@ impl ThreatDetectionEngine {
         hunt.hunt_id = Uuid::new_v4();
         hunt.status = HuntStatus::InProgress;
         hunt.started_at = Some(Utc::now());
-        
+
         let hunt_id = hunt.hunt_id;
         self.active_hunts.insert(hunt_id, hunt);
-        
+
         // Start hunt execution in background
         self.execute_hunt(hunt_id).await;
-        
+
         Ok(hunt_id)
     }
 
@@ -754,11 +766,11 @@ impl ThreatDetectionEngine {
         let alerts = self.alert_queue.read();
         let mut result = alerts.clone();
         result.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-        
+
         if let Some(limit) = limit {
             result.truncate(limit);
         }
-        
+
         result
     }
 
@@ -784,7 +796,8 @@ impl ThreatDetectionEngine {
     }
 
     pub async fn add_threat_indicator(&self, indicator: ThreatIndicator) -> Result<()> {
-        self.threat_indicators.insert(indicator.indicator_id.clone(), indicator);
+        self.threat_indicators
+            .insert(indicator.indicator_id.clone(), indicator);
         Ok(())
     }
 
@@ -794,6 +807,8 @@ impl ThreatDetectionEngine {
     }
 
     pub async fn get_hunt_status(&self, hunt_id: Uuid) -> Option<HuntStatus> {
-        self.active_hunts.get(&hunt_id).map(|hunt| hunt.status.clone())
+        self.active_hunts
+            .get(&hunt_id)
+            .map(|hunt| hunt.status.clone())
     }
 }

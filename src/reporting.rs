@@ -1,13 +1,13 @@
 use crate::error::Result;
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
-use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 use tokio::fs;
 use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ReportType {
@@ -34,16 +34,16 @@ pub enum ReportFormat {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ComplianceFramework {
-    SOX,        // Sarbanes-Oxley
-    HIPAA,      // Health Insurance Portability and Accountability Act
-    GDPR,       // General Data Protection Regulation
-    SOC2,       // Service Organization Control 2
-    ISO27001,   // Information Security Management
-    PciDss,     // Payment Card Industry Data Security Standard
-    FISMA,      // Federal Information Security Management Act
-    NIST,       // National Institute of Standards and Technology
-    CIS,        // Center for Internet Security
-    COBIT,      // Control Objectives for Information Technologies
+    SOX,      // Sarbanes-Oxley
+    HIPAA,    // Health Insurance Portability and Accountability Act
+    GDPR,     // General Data Protection Regulation
+    SOC2,     // Service Organization Control 2
+    ISO27001, // Information Security Management
+    PciDss,   // Payment Card Industry Data Security Standard
+    FISMA,    // Federal Information Security Management Act
+    NIST,     // National Institute of Standards and Technology
+    CIS,      // Center for Internet Security
+    COBIT,    // Control Objectives for Information Technologies
     Custom(String),
 }
 
@@ -307,21 +307,21 @@ impl ReportingEngine {
     pub async fn start(&self) -> Result<()> {
         // Create storage directory if it doesn't exist
         fs::create_dir_all(&self.config.storage_path).await?;
-        
+
         // Load existing reports
         self.load_existing_reports().await?;
-        
+
         // Load compliance requirements
         self.load_compliance_requirements().await?;
-        
+
         // Load report templates
         self.load_report_templates().await?;
-        
+
         // Start cleanup task
         if self.config.auto_cleanup_enabled {
             self.start_cleanup_task().await;
         }
-        
+
         Ok(())
     }
 
@@ -376,7 +376,9 @@ impl ReportingEngine {
                 framework: ComplianceFramework::SOX,
                 control_id: "302".to_string(),
                 title: "Corporate Responsibility for Financial Reports".to_string(),
-                description: "Principal executive and financial officers must certify financial reports".to_string(),
+                description:
+                    "Principal executive and financial officers must certify financial reports"
+                        .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Officer certifications".to_string(),
@@ -393,7 +395,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::SOX,
                 control_id: "404".to_string(),
                 title: "Management Assessment of Internal Controls".to_string(),
-                description: "Annual assessment of internal control over financial reporting".to_string(),
+                description: "Annual assessment of internal control over financial reporting"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Internal control documentation".to_string(),
@@ -421,7 +424,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::SOC2,
                 control_id: "CC1.0".to_string(),
                 title: "Control Environment".to_string(),
-                description: "The entity demonstrates a commitment to integrity and ethical values".to_string(),
+                description: "The entity demonstrates a commitment to integrity and ethical values"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Code of conduct".to_string(),
@@ -439,7 +443,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::SOC2,
                 control_id: "CC6.0".to_string(),
                 title: "Logical and Physical Access Controls".to_string(),
-                description: "The entity implements logical and physical access controls".to_string(),
+                description: "The entity implements logical and physical access controls"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Access control matrices".to_string(),
@@ -467,7 +472,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::ISO27001,
                 control_id: "A.5.1".to_string(),
                 title: "Information Security Policies".to_string(),
-                description: "A set of policies for information security shall be defined".to_string(),
+                description: "A set of policies for information security shall be defined"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Information security policy".to_string(),
@@ -485,7 +491,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::ISO27001,
                 control_id: "A.8.1".to_string(),
                 title: "Responsibility for Assets".to_string(),
-                description: "Assets shall be identified and responsibility for protection defined".to_string(),
+                description: "Assets shall be identified and responsibility for protection defined"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Asset inventory".to_string(),
@@ -513,7 +520,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::GDPR,
                 control_id: "Article 32".to_string(),
                 title: "Security of Processing".to_string(),
-                description: "Appropriate technical and organizational measures for data security".to_string(),
+                description: "Appropriate technical and organizational measures for data security"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Security measures documentation".to_string(),
@@ -531,7 +539,8 @@ impl ReportingEngine {
                 framework: ComplianceFramework::GDPR,
                 control_id: "Article 33".to_string(),
                 title: "Notification of Data Breach".to_string(),
-                description: "Data breach notification to supervisory authority within 72 hours".to_string(),
+                description: "Data breach notification to supervisory authority within 72 hours"
+                    .to_string(),
                 implementation_status: ComplianceStatus::NotImplemented,
                 evidence_required: vec![
                     "Breach response procedures".to_string(),
@@ -616,24 +625,24 @@ impl ReportingEngine {
     async fn start_cleanup_task(&self) {
         let config = self.config.clone();
         let reports = Arc::clone(&self.reports);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::hours(24).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Clean up expired reports
                 let cutoff_date = Utc::now() - Duration::days(config.max_report_age_days as i64);
                 let mut to_remove = Vec::new();
-                
+
                 for entry in reports.iter() {
                     let report = entry.value();
                     if report.retention_until < cutoff_date {
                         to_remove.push(*entry.key());
                     }
                 }
-                
+
                 for report_id in to_remove {
                     if let Some((_, report)) = reports.remove(&report_id) {
                         if let Some(file_path) = report.file_path {
@@ -650,10 +659,10 @@ impl ReportingEngine {
         report.created_at = Utc::now();
         report.updated_at = Utc::now();
         report.status = ReportStatus::Pending;
-        
+
         let report_id = report.id;
         self.reports.insert(report_id, report);
-        
+
         Ok(report_id)
     }
 
@@ -662,64 +671,67 @@ impl ReportingEngine {
         if self.active_generators.contains_key(&report_id) {
             return Err(crate::error::DlsError::ReportGenerationInProgress);
         }
-        
+
         let reports = Arc::clone(&self.reports);
         let config = self.config.clone();
         let audit_trails = Arc::clone(&self.audit_trails);
         let compliance_requirements = Arc::clone(&self.compliance_requirements);
-        
+
         let handle = tokio::spawn(async move {
             if let Some(mut report) = reports.get_mut(&report_id) {
                 report.status = ReportStatus::InProgress;
                 report.updated_at = Utc::now();
-                
+
                 let result = match report.report_type {
                     ReportType::ComplianceAudit => {
-                        Self::generate_compliance_report(&*report, &config, &compliance_requirements).await
-                    },
+                        Self::generate_compliance_report(
+                            &*report,
+                            &config,
+                            &compliance_requirements,
+                        )
+                        .await
+                    }
                     ReportType::SecurityAssessment => {
                         Self::generate_security_report(&*report, &config, &audit_trails).await
-                    },
+                    }
                     ReportType::PerformanceAnalysis => {
                         Self::generate_performance_report(&*report, &config).await
-                    },
+                    }
                     ReportType::UsageStatistics => {
                         Self::generate_usage_report(&*report, &config, &audit_trails).await
-                    },
+                    }
                     ReportType::IncidentReport => {
                         Self::generate_incident_report(&*report, &config, &audit_trails).await
-                    },
+                    }
                     ReportType::SystemHealth => {
                         Self::generate_health_report(&*report, &config).await
-                    },
+                    }
                     ReportType::AccessControl => {
                         Self::generate_access_report(&*report, &config, &audit_trails).await
-                    },
+                    }
                     ReportType::DataRetention => {
                         Self::generate_retention_report(&*report, &config).await
-                    },
-                    ReportType::Custom(_) => {
-                        Self::generate_custom_report(&*report, &config).await
-                    },
+                    }
+                    ReportType::Custom(_) => Self::generate_custom_report(&*report, &config).await,
                 };
-                
+
                 match result {
                     Ok(file_path) => {
                         report.status = ReportStatus::Completed;
                         report.generated_at = Some(Utc::now());
                         report.file_path = Some(file_path);
                         report.updated_at = Utc::now();
-                    },
+                    }
                     Err(_) => {
                         report.status = ReportStatus::Failed;
                         report.updated_at = Utc::now();
                     }
                 }
             }
-            
+
             Ok(())
         });
-        
+
         self.active_generators.insert(report_id, handle);
         Ok(())
     }
@@ -729,33 +741,41 @@ impl ReportingEngine {
         config: &ReportingConfig,
         compliance_requirements: &Arc<DashMap<String, ComplianceRequirement>>,
     ) -> Result<String> {
-        let framework = report.parameters.compliance_framework.as_ref()
+        let framework = report
+            .parameters
+            .compliance_framework
+            .as_ref()
             .unwrap_or(&ComplianceFramework::SOC2);
-        
+
         // Collect relevant requirements
         let requirements: Vec<ComplianceRequirement> = compliance_requirements
             .iter()
             .filter(|req| &req.value().framework == framework)
             .map(|req| req.value().clone())
             .collect();
-        
+
         let total_controls = requirements.len();
-        let compliant_controls = requirements.iter()
+        let compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::FullyCompliant)
             .count();
-        let non_compliant_controls = requirements.iter()
+        let non_compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::NonCompliant)
             .count();
-        let partially_compliant_controls = requirements.iter()
+        let partially_compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::PartiallyCompliant)
             .count();
-        
+
         let overall_score = if total_controls > 0 {
-            (compliant_controls as f64 + partially_compliant_controls as f64 * 0.5) / total_controls as f64 * 100.0
+            (compliant_controls as f64 + partially_compliant_controls as f64 * 0.5)
+                / total_controls as f64
+                * 100.0
         } else {
             0.0
         };
-        
+
         let compliance_report = ComplianceReport {
             framework: framework.clone(),
             assessment_date: Utc::now(),
@@ -773,7 +793,7 @@ impl ReportingEngine {
             ),
             next_assessment_date: Utc::now() + Duration::days(90),
         };
-        
+
         // Generate report file
         let file_path = format!(
             "{}/compliance_{}_{}.{}",
@@ -787,21 +807,22 @@ impl ReportingEngine {
                 _ => "txt",
             }
         );
-        
+
         let report_content = match report.format {
             ReportFormat::JSON => serde_json::to_string_pretty(&compliance_report)?,
             ReportFormat::HTML => Self::generate_html_compliance_report(&compliance_report)?,
             _ => Self::generate_text_compliance_report(&compliance_report)?,
         };
-        
+
         let mut file = fs::File::create(&file_path).await?;
         file.write_all(report_content.as_bytes()).await?;
-        
+
         Ok(file_path)
     }
 
     pub fn generate_html_compliance_report(report: &ComplianceReport) -> Result<String> {
-        let html = format!(r#"
+        let html = format!(
+            r#"
 <!DOCTYPE html>
 <html>
 <head>
@@ -863,7 +884,13 @@ impl ReportingEngine {
 </html>
 "#,
             report.framework,
-            if report.overall_score >= 80.0 { "#4CAF50" } else if report.overall_score >= 60.0 { "#FF9800" } else { "#F44336" },
+            if report.overall_score >= 80.0 {
+                "#4CAF50"
+            } else if report.overall_score >= 60.0 {
+                "#FF9800"
+            } else {
+                "#F44336"
+            },
             report.framework,
             report.assessment_date.format("%Y-%m-%d %H:%M:%S UTC"),
             report.overall_score,
@@ -872,14 +899,18 @@ impl ReportingEngine {
             report.partially_compliant_controls,
             report.non_compliant_controls,
             report.executive_summary,
-            report.requirements.iter().map(|req| {
-                let status_class = match req.implementation_status {
-                    ComplianceStatus::FullyCompliant => "status-compliant",
-                    ComplianceStatus::PartiallyCompliant => "status-partial", 
-                    ComplianceStatus::NonCompliant => "status-noncompliant",
-                    _ => "status-not-implemented",
-                };
-                format!(r#"
+            report
+                .requirements
+                .iter()
+                .map(|req| {
+                    let status_class = match req.implementation_status {
+                        ComplianceStatus::FullyCompliant => "status-compliant",
+                        ComplianceStatus::PartiallyCompliant => "status-partial",
+                        ComplianceStatus::NonCompliant => "status-noncompliant",
+                        _ => "status-not-implemented",
+                    };
+                    format!(
+                        r#"
                 <div class="requirement {}">
                     <h4>{} - {}</h4>
                     <p><strong>Status:</strong> {:?}</p>
@@ -888,17 +919,19 @@ impl ReportingEngine {
                     <p><strong>Responsible Party:</strong> {}</p>
                     <p><strong>Evidence Required:</strong> {}</p>
                 </div>
-                "#, 
-                    status_class,
-                    req.control_id,
-                    req.title,
-                    req.implementation_status,
-                    req.risk_level,
-                    req.description,
-                    req.responsible_party,
-                    req.evidence_required.join(", ")
-                )
-            }).collect::<Vec<String>>().join(""),
+                "#,
+                        status_class,
+                        req.control_id,
+                        req.title,
+                        req.implementation_status,
+                        req.risk_level,
+                        req.description,
+                        req.responsible_party,
+                        req.evidence_required.join(", ")
+                    )
+                })
+                .collect::<Vec<String>>()
+                .join(""),
             report.next_assessment_date.format("%Y-%m-%d"),
             Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
         );
@@ -909,17 +942,29 @@ impl ReportingEngine {
         let mut content = String::new();
         content.push_str(&format!("COMPLIANCE ASSESSMENT REPORT\n"));
         content.push_str(&format!("Framework: {:?}\n", report.framework));
-        content.push_str(&format!("Assessment Date: {}\n", report.assessment_date.format("%Y-%m-%d %H:%M:%S UTC")));
+        content.push_str(&format!(
+            "Assessment Date: {}\n",
+            report.assessment_date.format("%Y-%m-%d %H:%M:%S UTC")
+        ));
         content.push_str(&format!("Overall Score: {:.1}%\n\n", report.overall_score));
-        
+
         content.push_str(&format!("SUMMARY\n"));
         content.push_str(&format!("Total Controls: {}\n", report.total_controls));
         content.push_str(&format!("Compliant: {}\n", report.compliant_controls));
-        content.push_str(&format!("Partially Compliant: {}\n", report.partially_compliant_controls));
-        content.push_str(&format!("Non-Compliant: {}\n\n", report.non_compliant_controls));
-        
-        content.push_str(&format!("EXECUTIVE SUMMARY\n{}\n\n", report.executive_summary));
-        
+        content.push_str(&format!(
+            "Partially Compliant: {}\n",
+            report.partially_compliant_controls
+        ));
+        content.push_str(&format!(
+            "Non-Compliant: {}\n\n",
+            report.non_compliant_controls
+        ));
+
+        content.push_str(&format!(
+            "EXECUTIVE SUMMARY\n{}\n\n",
+            report.executive_summary
+        ));
+
         content.push_str(&format!("REQUIREMENTS\n"));
         for req in &report.requirements {
             content.push_str(&format!("- {} - {}\n", req.control_id, req.title));
@@ -928,9 +973,12 @@ impl ReportingEngine {
             content.push_str(&format!("  Responsible: {}\n", req.responsible_party));
             content.push_str(&format!("  Description: {}\n\n", req.description));
         }
-        
-        content.push_str(&format!("Next Assessment: {}\n", report.next_assessment_date.format("%Y-%m-%d")));
-        
+
+        content.push_str(&format!(
+            "Next Assessment: {}\n",
+            report.next_assessment_date.format("%Y-%m-%d")
+        ));
+
         Ok(content)
     }
 
@@ -941,14 +989,19 @@ impl ReportingEngine {
     ) -> Result<String> {
         let file_path = format!("{}/security_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Security assessment report - Implementation pending").await?;
+        file.write_all(b"Security assessment report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
-    async fn generate_performance_report(_report: &Report, config: &ReportingConfig) -> Result<String> {
+    async fn generate_performance_report(
+        _report: &Report,
+        config: &ReportingConfig,
+    ) -> Result<String> {
         let file_path = format!("{}/performance_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Performance analysis report - Implementation pending").await?;
+        file.write_all(b"Performance analysis report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
@@ -959,7 +1012,8 @@ impl ReportingEngine {
     ) -> Result<String> {
         let file_path = format!("{}/usage_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Usage statistics report - Implementation pending").await?;
+        file.write_all(b"Usage statistics report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
@@ -970,14 +1024,16 @@ impl ReportingEngine {
     ) -> Result<String> {
         let file_path = format!("{}/incident_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Incident report - Implementation pending").await?;
+        file.write_all(b"Incident report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
     async fn generate_health_report(_report: &Report, config: &ReportingConfig) -> Result<String> {
         let file_path = format!("{}/health_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"System health report - Implementation pending").await?;
+        file.write_all(b"System health report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
@@ -988,21 +1044,27 @@ impl ReportingEngine {
     ) -> Result<String> {
         let file_path = format!("{}/access_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Access control report - Implementation pending").await?;
+        file.write_all(b"Access control report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
-    async fn generate_retention_report(_report: &Report, config: &ReportingConfig) -> Result<String> {
+    async fn generate_retention_report(
+        _report: &Report,
+        config: &ReportingConfig,
+    ) -> Result<String> {
         let file_path = format!("{}/retention_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Data retention report - Implementation pending").await?;
+        file.write_all(b"Data retention report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
     async fn generate_custom_report(_report: &Report, config: &ReportingConfig) -> Result<String> {
         let file_path = format!("{}/custom_report_placeholder.txt", config.storage_path);
         let mut file = fs::File::create(&file_path).await?;
-        file.write_all(b"Custom report - Implementation pending").await?;
+        file.write_all(b"Custom report - Implementation pending")
+            .await?;
         Ok(file_path)
     }
 
@@ -1013,9 +1075,7 @@ impl ReportingEngine {
     pub async fn list_reports(&self, tenant_id: Option<Uuid>) -> Vec<Report> {
         self.reports
             .iter()
-            .filter(|entry| {
-                tenant_id.is_none() || entry.value().tenant_id == tenant_id
-            })
+            .filter(|entry| tenant_id.is_none() || entry.value().tenant_id == tenant_id)
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -1032,15 +1092,15 @@ impl ReportingEngine {
     pub async fn record_audit_event(&self, mut audit_event: AuditTrail) -> Result<()> {
         audit_event.id = Uuid::new_v4();
         audit_event.timestamp = Utc::now();
-        
+
         let mut trails = self.audit_trails.write();
         trails.push(audit_event);
-        
+
         // Keep audit trail size manageable
         if trails.len() > 100000 {
             trails.drain(0..10000);
         }
-        
+
         Ok(())
     }
 
@@ -1059,19 +1119,19 @@ impl ReportingEngine {
                         return false;
                     }
                 }
-                
+
                 if let Some(tenant) = tenant_id {
                     if trail.tenant_id != Some(tenant) {
                         return false;
                     }
                 }
-                
+
                 if let Some(types) = &event_types {
                     if !types.contains(&trail.event_type) {
                         return false;
                     }
                 }
-                
+
                 true
             })
             .cloned()
@@ -1079,29 +1139,35 @@ impl ReportingEngine {
     }
 
     pub async fn get_compliance_status(&self, framework: ComplianceFramework) -> ComplianceReport {
-        let requirements: Vec<ComplianceRequirement> = self.compliance_requirements
+        let requirements: Vec<ComplianceRequirement> = self
+            .compliance_requirements
             .iter()
             .filter(|req| req.value().framework == framework)
             .map(|req| req.value().clone())
             .collect();
-        
+
         let total_controls = requirements.len();
-        let compliant_controls = requirements.iter()
+        let compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::FullyCompliant)
             .count();
-        let non_compliant_controls = requirements.iter()
+        let non_compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::NonCompliant)
             .count();
-        let partially_compliant_controls = requirements.iter()
+        let partially_compliant_controls = requirements
+            .iter()
             .filter(|req| req.implementation_status == ComplianceStatus::PartiallyCompliant)
             .count();
-        
+
         let overall_score = if total_controls > 0 {
-            (compliant_controls as f64 + partially_compliant_controls as f64 * 0.5) / total_controls as f64 * 100.0
+            (compliant_controls as f64 + partially_compliant_controls as f64 * 0.5)
+                / total_controls as f64
+                * 100.0
         } else {
             0.0
         };
-        
+
         ComplianceReport {
             framework,
             assessment_date: Utc::now(),
@@ -1121,8 +1187,12 @@ impl ReportingEngine {
         }
     }
 
-    pub async fn update_compliance_requirement(&self, requirement: ComplianceRequirement) -> Result<()> {
-        self.compliance_requirements.insert(requirement.id.clone(), requirement);
+    pub async fn update_compliance_requirement(
+        &self,
+        requirement: ComplianceRequirement,
+    ) -> Result<()> {
+        self.compliance_requirements
+            .insert(requirement.id.clone(), requirement);
         Ok(())
     }
 }
@@ -1143,7 +1213,7 @@ mod tests {
     async fn test_create_report() {
         let config = ReportingConfig::default();
         let engine = ReportingEngine::new(config);
-        
+
         let report = Report {
             id: Uuid::new_v4(),
             report_type: ReportType::ComplianceAudit,
@@ -1174,7 +1244,7 @@ mod tests {
             retention_until: Utc::now() + Duration::days(365),
             tags: vec!["test".to_string()],
         };
-        
+
         let report_id = engine.create_report(report).await.unwrap();
         assert!(engine.reports.contains_key(&report_id));
     }
@@ -1184,11 +1254,13 @@ mod tests {
         let config = ReportingConfig::default();
         let engine = ReportingEngine::new(config);
         engine.load_compliance_requirements().await.unwrap();
-        
+
         assert!(!engine.compliance_requirements.is_empty());
         assert!(engine.compliance_requirements.contains_key("SOX-302"));
         assert!(engine.compliance_requirements.contains_key("SOC2-CC1.0"));
-        assert!(engine.compliance_requirements.contains_key("ISO27001-A.5.1"));
+        assert!(engine
+            .compliance_requirements
+            .contains_key("ISO27001-A.5.1"));
         assert!(engine.compliance_requirements.contains_key("GDPR-Art.32"));
     }
 
@@ -1196,7 +1268,7 @@ mod tests {
     async fn test_audit_trail_recording() {
         let config = ReportingConfig::default();
         let engine = ReportingEngine::new(config);
-        
+
         let audit_event = AuditTrail {
             id: Uuid::new_v4(),
             event_type: AuditEventType::Authentication,
@@ -1212,9 +1284,9 @@ mod tests {
             outcome: AuditOutcome::Success,
             risk_score: Some(0.1),
         };
-        
+
         engine.record_audit_event(audit_event).await.unwrap();
-        
+
         let trails = engine.audit_trails.read();
         assert_eq!(trails.len(), 1);
         assert_eq!(trails[0].action, "login");
@@ -1225,8 +1297,10 @@ mod tests {
         let config = ReportingConfig::default();
         let engine = ReportingEngine::new(config);
         engine.load_compliance_requirements().await.unwrap();
-        
-        let status = engine.get_compliance_status(ComplianceFramework::SOC2).await;
+
+        let status = engine
+            .get_compliance_status(ComplianceFramework::SOC2)
+            .await;
         assert_eq!(status.framework, ComplianceFramework::SOC2);
         assert!(status.total_controls > 0);
     }
@@ -1247,7 +1321,7 @@ mod tests {
             executive_summary: "Test summary".to_string(),
             next_assessment_date: Utc::now() + Duration::days(90),
         };
-        
+
         let html = ReportingEngine::generate_html_compliance_report(&report).unwrap();
         assert!(html.contains("Compliance Assessment Report"));
         assert!(html.contains("75.5%"));
@@ -1259,7 +1333,7 @@ mod tests {
         let config = ReportingConfig::default();
         let engine = ReportingEngine::new(config);
         engine.load_report_templates().await.unwrap();
-        
+
         assert!(!engine.templates.is_empty());
         assert!(engine.templates.contains_key("compliance_audit"));
         assert!(engine.templates.contains_key("security_assessment"));

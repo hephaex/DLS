@@ -1,12 +1,12 @@
 use crate::error::Result;
+use chrono::{DateTime, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
-use dashmap::DashMap;
-use parking_lot::RwLock;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -180,7 +180,9 @@ impl Tenant {
         self.status = TenantStatus::Suspended;
         self.updated_at = Utc::now();
         if let Some(reason) = reason {
-            self.metadata.custom_fields.insert("suspension_reason".to_string(), reason);
+            self.metadata
+                .custom_fields
+                .insert("suspension_reason".to_string(), reason);
         }
         Ok(())
     }
@@ -247,28 +249,40 @@ impl ResourceUsage {
         let mut violations = Vec::new();
 
         if self.active_clients > quota.max_clients {
-            violations.push(format!("Active clients ({}) exceeds limit ({})", 
-                self.active_clients, quota.max_clients));
+            violations.push(format!(
+                "Active clients ({}) exceeds limit ({})",
+                self.active_clients, quota.max_clients
+            ));
         }
         if self.storage_used_gb > quota.max_storage_gb {
-            violations.push(format!("Storage usage ({} GB) exceeds limit ({} GB)", 
-                self.storage_used_gb, quota.max_storage_gb));
+            violations.push(format!(
+                "Storage usage ({} GB) exceeds limit ({} GB)",
+                self.storage_used_gb, quota.max_storage_gb
+            ));
         }
         if self.bandwidth_used_mbps > quota.max_bandwidth_mbps {
-            violations.push(format!("Bandwidth usage ({} Mbps) exceeds limit ({} Mbps)", 
-                self.bandwidth_used_mbps, quota.max_bandwidth_mbps));
+            violations.push(format!(
+                "Bandwidth usage ({} Mbps) exceeds limit ({} Mbps)",
+                self.bandwidth_used_mbps, quota.max_bandwidth_mbps
+            ));
         }
         if self.memory_used_gb > quota.max_memory_gb {
-            violations.push(format!("Memory usage ({} GB) exceeds limit ({} GB)", 
-                self.memory_used_gb, quota.max_memory_gb));
+            violations.push(format!(
+                "Memory usage ({} GB) exceeds limit ({} GB)",
+                self.memory_used_gb, quota.max_memory_gb
+            ));
         }
         if self.concurrent_sessions > quota.max_concurrent_sessions {
-            violations.push(format!("Concurrent sessions ({}) exceeds limit ({})", 
-                self.concurrent_sessions, quota.max_concurrent_sessions));
+            violations.push(format!(
+                "Concurrent sessions ({}) exceeds limit ({})",
+                self.concurrent_sessions, quota.max_concurrent_sessions
+            ));
         }
         if self.boot_images_count > quota.max_boot_images {
-            violations.push(format!("Boot images ({}) exceeds limit ({})", 
-                self.boot_images_count, quota.max_boot_images));
+            violations.push(format!(
+                "Boot images ({}) exceeds limit ({})",
+                self.boot_images_count, quota.max_boot_images
+            ));
         }
 
         violations
@@ -277,15 +291,41 @@ impl ResourceUsage {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum TenantEvent {
-    Created { tenant_id: Uuid, name: String },
-    Activated { tenant_id: Uuid },
-    Suspended { tenant_id: Uuid, reason: Option<String> },
-    Updated { tenant_id: Uuid, fields: Vec<String> },
-    QuotaExceeded { tenant_id: Uuid, violations: Vec<String> },
-    ClientConnected { tenant_id: Uuid, client_ip: IpAddr },
-    ClientDisconnected { tenant_id: Uuid, client_ip: IpAddr },
-    ResourceLimitReached { tenant_id: Uuid, resource: String },
-    SecurityViolation { tenant_id: Uuid, violation: String },
+    Created {
+        tenant_id: Uuid,
+        name: String,
+    },
+    Activated {
+        tenant_id: Uuid,
+    },
+    Suspended {
+        tenant_id: Uuid,
+        reason: Option<String>,
+    },
+    Updated {
+        tenant_id: Uuid,
+        fields: Vec<String>,
+    },
+    QuotaExceeded {
+        tenant_id: Uuid,
+        violations: Vec<String>,
+    },
+    ClientConnected {
+        tenant_id: Uuid,
+        client_ip: IpAddr,
+    },
+    ClientDisconnected {
+        tenant_id: Uuid,
+        client_ip: IpAddr,
+    },
+    ResourceLimitReached {
+        tenant_id: Uuid,
+        resource: String,
+    },
+    SecurityViolation {
+        tenant_id: Uuid,
+        violation: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -364,9 +404,10 @@ impl TenantManager {
     ) -> Result<Uuid> {
         // Validate namespace uniqueness
         if self.tenant_by_namespace.contains_key(&namespace) {
-            return Err(crate::error::DlsError::Validation(
-                format!("Namespace '{}' already exists", namespace)
-            ));
+            return Err(crate::error::DlsError::Validation(format!(
+                "Namespace '{}' already exists",
+                namespace
+            )));
         }
 
         let tenant = Tenant::new(name.clone(), namespace.clone(), metadata);
@@ -390,26 +431,32 @@ impl TenantManager {
     pub async fn activate_tenant(&self, tenant_id: Uuid) -> Result<()> {
         if let Some(mut tenant) = self.tenants.get_mut(&tenant_id) {
             tenant.activate()?;
-            
+
             let event = TenantEvent::Activated { tenant_id };
             self.log_event(tenant_id, event).await;
-            
+
             Ok(())
         } else {
-            Err(crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id)))
+            Err(crate::error::Error::NotFound(format!(
+                "Tenant {} not found",
+                tenant_id
+            )))
         }
     }
 
     pub async fn suspend_tenant(&self, tenant_id: Uuid, reason: Option<String>) -> Result<()> {
         if let Some(mut tenant) = self.tenants.get_mut(&tenant_id) {
             tenant.suspend(reason.clone())?;
-            
+
             let event = TenantEvent::Suspended { tenant_id, reason };
             self.log_event(tenant_id, event).await;
-            
+
             Ok(())
         } else {
-            Err(crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id)))
+            Err(crate::error::Error::NotFound(format!(
+                "Tenant {} not found",
+                tenant_id
+            )))
         }
     }
 
@@ -425,7 +472,10 @@ impl TenantManager {
     }
 
     pub fn list_tenants(&self) -> Vec<Tenant> {
-        self.tenants.iter().map(|entry| entry.value().clone()).collect()
+        self.tenants
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect()
     }
 
     pub fn list_active_tenants(&self) -> Vec<Tenant> {
@@ -442,24 +492,23 @@ impl TenantManager {
             .collect()
     }
 
-    pub async fn update_tenant_quota(
-        &self,
-        tenant_id: Uuid,
-        quota: ResourceQuota,
-    ) -> Result<()> {
+    pub async fn update_tenant_quota(&self, tenant_id: Uuid, quota: ResourceQuota) -> Result<()> {
         if let Some(mut tenant) = self.tenants.get_mut(&tenant_id) {
             tenant.resource_quota = quota;
             tenant.updated_at = Utc::now();
-            
-            let event = TenantEvent::Updated { 
-                tenant_id, 
-                fields: vec!["resource_quota".to_string()] 
+
+            let event = TenantEvent::Updated {
+                tenant_id,
+                fields: vec!["resource_quota".to_string()],
             };
             self.log_event(tenant_id, event).await;
-            
+
             Ok(())
         } else {
-            Err(crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id)))
+            Err(crate::error::Error::NotFound(format!(
+                "Tenant {} not found",
+                tenant_id
+            )))
         }
     }
 
@@ -469,20 +518,23 @@ impl TenantManager {
         tenant_id: Uuid,
     ) -> Result<()> {
         // Verify tenant exists and is active
-        let tenant = self.get_tenant(&tenant_id)
-            .ok_or_else(|| crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id)))?;
+        let tenant = self.get_tenant(&tenant_id).ok_or_else(|| {
+            crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id))
+        })?;
 
         if !tenant.is_active() {
-            return Err(crate::error::DlsError::Validation(
-                format!("Tenant {} is not active", tenant_id)
-            ));
+            return Err(crate::error::DlsError::Validation(format!(
+                "Tenant {} is not active",
+                tenant_id
+            )));
         }
 
         // Check if client IP is allowed
         if !self.is_client_ip_allowed(&client_ip, &tenant).await? {
-            return Err(crate::error::Error::AccessDenied(
-                format!("Client IP {} not allowed for tenant {}", client_ip, tenant_id)
-            ));
+            return Err(crate::error::Error::AccessDenied(format!(
+                "Client IP {} not allowed for tenant {}",
+                client_ip, tenant_id
+            )));
         }
 
         // Update active client count
@@ -493,7 +545,10 @@ impl TenantManager {
             // Check quota limits
             let violations = usage.is_quota_exceeded(&tenant.resource_quota);
             if !violations.is_empty() {
-                let event = TenantEvent::QuotaExceeded { tenant_id, violations };
+                let event = TenantEvent::QuotaExceeded {
+                    tenant_id,
+                    violations,
+                };
                 self.log_event(tenant_id, event).await;
             }
         }
@@ -501,7 +556,10 @@ impl TenantManager {
         // Register connection
         self.client_connections.insert(client_ip, tenant_id);
 
-        let event = TenantEvent::ClientConnected { tenant_id, client_ip };
+        let event = TenantEvent::ClientConnected {
+            tenant_id,
+            client_ip,
+        };
         self.log_event(tenant_id, event).await;
 
         Ok(())
@@ -517,7 +575,10 @@ impl TenantManager {
                 usage.last_updated = Utc::now();
             }
 
-            let event = TenantEvent::ClientDisconnected { tenant_id, client_ip };
+            let event = TenantEvent::ClientDisconnected {
+                tenant_id,
+                client_ip,
+            };
             self.log_event(tenant_id, event).await;
         }
 
@@ -525,11 +586,15 @@ impl TenantManager {
     }
 
     pub fn get_tenant_for_client(&self, client_ip: &IpAddr) -> Option<Uuid> {
-        self.client_connections.get(client_ip).map(|entry| *entry.value())
+        self.client_connections
+            .get(client_ip)
+            .map(|entry| *entry.value())
     }
 
     pub fn get_resource_usage(&self, tenant_id: &Uuid) -> Option<ResourceUsage> {
-        self.resource_usage.get(tenant_id).map(|usage| usage.clone())
+        self.resource_usage
+            .get(tenant_id)
+            .map(|usage| usage.clone())
     }
 
     pub async fn update_resource_usage(
@@ -545,7 +610,10 @@ impl TenantManager {
             if let Some(tenant) = self.get_tenant(&tenant_id) {
                 let violations = usage.is_quota_exceeded(&tenant.resource_quota);
                 if !violations.is_empty() {
-                    let event = TenantEvent::QuotaExceeded { tenant_id, violations };
+                    let event = TenantEvent::QuotaExceeded {
+                        tenant_id,
+                        violations,
+                    };
                     self.log_event(tenant_id, event).await;
                 }
             }
@@ -562,13 +630,15 @@ impl TenantManager {
         metadata: TenantMetadata,
     ) -> Result<Uuid> {
         // Verify parent exists and is active
-        let parent = self.get_tenant(&parent_id)
-            .ok_or_else(|| crate::error::Error::NotFound(format!("Parent tenant {} not found", parent_id)))?;
+        let parent = self.get_tenant(&parent_id).ok_or_else(|| {
+            crate::error::Error::NotFound(format!("Parent tenant {} not found", parent_id))
+        })?;
 
         if !parent.is_active() {
-            return Err(crate::error::DlsError::Validation(
-                format!("Parent tenant {} is not active", parent_id)
-            ));
+            return Err(crate::error::DlsError::Validation(format!(
+                "Parent tenant {} is not active",
+                parent_id
+            )));
         }
 
         // Create child tenant
@@ -588,14 +658,16 @@ impl TenantManager {
 
     pub async fn delete_tenant(&self, tenant_id: Uuid) -> Result<()> {
         // Check if tenant has active connections
-        let has_connections = self.client_connections
+        let has_connections = self
+            .client_connections
             .iter()
             .any(|entry| *entry.value() == tenant_id);
 
         if has_connections {
-            return Err(crate::error::DlsError::Validation(
-                format!("Cannot delete tenant {} with active connections", tenant_id)
-            ));
+            return Err(crate::error::DlsError::Validation(format!(
+                "Cannot delete tenant {} with active connections",
+                tenant_id
+            )));
         }
 
         // Remove from parent if this is a child tenant
@@ -618,7 +690,11 @@ impl TenantManager {
         Ok(())
     }
 
-    pub async fn get_audit_logs(&self, tenant_id: Option<Uuid>, limit: Option<usize>) -> Vec<AuditLog> {
+    pub async fn get_audit_logs(
+        &self,
+        tenant_id: Option<Uuid>,
+        limit: Option<usize>,
+    ) -> Vec<AuditLog> {
         let logs = self.audit_logs.read();
         let filtered: Vec<AuditLog> = logs
             .iter()
@@ -673,15 +749,13 @@ impl TenantManager {
                 return Ok(false);
             }
 
-            let network_ip: IpAddr = parts[0].parse()
-                .map_err(|_| crate::error::DlsError::Validation(
-                    format!("Invalid network IP: {}", parts[0])
-                ))?;
+            let network_ip: IpAddr = parts[0].parse().map_err(|_| {
+                crate::error::DlsError::Validation(format!("Invalid network IP: {}", parts[0]))
+            })?;
 
-            let prefix_len: u8 = parts[1].parse()
-                .map_err(|_| crate::error::DlsError::Validation(
-                    format!("Invalid prefix length: {}", parts[1])
-                ))?;
+            let prefix_len: u8 = parts[1].parse().map_err(|_| {
+                crate::error::DlsError::Validation(format!("Invalid prefix length: {}", parts[1]))
+            })?;
 
             // Basic CIDR matching (simplified)
             match (ip, network_ip) {
@@ -699,10 +773,9 @@ impl TenantManager {
             }
         } else {
             // Exact IP match
-            let allowed_ip: IpAddr = range.parse()
-                .map_err(|_| crate::error::DlsError::Validation(
-                    format!("Invalid IP address: {}", range)
-                ))?;
+            let allowed_ip: IpAddr = range.parse().map_err(|_| {
+                crate::error::DlsError::Validation(format!("Invalid IP address: {}", range))
+            })?;
             Ok(*ip == allowed_ip)
         }
     }
@@ -715,7 +788,9 @@ impl TenantManager {
             let tenant = entry.value();
             if let Some(last_activity) = tenant.last_activity {
                 let inactive_duration = now.signed_duration_since(last_activity);
-                if inactive_duration.num_minutes() > tenant.security_policy.session_timeout_minutes as i64 {
+                if inactive_duration.num_minutes()
+                    > tenant.security_policy.session_timeout_minutes as i64
+                {
                     expired_sessions.push(tenant.id);
                 }
             }
@@ -777,7 +852,11 @@ mod tests {
         };
 
         let tenant_id = manager
-            .create_tenant("Test Tenant".to_string(), "test-tenant".to_string(), metadata)
+            .create_tenant(
+                "Test Tenant".to_string(),
+                "test-tenant".to_string(),
+                metadata,
+            )
             .await
             .unwrap();
 
@@ -803,7 +882,7 @@ mod tests {
             .unwrap();
 
         manager.activate_tenant(tenant_id).await.unwrap();
-        
+
         let tenant = manager.get_tenant(&tenant_id).unwrap();
         assert!(tenant.is_active());
     }

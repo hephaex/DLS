@@ -1,12 +1,12 @@
 use crate::error::Result;
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
-use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 use tokio::fs;
+use uuid::Uuid;
 // Note: AsyncWriteExt import removed as it's currently unused
 use tokio::process::Command;
 
@@ -32,22 +32,22 @@ pub enum BackupStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum RecoveryPointObjective {
-    RealTime,     // < 1 minute
-    Immediate,    // < 5 minutes
-    Quick,        // < 15 minutes
-    Standard,     // < 1 hour
-    Extended,     // < 4 hours
-    Daily,        // < 24 hours
+    RealTime,  // < 1 minute
+    Immediate, // < 5 minutes
+    Quick,     // < 15 minutes
+    Standard,  // < 1 hour
+    Extended,  // < 4 hours
+    Daily,     // < 24 hours
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum RecoveryTimeObjective {
-    Instant,      // < 1 minute
-    Critical,     // < 5 minutes
-    Important,    // < 30 minutes
-    Standard,     // < 2 hours
-    Extended,     // < 8 hours
-    Flexible,     // < 24 hours
+    Instant,   // < 1 minute
+    Critical,  // < 5 minutes
+    Important, // < 30 minutes
+    Standard,  // < 2 hours
+    Extended,  // < 8 hours
+    Flexible,  // < 24 hours
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -260,10 +260,10 @@ pub struct DataLossEstimate {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum RecoveryConfidence {
-    High,     // 95%+ confidence in full recovery
-    Medium,   // 80-95% confidence in recovery
-    Low,      // 50-80% confidence in recovery
-    Minimal,  // <50% confidence in recovery
+    High,    // 95%+ confidence in full recovery
+    Medium,  // 80-95% confidence in recovery
+    Low,     // 50-80% confidence in recovery
+    Minimal, // <50% confidence in recovery
 }
 
 #[derive(Debug, Clone)]
@@ -402,20 +402,20 @@ impl DisasterRecoveryManager {
     pub async fn start(&self) -> Result<()> {
         // Create backup storage directory
         fs::create_dir_all(&self.config.backup_storage_path).await?;
-        
+
         // Load existing backup jobs and recovery plans
         self.load_backup_jobs().await?;
         self.load_recovery_plans().await?;
-        
+
         // Start health monitoring
         self.start_health_monitoring().await;
-        
+
         // Start backup scheduler
         self.start_backup_scheduler().await;
-        
+
         // Start automated testing
         self.start_automated_testing().await;
-        
+
         Ok(())
     }
 
@@ -431,10 +431,7 @@ impl DisasterRecoveryManager {
                 id: Uuid::new_v4(),
                 name: "System Configuration Backup".to_string(),
                 backup_type: BackupType::Full,
-                source_paths: vec![
-                    "/etc/dls".to_string(),
-                    "/var/lib/dls".to_string(),
-                ],
+                source_paths: vec!["/etc/dls".to_string(), "/var/lib/dls".to_string()],
                 destination: format!("{}/system_config", self.config.backup_storage_path),
                 schedule: BackupSchedule {
                     frequency: ScheduleFrequency::Daily,
@@ -468,9 +465,7 @@ impl DisasterRecoveryManager {
                 id: Uuid::new_v4(),
                 name: "Database Backup".to_string(),
                 backup_type: BackupType::Full,
-                source_paths: vec![
-                    "/var/lib/postgresql/data".to_string(),
-                ],
+                source_paths: vec!["/var/lib/postgresql/data".to_string()],
                 destination: format!("{}/database", self.config.backup_storage_path),
                 schedule: BackupSchedule {
                     frequency: ScheduleFrequency::Hourly,
@@ -504,9 +499,7 @@ impl DisasterRecoveryManager {
                 id: Uuid::new_v4(),
                 name: "ZFS Snapshots".to_string(),
                 backup_type: BackupType::Snapshot,
-                source_paths: vec![
-                    "tank/dls".to_string(),
-                ],
+                source_paths: vec!["tank/dls".to_string()],
                 destination: format!("{}/snapshots", self.config.backup_storage_path),
                 schedule: BackupSchedule {
                     frequency: ScheduleFrequency::Hourly,
@@ -564,7 +557,8 @@ impl DisasterRecoveryManager {
                     RecoveryStep {
                         step_number: 1,
                         title: "Assess Hardware Failure".to_string(),
-                        description: "Identify failed hardware components and impact assessment".to_string(),
+                        description: "Identify failed hardware components and impact assessment"
+                            .to_string(),
                         commands: vec![
                             "dmesg | grep -i error".to_string(),
                             "smartctl -a /dev/sda".to_string(),
@@ -586,7 +580,9 @@ impl DisasterRecoveryManager {
                         ],
                         estimated_duration: Duration::minutes(5),
                         required_resources: vec!["Cluster Manager".to_string()],
-                        rollback_commands: vec!["dls-cli cluster failback --node primary-1".to_string()],
+                        rollback_commands: vec![
+                            "dls-cli cluster failback --node primary-1".to_string()
+                        ],
                         validation_checks: vec!["Check service availability".to_string()],
                         dependencies: vec![1],
                     },
@@ -605,7 +601,10 @@ impl DisasterRecoveryManager {
                         dependencies: vec![2],
                     },
                 ],
-                dependencies: vec!["Backup System".to_string(), "Cluster Infrastructure".to_string()],
+                dependencies: vec![
+                    "Backup System".to_string(),
+                    "Cluster Infrastructure".to_string(),
+                ],
                 notification_contacts: vec![
                     ContactInfo {
                         name: "Primary SysAdmin".to_string(),
@@ -648,7 +647,9 @@ impl DisasterRecoveryManager {
                     RecoveryStep {
                         step_number: 1,
                         title: "Isolate Corrupted System".to_string(),
-                        description: "Immediately isolate affected systems to prevent corruption spread".to_string(),
+                        description:
+                            "Immediately isolate affected systems to prevent corruption spread"
+                                .to_string(),
                         commands: vec![
                             "systemctl stop dls-server".to_string(),
                             "iptables -A INPUT -j DROP".to_string(),
@@ -679,16 +680,14 @@ impl DisasterRecoveryManager {
                     },
                 ],
                 dependencies: vec!["Backup System".to_string(), "Monitoring System".to_string()],
-                notification_contacts: vec![
-                    ContactInfo {
-                        name: "Data Recovery Team".to_string(),
-                        role: "Data Recovery Specialist".to_string(),
-                        email: "datarecovery@company.com".to_string(),
-                        phone: Some("+1-555-0125".to_string()),
-                        escalation_level: 1,
-                        available_24_7: true,
-                    },
-                ],
+                notification_contacts: vec![ContactInfo {
+                    name: "Data Recovery Team".to_string(),
+                    role: "Data Recovery Specialist".to_string(),
+                    email: "datarecovery@company.com".to_string(),
+                    phone: Some("+1-555-0125".to_string()),
+                    escalation_level: 1,
+                    available_24_7: true,
+                }],
                 testing_schedule: TestingSchedule {
                     frequency: TestingFrequency::Monthly,
                     next_test_date: Utc::now() + Duration::days(30),
@@ -714,34 +713,35 @@ impl DisasterRecoveryManager {
     async fn start_health_monitoring(&self) {
         let system_health = Arc::clone(&self.system_health);
         let interval = self.config.monitoring_interval_seconds;
-        
+
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(std::time::Duration::from_secs(interval as u64));
-            
+            let mut interval =
+                tokio::time::interval(std::time::Duration::from_secs(interval as u64));
+
             loop {
                 interval.tick().await;
-                
+
                 // Check storage health
                 let storage_info = Self::check_storage_health().await;
-                
+
                 // Check network health
                 let network_info = Self::check_network_health().await;
-                
+
                 // Update system health status
                 {
                     let mut health = system_health.write();
-                    
+
                     if let Ok(storage_info) = storage_info {
                         health.storage_health = storage_info;
                     }
-                    
+
                     if let Ok(network_info) = network_info {
                         health.network_health = network_info;
                     }
-                    
+
                     // Update overall health based on components
                     health.overall_health = Self::calculate_overall_health(&health);
-                    
+
                     // Update recovery readiness score
                     health.recovery_readiness_score = Self::calculate_recovery_readiness(&health);
                 }
@@ -777,7 +777,7 @@ impl DisasterRecoveryManager {
             &health.storage_health.backup_storage_health,
             &health.network_health.connectivity_status,
         ];
-        
+
         if health_scores.iter().any(|&h| h == &HealthLevel::Critical) {
             HealthLevel::Critical
         } else if health_scores.iter().any(|&h| h == &HealthLevel::Warning) {
@@ -791,7 +791,7 @@ impl DisasterRecoveryManager {
 
     pub fn calculate_recovery_readiness(health: &SystemHealthStatus) -> f64 {
         let mut score: f64 = 1.0;
-        
+
         // Reduce score based on health issues
         match health.overall_health {
             HealthLevel::Critical => score *= 0.3,
@@ -800,7 +800,7 @@ impl DisasterRecoveryManager {
             HealthLevel::Excellent => score *= 1.0,
             HealthLevel::Unknown => score *= 0.5,
         }
-        
+
         // Factor in backup recency
         if let Some(last_backup) = health.last_backup_success {
             let hours_since_backup = (Utc::now() - last_backup).num_hours();
@@ -812,7 +812,7 @@ impl DisasterRecoveryManager {
         } else {
             score *= 0.2; // No recent backup
         }
-        
+
         score.max(0.0).min(1.0)
     }
 
@@ -820,35 +820,37 @@ impl DisasterRecoveryManager {
         let backup_jobs = Arc::clone(&self.backup_jobs);
         let active_jobs = Arc::clone(&self.active_backup_jobs);
         let max_concurrent = self.config.max_concurrent_backups;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(60));
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let now = Utc::now();
                 let current_active = active_jobs.len() as u8;
-                
+
                 if current_active >= max_concurrent {
                     continue;
                 }
-                
+
                 // Find jobs that should run
                 for job_entry in backup_jobs.iter() {
                     let job = job_entry.value();
-                    
-                    if job.next_run <= now && job.schedule.enabled && current_active < max_concurrent {
+
+                    if job.next_run <= now
+                        && job.schedule.enabled
+                        && current_active < max_concurrent
+                    {
                         // Start backup job
                         let job_clone = job.clone();
-                        let handle = tokio::spawn(async move {
-                            Self::execute_backup_job(job_clone).await
-                        });
-                        
+                        let handle =
+                            tokio::spawn(async move { Self::execute_backup_job(job_clone).await });
+
                         active_jobs.insert(job.id, handle);
                     }
                 }
-                
+
                 // Clean up completed jobs
                 let mut completed_jobs = Vec::new();
                 for entry in active_jobs.iter() {
@@ -856,7 +858,7 @@ impl DisasterRecoveryManager {
                         completed_jobs.push(*entry.key());
                     }
                 }
-                
+
                 for job_id in completed_jobs {
                     active_jobs.remove(&job_id);
                 }
@@ -867,11 +869,11 @@ impl DisasterRecoveryManager {
     async fn execute_backup_job(mut job: BackupJob) -> Result<()> {
         let execution_id = Uuid::new_v4();
         let started_at = Utc::now();
-        
+
         // Update job status
         job.status = BackupStatus::InProgress;
         job.last_run = Some(started_at);
-        
+
         let mut execution = BackupExecution {
             id: execution_id,
             job_id: job.id,
@@ -889,123 +891,135 @@ impl DisasterRecoveryManager {
             restoration_tested: false,
             verification_status: None,
         };
-        
+
         // Execute backup based on type
         let result = match job.backup_type {
             BackupType::Full => Self::execute_full_backup(&job, &mut execution).await,
             BackupType::Incremental => Self::execute_incremental_backup(&job, &mut execution).await,
-            BackupType::Differential => Self::execute_differential_backup(&job, &mut execution).await,
+            BackupType::Differential => {
+                Self::execute_differential_backup(&job, &mut execution).await
+            }
             BackupType::Snapshot => Self::execute_snapshot_backup(&job, &mut execution).await,
             BackupType::Continuous => Self::execute_continuous_backup(&job, &mut execution).await,
         };
-        
+
         // Update execution status
         execution.completed_at = Some(Utc::now());
         match result {
             Ok(_) => {
                 execution.status = BackupStatus::Completed;
                 job.status = BackupStatus::Completed;
-                
+
                 // Schedule next run
                 job.next_run = Self::calculate_next_run(&job.schedule);
-                
+
                 // Perform verification if enabled
                 if job.verification_enabled {
                     execution.verification_status = Some(Self::verify_backup(&execution).await);
                 }
-            },
+            }
             Err(e) => {
                 execution.status = BackupStatus::Failed;
                 job.status = BackupStatus::Failed;
                 execution.error_messages.push(e.to_string());
-                
+
                 // Retry logic could be implemented here
             }
         }
-        
+
         Ok(())
     }
 
     async fn execute_full_backup(job: &BackupJob, execution: &mut BackupExecution) -> Result<()> {
         for source_path in &job.source_paths {
-            let backup_path = format!("{}/{}", job.destination, 
-                Utc::now().format("%Y%m%d_%H%M%S"));
-            
+            let backup_path = format!("{}/{}", job.destination, Utc::now().format("%Y%m%d_%H%M%S"));
+
             // Create backup directory
             fs::create_dir_all(&backup_path).await?;
-            
+
             // Execute backup command (simplified)
             let mut cmd = Command::new("tar");
             cmd.arg("-czf")
-               .arg(format!("{}/backup.tar.gz", backup_path))
-               .arg(source_path);
-            
+                .arg(format!("{}/backup.tar.gz", backup_path))
+                .arg(source_path);
+
             if job.encryption_enabled {
                 // Add encryption (would integrate with proper encryption tool)
                 cmd.arg("--encrypt");
             }
-            
+
             let output = cmd.output().await?;
-            
+
             if !output.status.success() {
                 execution.files_failed += 1;
-                execution.error_messages.push(
-                    String::from_utf8_lossy(&output.stderr).to_string()
-                );
+                execution
+                    .error_messages
+                    .push(String::from_utf8_lossy(&output.stderr).to_string());
             } else {
                 execution.files_processed += 1;
                 execution.bytes_processed += output.stdout.len() as u64;
             }
         }
-        
+
         Ok(())
     }
 
-    async fn execute_incremental_backup(job: &BackupJob, execution: &mut BackupExecution) -> Result<()> {
+    async fn execute_incremental_backup(
+        job: &BackupJob,
+        execution: &mut BackupExecution,
+    ) -> Result<()> {
         // Implementation for incremental backup
         // This would compare with last backup and only backup changed files
         Self::execute_full_backup(job, execution).await // Simplified
     }
 
-    async fn execute_differential_backup(job: &BackupJob, execution: &mut BackupExecution) -> Result<()> {
+    async fn execute_differential_backup(
+        job: &BackupJob,
+        execution: &mut BackupExecution,
+    ) -> Result<()> {
         // Implementation for differential backup
         // This would backup all changes since last full backup
         Self::execute_full_backup(job, execution).await // Simplified
     }
 
-    async fn execute_snapshot_backup(job: &BackupJob, execution: &mut BackupExecution) -> Result<()> {
+    async fn execute_snapshot_backup(
+        job: &BackupJob,
+        execution: &mut BackupExecution,
+    ) -> Result<()> {
         for source_path in &job.source_paths {
             // Execute ZFS snapshot
-            let snapshot_name = format!("{}@{}", source_path, 
-                Utc::now().format("%Y%m%d_%H%M%S"));
-            
+            let snapshot_name = format!("{}@{}", source_path, Utc::now().format("%Y%m%d_%H%M%S"));
+
             let output = Command::new("zfs")
                 .arg("snapshot")
                 .arg(&snapshot_name)
                 .output()
                 .await?;
-            
+
             if !output.status.success() {
                 execution.files_failed += 1;
-                execution.error_messages.push(
-                    String::from_utf8_lossy(&output.stderr).to_string()
-                );
+                execution
+                    .error_messages
+                    .push(String::from_utf8_lossy(&output.stderr).to_string());
             } else {
                 execution.files_processed += 1;
             }
         }
-        
+
         Ok(())
     }
 
-    async fn execute_continuous_backup(_job: &BackupJob, _execution: &mut BackupExecution) -> Result<()> {
+    async fn execute_continuous_backup(
+        _job: &BackupJob,
+        _execution: &mut BackupExecution,
+    ) -> Result<()> {
         // Implementation for continuous backup (would use filesystem watchers)
         Ok(())
     }
 
     pub fn calculate_next_run(schedule: &BackupSchedule) -> DateTime<Utc> {
         let now = Utc::now();
-        
+
         match &schedule.frequency {
             ScheduleFrequency::Continuous => now + Duration::minutes(1),
             ScheduleFrequency::Hourly => now + Duration::hours(1),
@@ -1019,7 +1033,7 @@ impl DisasterRecoveryManager {
                 } else {
                     now + Duration::days(1)
                 }
-            },
+            }
             ScheduleFrequency::Weekly => now + Duration::weeks(1),
             ScheduleFrequency::Monthly => now + Duration::days(30),
             ScheduleFrequency::Custom(_cron_expr) => {
@@ -1041,24 +1055,24 @@ impl DisasterRecoveryManager {
 
     async fn start_automated_testing(&self) {
         let recovery_plans = Arc::clone(&self.recovery_plans);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600)); // Check hourly
-            
+
             loop {
                 interval.tick().await;
-                
+
                 let now = Utc::now();
-                
+
                 for plan_entry in recovery_plans.iter() {
                     let plan = plan_entry.value();
-                    
-                    if plan.testing_schedule.automated_testing_enabled 
-                        && plan.testing_schedule.next_test_date <= now {
-                        
+
+                    if plan.testing_schedule.automated_testing_enabled
+                        && plan.testing_schedule.next_test_date <= now
+                    {
                         // Execute automated test
                         let _test_result = Self::execute_recovery_test(&plan).await;
-                        
+
                         // Update next test date
                         // This would be implemented with proper plan updates
                     }
@@ -1080,15 +1094,15 @@ impl DisasterRecoveryManager {
     }
 
     pub async fn get_backup_job(&self, job_id: Uuid) -> Option<BackupJob> {
-        self.backup_jobs.get(&job_id).map(|entry| entry.value().clone())
+        self.backup_jobs
+            .get(&job_id)
+            .map(|entry| entry.value().clone())
     }
 
     pub async fn list_backup_jobs(&self, tenant_id: Option<Uuid>) -> Vec<BackupJob> {
         self.backup_jobs
             .iter()
-            .filter(|entry| {
-                tenant_id.is_none() || entry.value().tenant_id == tenant_id
-            })
+            .filter(|entry| tenant_id.is_none() || entry.value().tenant_id == tenant_id)
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -1096,14 +1110,15 @@ impl DisasterRecoveryManager {
     pub async fn trigger_backup(&self, job_id: Uuid) -> Result<()> {
         if let Some(job) = self.backup_jobs.get(&job_id) {
             let job_clone = job.value().clone();
-            let handle = tokio::spawn(async move {
-                Self::execute_backup_job(job_clone).await
-            });
-            
+            let handle = tokio::spawn(async move { Self::execute_backup_job(job_clone).await });
+
             self.active_backup_jobs.insert(job_id, handle);
             Ok(())
         } else {
-            Err(crate::error::DlsError::NotFound(format!("Backup job {}", job_id)))
+            Err(crate::error::DlsError::NotFound(format!(
+                "Backup job {}",
+                job_id
+            )))
         }
     }
 
@@ -1114,10 +1129,16 @@ impl DisasterRecoveryManager {
     }
 
     pub async fn get_recovery_plan(&self, plan_id: Uuid) -> Option<DisasterRecoveryPlan> {
-        self.recovery_plans.get(&plan_id).map(|entry| entry.value().clone())
+        self.recovery_plans
+            .get(&plan_id)
+            .map(|entry| entry.value().clone())
     }
 
-    pub async fn execute_recovery_plan(&self, plan_id: Uuid, disaster_type: DisasterType) -> Result<Uuid> {
+    pub async fn execute_recovery_plan(
+        &self,
+        plan_id: Uuid,
+        disaster_type: DisasterType,
+    ) -> Result<Uuid> {
         if let Some(plan) = self.recovery_plans.get(&plan_id) {
             let disaster_event = DisasterEvent {
                 id: Uuid::new_v4(),
@@ -1140,19 +1161,20 @@ impl DisasterRecoveryManager {
                 lessons_learned: Vec::new(),
                 post_incident_actions: Vec::new(),
             };
-            
+
             let event_id = disaster_event.id;
             self.disaster_events.write().push(disaster_event);
-            
+
             // Start recovery execution in background
             let plan_clone = plan.value().clone();
-            tokio::spawn(async move {
-                Self::execute_recovery_steps(plan_clone).await
-            });
-            
+            tokio::spawn(async move { Self::execute_recovery_steps(plan_clone).await });
+
             Ok(event_id)
         } else {
-            Err(crate::error::DlsError::NotFound(format!("Recovery plan {}", plan_id)))
+            Err(crate::error::DlsError::NotFound(format!(
+                "Recovery plan {}",
+                plan_id
+            )))
         }
     }
 
@@ -1160,20 +1182,19 @@ impl DisasterRecoveryManager {
         for step in &plan.recovery_steps {
             // Execute step commands
             for command in &step.commands {
-                let output = Command::new("sh")
-                    .arg("-c")
-                    .arg(command)
-                    .output()
-                    .await?;
-                
+                let output = Command::new("sh").arg("-c").arg(command).output().await?;
+
                 if !output.status.success() {
                     // Handle step failure
-                    eprintln!("Step {} failed: {}", step.step_number, 
-                             String::from_utf8_lossy(&output.stderr));
+                    eprintln!(
+                        "Step {} failed: {}",
+                        step.step_number,
+                        String::from_utf8_lossy(&output.stderr)
+                    );
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -1184,9 +1205,7 @@ impl DisasterRecoveryManager {
     pub async fn get_backup_executions(&self, job_id: Option<Uuid>) -> Vec<BackupExecution> {
         self.backup_executions
             .iter()
-            .filter(|entry| {
-                job_id.is_none() || entry.value().job_id == job_id.unwrap()
-            })
+            .filter(|entry| job_id.is_none() || entry.value().job_id == job_id.unwrap())
             .map(|entry| entry.value().clone())
             .collect()
     }
@@ -1204,7 +1223,7 @@ mod tests {
     async fn test_disaster_recovery_manager_creation() {
         let config = DisasterRecoveryConfig::default();
         let manager = DisasterRecoveryManager::new(config);
-        
+
         assert!(manager.backup_jobs.is_empty());
         assert!(manager.recovery_plans.is_empty());
     }
@@ -1213,7 +1232,7 @@ mod tests {
     async fn test_backup_job_creation() {
         let config = DisasterRecoveryConfig::default();
         let manager = DisasterRecoveryManager::new(config);
-        
+
         let job = BackupJob {
             id: Uuid::new_v4(),
             name: "Test Backup".to_string(),
@@ -1248,10 +1267,10 @@ mod tests {
             priority: 5,
             metadata: HashMap::new(),
         };
-        
+
         let job_id = manager.create_backup_job(job.clone()).await.unwrap();
         assert_eq!(job_id, job.id);
-        
+
         let retrieved_job = manager.get_backup_job(job_id).await.unwrap();
         assert_eq!(retrieved_job.name, "Test Backup");
     }
@@ -1260,7 +1279,7 @@ mod tests {
     async fn test_recovery_plan_creation() {
         let config = DisasterRecoveryConfig::default();
         let manager = DisasterRecoveryManager::new(config);
-        
+
         let plan = DisasterRecoveryPlan {
             id: Uuid::new_v4(),
             name: "Test Recovery Plan".to_string(),
@@ -1284,10 +1303,10 @@ mod tests {
             approved_by: "Test Manager".to_string(),
             tenant_id: None,
         };
-        
+
         let plan_id = manager.create_recovery_plan(plan.clone()).await.unwrap();
         assert_eq!(plan_id, plan.id);
-        
+
         let retrieved_plan = manager.get_recovery_plan(plan_id).await.unwrap();
         assert_eq!(retrieved_plan.name, "Test Recovery Plan");
     }
@@ -1314,10 +1333,10 @@ mod tests {
             backup_queue_length: 2,
             recovery_readiness_score: 0.0,
         };
-        
+
         let overall_health = DisasterRecoveryManager::calculate_overall_health(&health);
         assert_eq!(overall_health, HealthLevel::Good);
-        
+
         let readiness_score = DisasterRecoveryManager::calculate_recovery_readiness(&health);
         assert!(readiness_score > 0.0 && readiness_score <= 1.0);
     }
@@ -1331,7 +1350,7 @@ mod tests {
             BackupType::Snapshot,
             BackupType::Continuous,
         ];
-        
+
         for backup_type in backup_types {
             let serialized = serde_json::to_string(&backup_type).unwrap();
             let deserialized: BackupType = serde_json::from_str(&serialized).unwrap();
@@ -1353,7 +1372,7 @@ mod tests {
             DisasterType::StorageFailure,
             DisasterType::SystemOverload,
         ];
-        
+
         for disaster_type in disaster_types {
             let serialized = serde_json::to_string(&disaster_type).unwrap();
             let deserialized: DisasterType = serde_json::from_str(&serialized).unwrap();
@@ -1371,7 +1390,7 @@ mod tests {
             ScheduleFrequency::Monthly,
             ScheduleFrequency::Custom("0 2 * * *".to_string()),
         ];
-        
+
         for frequency in frequencies {
             let serialized = serde_json::to_string(&frequency).unwrap();
             let deserialized: ScheduleFrequency = serde_json::from_str(&serialized).unwrap();
@@ -1389,7 +1408,7 @@ mod tests {
             enabled: true,
             max_concurrent_jobs: 1,
         };
-        
+
         let next_run = DisasterRecoveryManager::calculate_next_run(&schedule);
         assert!(next_run > Utc::now());
     }

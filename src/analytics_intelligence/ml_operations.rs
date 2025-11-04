@@ -1,11 +1,11 @@
 // MLOps Platform for Model Lifecycle Management
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -456,7 +456,13 @@ pub enum ApprovalStatus {
 impl MLOperationsPlatform {
     pub fn new() -> Self {
         Self {
-            platform_id: format!("mlops_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            platform_id: format!(
+                "mlops_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             model_registry: Arc::new(MLModelRegistry::new()),
             training_engine: Arc::new(ModelTrainingEngine::new()),
             deployment_engine: Arc::new(ModelDeploymentEngine::new()),
@@ -474,12 +480,23 @@ impl MLOperationsPlatform {
         Ok(model_id)
     }
 
-    pub async fn create_model_version(&self, model_id: &str, version: ModelVersion) -> Result<String> {
+    pub async fn create_model_version(
+        &self,
+        model_id: &str,
+        version: ModelVersion,
+    ) -> Result<String> {
         self.model_registry.create_version(model_id, version).await
     }
 
-    pub async fn deploy_model(&self, model_id: &str, version_id: &str, config: DeploymentConfig) -> Result<String> {
-        self.deployment_engine.deploy_model(model_id, version_id, config).await
+    pub async fn deploy_model(
+        &self,
+        model_id: &str,
+        version_id: &str,
+        config: DeploymentConfig,
+    ) -> Result<String> {
+        self.deployment_engine
+            .deploy_model(model_id, version_id, config)
+            .await
     }
 
     pub async fn start_training(&self, training_job: TrainingJob) -> Result<String> {
@@ -494,7 +511,13 @@ impl MLOperationsPlatform {
 impl MLModelRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("mlmr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "mlmr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             registered_models: AsyncDataStore::new(),
             model_versions: Arc::new(DashMap::new()),
             model_artifacts: Arc::new(ArtifactStore::new()),
@@ -513,7 +536,10 @@ impl MLModelRegistry {
         let version_id = version.version_id.clone();
 
         // Add version to model's version list
-        let mut versions = self.model_versions.entry(model_id.to_string()).or_insert_with(Vec::new);
+        let mut versions = self
+            .model_versions
+            .entry(model_id.to_string())
+            .or_insert_with(Vec::new);
         versions.push(version);
 
         Ok(version_id)
@@ -592,7 +618,13 @@ pub struct ModelTrainingEngine {
 impl ModelTrainingEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("mte_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "mte_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -609,11 +641,22 @@ pub struct ModelDeploymentEngine {
 impl ModelDeploymentEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("mde_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "mde_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn deploy_model(&self, _model_id: &str, _version_id: &str, _config: DeploymentConfig) -> Result<String> {
+    pub async fn deploy_model(
+        &self,
+        _model_id: &str,
+        _version_id: &str,
+        _config: DeploymentConfig,
+    ) -> Result<String> {
         Ok(format!("deployment_{}", Uuid::new_v4()))
     }
 }
@@ -626,7 +669,13 @@ pub struct ModelMonitoringEngine {
 impl ModelMonitoringEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("mme_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "mme_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -670,7 +719,13 @@ pub struct FeatureStore {
 impl FeatureStore {
     pub fn new() -> Self {
         Self {
-            store_id: format!("fs_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            store_id: format!(
+                "fs_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -683,7 +738,13 @@ pub struct ExperimentManager {
 impl ExperimentManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("em_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "em_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -696,7 +757,13 @@ pub struct MLPipelineOrchestrator {
 impl MLPipelineOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("mlpo_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "mlpo_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -709,7 +776,13 @@ pub struct AutoMLEngine {
 impl AutoMLEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("amle_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "amle_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -722,7 +795,13 @@ pub struct ArtifactStore {
 impl ArtifactStore {
     pub fn new() -> Self {
         Self {
-            store_id: format!("as_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            store_id: format!(
+                "as_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -735,7 +814,13 @@ pub struct MetadataStore {
 impl MetadataStore {
     pub fn new() -> Self {
         Self {
-            store_id: format!("ms_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            store_id: format!(
+                "ms_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -748,7 +833,13 @@ pub struct ModelLineageTracker {
 impl ModelLineageTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("mlt_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "mlt_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

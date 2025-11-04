@@ -1,11 +1,11 @@
 // Event Streaming Platform for Real-time Event Processing
 use crate::error::Result;
 use crate::optimization::{AsyncDataStore, CircularEventBuffer};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 
 #[derive(Debug, Clone)]
 pub struct EventStreamingPlatform {
@@ -752,7 +752,13 @@ pub struct StreamEvent {
 impl EventStreamingPlatform {
     pub fn new(platform_type: StreamingPlatformType) -> Self {
         Self {
-            platform_id: format!("platform_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            platform_id: format!(
+                "platform_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             platform_type,
             event_processor: Arc::new(EventProcessor::new()),
             stream_analytics: Arc::new(StreamAnalytics::new()),
@@ -785,7 +791,13 @@ impl EventStreamingPlatform {
 impl EventProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("event_processor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "event_processor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             processing_pipelines: Arc::new(DashMap::new()),
             event_handlers: Arc::new(DashMap::new()),
             dead_letter_queue: Arc::new(DeadLetterQueue::new()),
@@ -806,7 +818,13 @@ impl EventProcessor {
 impl DeadLetterQueue {
     pub fn new() -> Self {
         Self {
-            queue_id: format!("dlq_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            queue_id: format!(
+                "dlq_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             failed_events: AsyncDataStore::new(),
             retry_scheduler: Arc::new(RetryScheduler::new()),
             analysis_engine: Arc::new(FailureAnalysisEngine::new()),
@@ -817,7 +835,13 @@ impl DeadLetterQueue {
 impl RetryScheduler {
     pub fn new() -> Self {
         Self {
-            scheduler_id: format!("retry_scheduler_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            scheduler_id: format!(
+                "retry_scheduler_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             retry_queue: AsyncDataStore::new(),
             retry_strategies: Arc::new(DashMap::new()),
         }
@@ -827,7 +851,13 @@ impl RetryScheduler {
 impl FailureAnalysisEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("failure_analysis_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "failure_analysis_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             failure_patterns: Arc::new(DashMap::new()),
             analysis_results: AsyncDataStore::new(),
         }
@@ -837,7 +867,13 @@ impl FailureAnalysisEngine {
 impl StreamAnalytics {
     pub fn new() -> Self {
         Self {
-            analytics_id: format!("stream_analytics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            analytics_id: format!(
+                "stream_analytics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             stream_processors: Arc::new(DashMap::new()),
             windowing_engine: Arc::new(WindowingEngine::new()),
             aggregation_engine: Arc::new(AggregationEngine::new()),
@@ -853,7 +889,13 @@ impl StreamAnalytics {
 impl WindowingEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("windowing_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "windowing_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             window_definitions: Arc::new(DashMap::new()),
             active_windows: AsyncDataStore::new(),
         }
@@ -863,7 +905,13 @@ impl WindowingEngine {
 impl AggregationEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("aggregation_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "aggregation_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             aggregators: Arc::new(DashMap::new()),
             aggregation_results: AsyncDataStore::new(),
         }
@@ -873,7 +921,13 @@ impl AggregationEngine {
 impl PatternDetector {
     pub fn new() -> Self {
         Self {
-            detector_id: format!("pattern_detector_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            detector_id: format!(
+                "pattern_detector_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             pattern_definitions: Arc::new(DashMap::new()),
             detected_patterns: AsyncDataStore::new(),
         }
@@ -883,7 +937,13 @@ impl PatternDetector {
 impl TopicManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("topic_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "topic_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             topics: Arc::new(DashMap::new()),
             topic_configuration: TopicConfiguration::default(),
             partition_manager: Arc::new(PartitionManager::new()),
@@ -903,7 +963,13 @@ impl TopicManager {
 impl PartitionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("partition_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "partition_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             partitions: Arc::new(DashMap::new()),
             partition_assignment: AsyncDataStore::new(),
         }
@@ -913,7 +979,13 @@ impl PartitionManager {
 impl ConsumerManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("consumer_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "consumer_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             consumer_groups: Arc::new(DashMap::new()),
             consumers: Arc::new(DashMap::new()),
             offset_manager: Arc::new(OffsetManager::new()),
@@ -928,7 +1000,13 @@ impl ConsumerManager {
 impl OffsetManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("offset_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "offset_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             committed_offsets: AsyncDataStore::new(),
             offset_storage: OffsetStorage::default(),
         }
@@ -938,7 +1016,13 @@ impl OffsetManager {
 impl ProducerManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("producer_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "producer_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             producers: Arc::new(DashMap::new()),
             producer_metrics: AsyncDataStore::new(),
         }
@@ -956,7 +1040,7 @@ impl Default for TopicConfiguration {
             default_partitions: 3,
             default_replication_factor: 3,
             default_retention: Duration::from_secs(7 * 24 * 3600), // 7 days
-            max_message_size: 1024 * 1024, // 1MB
+            max_message_size: 1024 * 1024,                         // 1MB
             compression_enabled: true,
         }
     }

@@ -1,8 +1,8 @@
 // Performance optimization utilities for Sprint 4 modules
-use std::sync::Arc;
-use std::collections::HashMap;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 /// Optimized data structure management for reducing memory footprint
@@ -137,7 +137,10 @@ where
 
         let should_flush = buffer.len() >= self.batch_size || {
             let last_flush = *self.last_flush.lock();
-            SystemTime::now().duration_since(last_flush).unwrap_or_default() >= self.flush_interval
+            SystemTime::now()
+                .duration_since(last_flush)
+                .unwrap_or_default()
+                >= self.flush_interval
         };
 
         should_flush
@@ -256,7 +259,10 @@ where
 
     pub fn push(&self, item: T) {
         let mut buffer = self.buffer.write();
-        let index = self.write_index.fetch_add(1, std::sync::atomic::Ordering::SeqCst) % self.capacity;
+        let index = self
+            .write_index
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+            % self.capacity;
 
         let was_empty = buffer[index].is_none();
         buffer[index] = Some(item);
@@ -334,7 +340,7 @@ impl PerformanceProfiler {
                 measurement.total_time += duration;
                 measurement.call_count += 1;
                 measurement.average_time = Duration::from_nanos(
-                    measurement.total_time.as_nanos() as u64 / measurement.call_count
+                    measurement.total_time.as_nanos() as u64 / measurement.call_count,
                 );
                 measurement.min_time = measurement.min_time.min(duration);
                 measurement.max_time = measurement.max_time.max(duration);
@@ -360,7 +366,11 @@ impl PerformanceProfiler {
     }
 
     pub fn get_summary(&self) -> PerformanceSummary {
-        let measurements: Vec<_> = self.measurements.iter().map(|entry| entry.value().clone()).collect();
+        let measurements: Vec<_> = self
+            .measurements
+            .iter()
+            .map(|entry| entry.value().clone())
+            .collect();
 
         let total_operations = measurements.iter().map(|m| m.call_count).sum();
         let total_time: Duration = measurements.iter().map(|m| m.total_time).sum();
@@ -412,11 +422,13 @@ impl ResourceMonitor {
     }
 
     pub fn record_memory_allocation(&self, bytes: usize) {
-        self.memory_usage.fetch_add(bytes, std::sync::atomic::Ordering::SeqCst);
+        self.memory_usage
+            .fetch_add(bytes, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn record_memory_deallocation(&self, bytes: usize) {
-        self.memory_usage.fetch_sub(bytes, std::sync::atomic::Ordering::SeqCst);
+        self.memory_usage
+            .fetch_sub(bytes, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn get_memory_usage(&self) -> usize {
@@ -432,15 +444,18 @@ impl ResourceMonitor {
     }
 
     pub fn increment_connections(&self) {
-        self.connection_count.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        self.connection_count
+            .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn decrement_connections(&self) {
-        self.connection_count.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+        self.connection_count
+            .fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
     }
 
     pub fn get_connection_count(&self) -> usize {
-        self.connection_count.load(std::sync::atomic::Ordering::SeqCst)
+        self.connection_count
+            .load(std::sync::atomic::Ordering::SeqCst)
     }
 
     pub fn get_resource_summary(&self) -> ResourceSummary {
@@ -448,7 +463,9 @@ impl ResourceMonitor {
             memory_usage_bytes: self.get_memory_usage(),
             cpu_usage_percent: self.get_cpu_usage(),
             active_connections: self.get_connection_count(),
-            active_threads: self.active_threads.load(std::sync::atomic::Ordering::SeqCst),
+            active_threads: self
+                .active_threads
+                .load(std::sync::atomic::Ordering::SeqCst),
             timestamp: SystemTime::now(),
         }
     }

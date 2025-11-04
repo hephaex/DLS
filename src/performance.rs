@@ -152,22 +152,22 @@ impl PerformanceMonitor {
 
     pub async fn start(&self) -> Result<()> {
         info!("Starting performance monitor");
-        
+
         // Start metrics collection loop
         let metrics_history = Arc::clone(&self.metrics_history);
         let collection_interval = self.collection_interval;
         let max_history_size = self.max_history_size;
-        
+
         tokio::spawn(async move {
             let mut interval = interval(collection_interval);
-            
+
             loop {
                 interval.tick().await;
-                
+
                 if let Ok(metrics) = Self::collect_current_metrics().await {
                     let mut history = metrics_history.write().await;
                     history.push(metrics);
-                    
+
                     // Maintain history size limit
                     if history.len() > max_history_size {
                         history.remove(0);
@@ -175,20 +175,20 @@ impl PerformanceMonitor {
                 }
             }
         });
-        
+
         info!("Performance monitor started successfully");
         Ok(())
     }
 
     pub async fn stop(&self) -> Result<()> {
         info!("Stopping performance monitor");
-        
+
         // Cancel all running load tests
         let mut running_tests = self.running_tests.write().await;
         for (test_id, handle) in running_tests.drain() {
             warn!("Cancelling running load test: {}", test_id);
             handle.abort();
-            
+
             // Update test status
             let mut load_tests = self.load_tests.write().await;
             if let Some(test) = load_tests.get_mut(&test_id) {
@@ -196,7 +196,7 @@ impl PerformanceMonitor {
                 test.end_time = Some(chrono::Utc::now());
             }
         }
-        
+
         info!("Performance monitor stopped successfully");
         Ok(())
     }
@@ -209,7 +209,11 @@ impl PerformanceMonitor {
         let history = self.metrics_history.read().await;
         match limit {
             Some(n) => {
-                let start = if history.len() > n { history.len() - n } else { 0 };
+                let start = if history.len() > n {
+                    history.len() - n
+                } else {
+                    0
+                };
                 history[start..].to_vec()
             }
             None => history.clone(),
@@ -219,7 +223,7 @@ impl PerformanceMonitor {
     pub async fn start_load_test(&self, config: LoadTestConfig) -> Result<String> {
         let test_id = uuid::Uuid::new_v4().to_string();
         info!("Starting load test: {} ({})", config.test_name, test_id);
-        
+
         let test_result = LoadTestResult {
             test_id: test_id.clone(),
             config: config.clone(),
@@ -230,37 +234,39 @@ impl PerformanceMonitor {
             summary: None,
             error_log: Vec::new(),
         };
-        
+
         // Store test result
         let mut load_tests = self.load_tests.write().await;
         load_tests.insert(test_id.clone(), test_result);
-        
+
         // Spawn test execution task
-        let test_handle = self.spawn_load_test_execution(test_id.clone(), config).await;
-        
+        let test_handle = self
+            .spawn_load_test_execution(test_id.clone(), config)
+            .await;
+
         let mut running_tests = self.running_tests.write().await;
         running_tests.insert(test_id.clone(), test_handle);
-        
+
         debug!("Load test started: {}", test_id);
         Ok(test_id)
     }
 
     pub async fn stop_load_test(&self, test_id: &str) -> Result<()> {
         info!("Stopping load test: {}", test_id);
-        
+
         // Cancel the running task if it exists
         let mut running_tests = self.running_tests.write().await;
         if let Some(handle) = running_tests.remove(test_id) {
             handle.abort();
         }
-        
+
         // Update test status
         let mut load_tests = self.load_tests.write().await;
         if let Some(test) = load_tests.get_mut(test_id) {
             test.status = LoadTestStatus::Cancelled;
             test.end_time = Some(chrono::Utc::now());
         }
-        
+
         debug!("Load test stopped: {}", test_id);
         Ok(())
     }
@@ -291,7 +297,7 @@ impl PerformanceMonitor {
             let mut load_tests_guard = load_tests.write().await;
             if let Some(test) = load_tests_guard.get_mut(&test_id) {
                 test.end_time = Some(chrono::Utc::now());
-                
+
                 match result {
                     Ok(summary) => {
                         test.status = LoadTestStatus::Completed;
@@ -327,16 +333,18 @@ impl PerformanceMonitor {
         let mut peak_memory_usage_mb = 0;
 
         // Metrics collection interval
-        let mut metrics_interval = interval(Duration::from_millis(config.metrics_collection_interval_ms));
+        let mut metrics_interval =
+            interval(Duration::from_millis(config.metrics_collection_interval_ms));
         let test_duration = Duration::from_secs(config.duration_seconds);
 
         // Spawn concurrent client simulation tasks
         let mut client_handles = Vec::new();
         for client_id in 0..config.concurrent_clients {
             let config_clone = config.clone();
-            let client_handle = tokio::spawn(async move {
-                Self::simulate_client_load(client_id, config_clone).await
-            });
+            let client_handle =
+                tokio::spawn(
+                    async move { Self::simulate_client_load(client_id, config_clone).await },
+                );
             client_handles.push(client_handle);
         }
 
@@ -349,7 +357,7 @@ impl PerformanceMonitor {
                     if let Ok(metrics) = Self::collect_current_metrics().await {
                         peak_cpu_usage = peak_cpu_usage.max(metrics.cpu_usage);
                         peak_memory_usage_mb = peak_memory_usage_mb.max(metrics.memory_usage.used_mb);
-                        
+
                         let mut history = metrics_history.write().await;
                         history.push(metrics);
                     }
@@ -367,7 +375,7 @@ impl PerformanceMonitor {
                 successful_requests += client_result.successful_requests;
                 failed_requests += client_result.failed_requests;
                 response_times.extend(client_result.response_times);
-                
+
                 for (error_type, count) in client_result.errors_by_type {
                     *errors_by_type.entry(error_type).or_insert(0) += count;
                 }
@@ -383,7 +391,7 @@ impl PerformanceMonitor {
 
         let min_response_time_ms = response_times.iter().cloned().fold(f64::INFINITY, f64::min);
         let max_response_time_ms = response_times.iter().cloned().fold(0.0, f64::max);
-        
+
         let requests_per_second = total_requests as f64 / test_duration.as_secs_f64();
 
         let summary = LoadTestSummary {
@@ -391,7 +399,11 @@ impl PerformanceMonitor {
             successful_requests,
             failed_requests,
             average_response_time_ms,
-            min_response_time_ms: if min_response_time_ms == f64::INFINITY { 0.0 } else { min_response_time_ms },
+            min_response_time_ms: if min_response_time_ms == f64::INFINITY {
+                0.0
+            } else {
+                min_response_time_ms
+            },
             max_response_time_ms,
             requests_per_second,
             peak_cpu_usage,
@@ -399,34 +411,38 @@ impl PerformanceMonitor {
             errors_by_type,
         };
 
-        info!("Load test completed: {} - {} requests, {:.2} RPS, {:.2}% success rate", 
-              test_id, total_requests, requests_per_second, 
-              (successful_requests as f64 / total_requests as f64) * 100.0);
+        info!(
+            "Load test completed: {} - {} requests, {:.2} RPS, {:.2}% success rate",
+            test_id,
+            total_requests,
+            requests_per_second,
+            (successful_requests as f64 / total_requests as f64) * 100.0
+        );
 
         Ok(summary)
     }
 
     async fn simulate_client_load(client_id: u32, config: LoadTestConfig) -> ClientLoadResult {
         debug!("Starting client simulation: {}", client_id);
-        
+
         let mut total_requests = 0;
         let mut successful_requests = 0;
         let mut failed_requests = 0;
         let mut response_times = Vec::new();
         let mut errors_by_type = HashMap::new();
-        
+
         let start_time = Instant::now();
         let test_duration = Duration::from_secs(config.duration_seconds);
         let request_interval = Duration::from_millis(config.boot_interval_ms);
-        
+
         let mut interval = interval(request_interval);
-        
+
         while start_time.elapsed() < test_duration {
             interval.tick().await;
-            
+
             let request_start = Instant::now();
             total_requests += 1;
-            
+
             match Self::execute_simulated_request(&config.target_service, client_id).await {
                 Ok(_) => {
                     successful_requests += 1;
@@ -439,9 +455,12 @@ impl PerformanceMonitor {
                 }
             }
         }
-        
-        debug!("Client simulation completed: {} - {} requests", client_id, total_requests);
-        
+
+        debug!(
+            "Client simulation completed: {} - {} requests",
+            client_id, total_requests
+        );
+
         ClientLoadResult {
             client_id,
             total_requests,
@@ -511,7 +530,7 @@ impl PerformanceMonitor {
 
     async fn collect_current_metrics() -> Result<PerformanceMetrics> {
         let timestamp = chrono::Utc::now();
-        
+
         // System metrics collection
         let cpu_usage = Self::get_cpu_usage().await;
         let memory_stats = Self::get_memory_stats().await;
@@ -519,7 +538,7 @@ impl PerformanceMonitor {
         let storage_stats = Self::get_storage_stats().await;
         let service_metrics = Self::get_service_metrics().await;
         let client_metrics = Self::get_client_metrics().await;
-        
+
         Ok(PerformanceMetrics {
             timestamp,
             cpu_usage,
@@ -542,7 +561,7 @@ impl PerformanceMonitor {
         let used_mb = (rand::random::<f64>() * total_mb as f64) as u64;
         let available_mb = total_mb - used_mb;
         let usage_percentage = (used_mb as f64 / total_mb as f64) * 100.0;
-        
+
         MemoryStats {
             total_mb,
             used_mb,
@@ -578,7 +597,7 @@ impl PerformanceMonitor {
 
     async fn get_service_metrics() -> HashMap<String, ServiceMetrics> {
         let mut metrics = HashMap::new();
-        
+
         let services = ["dhcp", "tftp", "iscsi", "provisioning", "web"];
         for service in services {
             let service_metric = ServiceMetrics {
@@ -596,7 +615,7 @@ impl PerformanceMonitor {
             };
             metrics.insert(service.to_string(), service_metric);
         }
-        
+
         metrics
     }
 
@@ -657,7 +676,7 @@ mod tests {
             target_service: LoadTestTarget::DhcpServer,
             metrics_collection_interval_ms: 1000,
         };
-        
+
         assert_eq!(config.test_name, "Test DHCP Load");
         assert_eq!(config.concurrent_clients, 10);
         assert!(matches!(config.target_service, LoadTestTarget::DhcpServer));
@@ -666,7 +685,7 @@ mod tests {
     #[tokio::test]
     async fn test_load_test_creation() {
         let monitor = PerformanceMonitor::default();
-        
+
         let config = LoadTestConfig {
             test_name: "Test Load".to_string(),
             duration_seconds: 1,
@@ -675,10 +694,10 @@ mod tests {
             target_service: LoadTestTarget::DhcpServer,
             metrics_collection_interval_ms: 500,
         };
-        
+
         let test_id = monitor.start_load_test(config).await.unwrap();
         assert!(!test_id.is_empty());
-        
+
         let test_result = monitor.get_load_test(&test_id).await;
         assert!(test_result.is_some());
         assert_eq!(test_result.unwrap().status, LoadTestStatus::Running);
@@ -699,7 +718,7 @@ mod tests {
             LoadTestTarget::ProvisioningSystem,
             LoadTestTarget::FullBootSequence,
         ];
-        
+
         assert_eq!(targets.len(), 5);
     }
 
@@ -711,7 +730,7 @@ mod tests {
             available_mb: 4096,
             usage_percentage: 50.0,
         };
-        
+
         let serialized = serde_json::to_string(&memory_stats).unwrap();
         let deserialized: MemoryStats = serde_json::from_str(&serialized).unwrap();
         assert_eq!(deserialized.total_mb, 8192);
@@ -726,7 +745,7 @@ mod tests {
             concurrent_boots: 5,
             failed_boots_last_hour: 2,
         };
-        
+
         assert_eq!(stats.active_clients, 25);
         assert_eq!(stats.boot_success_rate, 98.5);
     }
@@ -735,10 +754,10 @@ mod tests {
     async fn test_simulated_requests() {
         let result = PerformanceMonitor::simulate_dhcp_request(1).await;
         assert!(result.is_ok());
-        
+
         let result = PerformanceMonitor::simulate_tftp_request(1).await;
         assert!(result.is_ok());
-        
+
         let result = PerformanceMonitor::simulate_iscsi_request(1).await;
         assert!(result.is_ok());
     }
@@ -751,7 +770,7 @@ mod tests {
             threads: 10,
             file_descriptors: 50,
         };
-        
+
         assert_eq!(usage.cpu_percentage, 15.5);
         assert_eq!(usage.memory_mb, 256);
         assert_eq!(usage.threads, 10);
@@ -760,20 +779,20 @@ mod tests {
     #[tokio::test]
     async fn test_metrics_history_management() {
         let monitor = PerformanceMonitor::new(Duration::from_millis(100), 3);
-        
+
         // Simulate adding metrics beyond the limit
         for _ in 0..5 {
             if let Ok(metrics) = PerformanceMonitor::collect_current_metrics().await {
                 let mut history = monitor.metrics_history.write().await;
                 history.push(metrics);
-                
+
                 // Simulate the size management that would happen in the real monitor
                 if history.len() > 3 {
                     history.remove(0);
                 }
             }
         }
-        
+
         let history = monitor.metrics_history.read().await;
         assert!(history.len() <= 3);
     }

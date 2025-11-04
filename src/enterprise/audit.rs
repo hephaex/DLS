@@ -1,11 +1,11 @@
 // Enterprise Audit Management System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -1120,7 +1120,13 @@ pub struct QualityMetric {
 impl AuditManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("am_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "am_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             security_audit_engine: Arc::new(SecurityAuditEngine::new()),
             compliance_auditor: Arc::new(ComplianceAuditor::new()),
             audit_planning: Arc::new(AuditPlanning::new()),
@@ -1136,19 +1142,32 @@ impl AuditManager {
         self.compliance_auditor.register_program(program).await
     }
 
-    pub async fn conduct_security_assessment(&self, framework_id: &str) -> Result<SecurityAssessmentResult> {
-        self.security_audit_engine.conduct_assessment(framework_id).await
+    pub async fn conduct_security_assessment(
+        &self,
+        framework_id: &str,
+    ) -> Result<SecurityAssessmentResult> {
+        self.security_audit_engine
+            .conduct_assessment(framework_id)
+            .await
     }
 
-    pub async fn perform_compliance_audit(&self, audit_request: ComplianceAuditRequest) -> Result<ComplianceAuditResult> {
+    pub async fn perform_compliance_audit(
+        &self,
+        audit_request: ComplianceAuditRequest,
+    ) -> Result<ComplianceAuditResult> {
         self.compliance_auditor.perform_audit(audit_request).await
     }
 
     pub async fn collect_evidence(&self, evidence_request: EvidenceRequest) -> Result<Evidence> {
-        self.evidence_collector.collect_evidence(evidence_request).await
+        self.evidence_collector
+            .collect_evidence(evidence_request)
+            .await
     }
 
-    pub async fn generate_audit_report(&self, report_request: AuditReportRequest) -> Result<AuditReport> {
+    pub async fn generate_audit_report(
+        &self,
+        report_request: AuditReportRequest,
+    ) -> Result<AuditReport> {
         self.reporting_engine.generate_report(report_request).await
     }
 }
@@ -1156,7 +1175,13 @@ impl AuditManager {
 impl SecurityAuditEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("sae_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "sae_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             audit_frameworks: Arc::new(DashMap::new()),
             control_assessments: AsyncDataStore::new(),
             vulnerability_scanner: Arc::new(VulnerabilityScanner::new()),
@@ -1169,14 +1194,15 @@ impl SecurityAuditEngine {
 
     pub async fn register_framework(&self, framework: SecurityFramework) -> Result<String> {
         let framework_id = framework.framework_id.clone();
-        self.audit_frameworks.insert(framework_id.clone(), framework);
+        self.audit_frameworks
+            .insert(framework_id.clone(), framework);
         Ok(framework_id)
     }
 
     pub async fn conduct_assessment(&self, framework_id: &str) -> Result<SecurityAssessmentResult> {
-        let framework = self.audit_frameworks
-            .get(framework_id)
-            .ok_or_else(|| crate::error::Error::NotFound("Security framework not found".to_string()))?;
+        let framework = self.audit_frameworks.get(framework_id).ok_or_else(|| {
+            crate::error::Error::NotFound("Security framework not found".to_string())
+        })?;
 
         let assessment_result = SecurityAssessmentResult {
             assessment_id: Uuid::new_v4().to_string(),
@@ -1222,7 +1248,9 @@ impl SecurityAuditEngine {
             next_assessment_date: SystemTime::now() + Duration::from_secs(365 * 24 * 3600),
         };
 
-        self.control_assessments.insert(assessment.assessment_id.clone(), assessment.clone()).await;
+        self.control_assessments
+            .insert(assessment.assessment_id.clone(), assessment.clone())
+            .await;
         Ok(assessment)
     }
 }
@@ -1230,7 +1258,13 @@ impl SecurityAuditEngine {
 impl ComplianceAuditor {
     pub fn new() -> Self {
         Self {
-            auditor_id: format!("ca_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            auditor_id: format!(
+                "ca_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             compliance_frameworks: Arc::new(DashMap::new()),
             audit_programs: Arc::new(DashMap::new()),
             compliance_assessments: AsyncDataStore::new(),
@@ -1246,7 +1280,10 @@ impl ComplianceAuditor {
         Ok(program_id)
     }
 
-    pub async fn perform_audit(&self, request: ComplianceAuditRequest) -> Result<ComplianceAuditResult> {
+    pub async fn perform_audit(
+        &self,
+        request: ComplianceAuditRequest,
+    ) -> Result<ComplianceAuditResult> {
         let audit_result = ComplianceAuditResult {
             audit_id: Uuid::new_v4().to_string(),
             request_id: request.request_id,
@@ -1267,7 +1304,8 @@ impl ComplianceAuditor {
 
     pub async fn register_framework(&self, framework: ComplianceFramework) -> Result<String> {
         let framework_id = framework.framework_id.clone();
-        self.compliance_frameworks.insert(framework_id.clone(), framework);
+        self.compliance_frameworks
+            .insert(framework_id.clone(), framework);
         Ok(framework_id)
     }
 }
@@ -1703,8 +1741,14 @@ macro_rules! impl_audit_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1753,13 +1797,20 @@ impl AuditReportingEngine {
             audit_id: "audit_123".to_string(),
             report_type: AuditReportType::Executive,
             generated_date: SystemTime::now(),
-            executive_summary: "This audit assessed the security controls and found them to be adequate.".to_string(),
-            audit_objectives: vec!["Assess security controls".to_string(), "Verify compliance".to_string()],
+            executive_summary:
+                "This audit assessed the security controls and found them to be adequate."
+                    .to_string(),
+            audit_objectives: vec![
+                "Assess security controls".to_string(),
+                "Verify compliance".to_string(),
+            ],
             audit_scope: "Enterprise security controls assessment".to_string(),
             methodology: "Risk-based audit approach with testing and interviews".to_string(),
             key_findings: vec!["All critical controls are effective".to_string()],
             recommendations: vec!["Continue monitoring and periodic assessments".to_string()],
-            management_response: Some("Management agrees with findings and recommendations".to_string()),
+            management_response: Some(
+                "Management agrees with findings and recommendations".to_string(),
+            ),
             appendices: vec![],
             distribution_record: DistributionRecord {
                 distributed_to: vec!["audit.committee@example.com".to_string()],

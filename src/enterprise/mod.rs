@@ -1,20 +1,20 @@
 // Enterprise Features & Governance Module
 // Comprehensive enterprise-grade features for CLAUDE DLS platform
 
+pub mod audit;
 pub mod authentication;
 pub mod authorization;
-pub mod governance;
 pub mod compliance;
-pub mod marketplace;
-pub mod licensing;
 pub mod enterprise_analytics;
-pub mod audit;
+pub mod governance;
+pub mod licensing;
+pub mod marketplace;
 
-pub use authentication::{EnterpriseAuthenticationManager, AuthenticationProvider, SSOManager};
-pub use authorization::{AuthorizationEngine, PolicyEngine, AccessControlManager};
-pub use governance::{GovernanceFramework, PolicyManager, ComplianceEngine};
-pub use compliance::{ComplianceManager, RegulatoryFramework, AuditTrailManager};
-pub use marketplace::{MarketplaceManager, PluginRegistry, ExtensionManager};
-pub use licensing::{LicensingManager, LicenseValidator, UsageTracker};
-pub use enterprise_analytics::{EnterpriseAnalyticsEngine, BusinessIntelligence, ReportingEngine};
-pub use audit::{AuditManager, SecurityAuditEngine, ComplianceAuditor};
+pub use audit::{AuditManager, ComplianceAuditor, SecurityAuditEngine};
+pub use authentication::{AuthenticationProvider, EnterpriseAuthenticationManager, SSOManager};
+pub use authorization::{AccessControlManager, AuthorizationEngine, PolicyEngine};
+pub use compliance::{AuditTrailManager, ComplianceManager, RegulatoryFramework};
+pub use enterprise_analytics::{BusinessIntelligence, EnterpriseAnalyticsEngine, ReportingEngine};
+pub use governance::{ComplianceEngine, GovernanceFramework, PolicyManager};
+pub use licensing::{LicenseValidator, LicensingManager, UsageTracker};
+pub use marketplace::{ExtensionManager, MarketplaceManager, PluginRegistry};

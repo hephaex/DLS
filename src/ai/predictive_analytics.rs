@@ -1,11 +1,11 @@
 use crate::error::{DlsError, Result};
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 // mpsc channels not currently used in this module
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -805,15 +805,15 @@ impl PredictiveAnalyticsEngine {
 
         // Load default models
         self.load_default_models().await?;
-        
+
         // Start training scheduler
         if self.config.auto_training {
             self.start_training_scheduler().await;
         }
-        
+
         // Start feedback processing
         self.start_feedback_processor().await;
-        
+
         // Start model performance monitoring
         self.start_performance_monitor().await;
 
@@ -875,16 +875,24 @@ impl PredictiveAnalyticsEngine {
         Ok(())
     }
 
-    pub async fn predict_failure(&self, component_id: &str, component_type: &str) -> Result<FailurePrediction> {
-        let model = self.models.get("failure_prediction")
+    pub async fn predict_failure(
+        &self,
+        component_id: &str,
+        component_type: &str,
+    ) -> Result<FailurePrediction> {
+        let model = self
+            .models
+            .get("failure_prediction")
             .ok_or_else(|| DlsError::Internal("Failure prediction model not found".to_string()))?;
 
         // Extract features for the component
         let features = self.extract_component_features(component_id).await?;
-        
+
         // Generate prediction (simplified for demonstration)
         let failure_probability = self.calculate_failure_probability(&features).await;
-        let time_to_failure = self.estimate_time_to_failure(&features, failure_probability).await;
+        let time_to_failure = self
+            .estimate_time_to_failure(&features, failure_probability)
+            .await;
 
         let prediction = FailurePrediction {
             component_id: component_id.to_string(),
@@ -893,7 +901,9 @@ impl PredictiveAnalyticsEngine {
             estimated_time_to_failure: time_to_failure,
             failure_mode: self.predict_failure_mode(&features).await,
             severity: self.assess_failure_severity(failure_probability),
-            preventive_actions: self.generate_preventive_actions(component_type, failure_probability).await,
+            preventive_actions: self
+                .generate_preventive_actions(component_type, failure_probability)
+                .await,
             cost_of_failure: self.estimate_failure_cost(component_type, failure_probability),
             cost_of_prevention: self.estimate_prevention_cost(component_type),
             confidence: model.accuracy,
@@ -902,17 +912,24 @@ impl PredictiveAnalyticsEngine {
         Ok(prediction)
     }
 
-    pub async fn forecast_capacity(&self, resource_type: ResourceType, time_horizon: Duration) -> Result<CapacityForecast> {
-        let model = self.models.get("capacity_forecasting")
-            .ok_or_else(|| DlsError::Internal("Capacity forecasting model not found".to_string()))?;
+    pub async fn forecast_capacity(
+        &self,
+        resource_type: ResourceType,
+        time_horizon: Duration,
+    ) -> Result<CapacityForecast> {
+        let model = self.models.get("capacity_forecasting").ok_or_else(|| {
+            DlsError::Internal("Capacity forecasting model not found".to_string())
+        })?;
 
         // Extract historical data
         let historical_data = self.get_historical_usage(&resource_type).await?;
-        
+
         // Generate forecast
-        let predicted_utilization = self.generate_utilization_forecast(&historical_data, time_horizon).await;
+        let predicted_utilization = self
+            .generate_utilization_forecast(&historical_data, time_horizon)
+            .await;
         let growth_rate = self.calculate_growth_rate(&historical_data);
-        
+
         let forecast = CapacityForecast {
             resource_type,
             current_utilization: historical_data.last().map(|d| d.value).unwrap_or(0.0),
@@ -921,7 +938,9 @@ impl PredictiveAnalyticsEngine {
             time_to_threshold: self.calculate_time_to_threshold(&predicted_utilization, 0.8),
             growth_rate,
             seasonal_patterns: self.detect_seasonal_patterns(&historical_data).await,
-            scaling_recommendations: self.generate_scaling_recommendations(&predicted_utilization).await,
+            scaling_recommendations: self
+                .generate_scaling_recommendations(&predicted_utilization)
+                .await,
             confidence: model.accuracy,
         };
 
@@ -931,20 +950,25 @@ impl PredictiveAnalyticsEngine {
     pub async fn optimize_performance(&self, component: &str) -> Result<PerformanceOptimization> {
         // Analyze current performance
         let current_metrics = self.collect_performance_metrics(component).await?;
-        
+
         // Identify optimization opportunities
-        let optimization_actions = self.identify_optimization_actions(component, &current_metrics).await;
-        
+        let optimization_actions = self
+            .identify_optimization_actions(component, &current_metrics)
+            .await;
+
         // Predict performance improvement
-        let predicted_metrics = self.predict_optimized_performance(&current_metrics, &optimization_actions).await;
-        
+        let predicted_metrics = self
+            .predict_optimized_performance(&current_metrics, &optimization_actions)
+            .await;
+
         let optimization = PerformanceOptimization {
             optimization_id: Uuid::new_v4().to_string(),
             target_component: component.to_string(),
             current_performance: current_metrics.clone(),
             predicted_performance: predicted_metrics.clone(),
             optimization_actions,
-            expected_improvement: self.calculate_improvement_percentage(&current_metrics, &predicted_metrics),
+            expected_improvement: self
+                .calculate_improvement_percentage(&current_metrics, &predicted_metrics),
             implementation_effort: 7.5, // Scale of 1-10
             risk_assessment: self.assess_optimization_risk().await,
             timeline: Duration::days(7),
@@ -953,7 +977,10 @@ impl PredictiveAnalyticsEngine {
         Ok(optimization)
     }
 
-    async fn extract_component_features(&self, _component_id: &str) -> Result<HashMap<String, f64>> {
+    async fn extract_component_features(
+        &self,
+        _component_id: &str,
+    ) -> Result<HashMap<String, f64>> {
         // Simplified feature extraction
         let mut features = HashMap::new();
         features.insert("cpu_temperature".to_string(), 65.0);
@@ -969,12 +996,16 @@ impl PredictiveAnalyticsEngine {
         let cpu_temp = features.get("cpu_temperature").unwrap_or(&50.0);
         let mem_usage = features.get("memory_usage").unwrap_or(&0.5);
         let disk_errors = features.get("disk_errors").unwrap_or(&0.0);
-        
+
         let risk_score = (cpu_temp - 50.0) / 100.0 + mem_usage + disk_errors / 10.0;
         risk_score.min(1.0).max(0.0)
     }
 
-    async fn estimate_time_to_failure(&self, _features: &HashMap<String, f64>, probability: f64) -> Duration {
+    async fn estimate_time_to_failure(
+        &self,
+        _features: &HashMap<String, f64>,
+        probability: f64,
+    ) -> Duration {
         // Simplified estimation
         if probability > 0.8 {
             Duration::days(7)
@@ -990,7 +1021,7 @@ impl PredictiveAnalyticsEngine {
     async fn predict_failure_mode(&self, features: &HashMap<String, f64>) -> FailureMode {
         let cpu_temp = features.get("cpu_temperature").unwrap_or(&50.0);
         let disk_errors = features.get("disk_errors").unwrap_or(&0.0);
-        
+
         if *cpu_temp > 80.0 {
             FailureMode::ProcessorFailure
         } else if *disk_errors > 5.0 {
@@ -1010,7 +1041,11 @@ impl PredictiveAnalyticsEngine {
         }
     }
 
-    async fn generate_preventive_actions(&self, component_type: &str, probability: f64) -> Vec<PreventiveAction> {
+    async fn generate_preventive_actions(
+        &self,
+        component_type: &str,
+        probability: f64,
+    ) -> Vec<PreventiveAction> {
         let mut actions = Vec::new();
 
         if probability > 0.8 {
@@ -1056,7 +1091,7 @@ impl PredictiveAnalyticsEngine {
         // Simplified historical data
         let mut data = Vec::new();
         let start_time = Utc::now() - Duration::days(30);
-        
+
         for i in 0..30 {
             data.push(DataPoint {
                 timestamp: start_time + Duration::days(i),
@@ -1065,25 +1100,29 @@ impl PredictiveAnalyticsEngine {
                 tags: HashMap::new(),
             });
         }
-        
+
         Ok(data)
     }
 
-    async fn generate_utilization_forecast(&self, historical_data: &[DataPoint], horizon: Duration) -> Vec<(DateTime<Utc>, f64)> {
+    async fn generate_utilization_forecast(
+        &self,
+        historical_data: &[DataPoint],
+        horizon: Duration,
+    ) -> Vec<(DateTime<Utc>, f64)> {
         let mut forecast = Vec::new();
         let start_time = Utc::now();
         let days = horizon.num_days();
-        
+
         // Simple linear extrapolation with noise
         let last_value = historical_data.last().map(|d| d.value).unwrap_or(0.5);
         let trend = self.calculate_trend(historical_data);
-        
+
         for i in 0..days {
             let timestamp = start_time + Duration::days(i);
             let predicted_value = last_value + trend * i as f64 + 0.05 * ((i as f64 * 0.2).sin());
             forecast.push((timestamp, predicted_value.max(0.0).min(1.0)));
         }
-        
+
         forecast
     }
 
@@ -1091,11 +1130,11 @@ impl PredictiveAnalyticsEngine {
         if data.len() < 2 {
             return 0.0;
         }
-        
+
         let first = data.first().unwrap().value;
         let last = data.last().unwrap().value;
         let periods = data.len() as f64;
-        
+
         (last / first).powf(1.0 / periods) - 1.0
     }
 
@@ -1103,22 +1142,26 @@ impl PredictiveAnalyticsEngine {
         if data.len() < 2 {
             return 0.0;
         }
-        
+
         let first = data.first().unwrap().value;
         let last = data.last().unwrap().value;
-        
+
         (last - first) / data.len() as f64
     }
 
-    fn calculate_time_to_threshold(&self, forecast: &[(DateTime<Utc>, f64)], threshold: f64) -> Option<Duration> {
+    fn calculate_time_to_threshold(
+        &self,
+        forecast: &[(DateTime<Utc>, f64)],
+        threshold: f64,
+    ) -> Option<Duration> {
         let now = Utc::now();
-        
+
         for (timestamp, value) in forecast {
             if *value >= threshold {
                 return Some(*timestamp - now);
             }
         }
-        
+
         None
     }
 
@@ -1142,11 +1185,14 @@ impl PredictiveAnalyticsEngine {
         ]
     }
 
-    async fn generate_scaling_recommendations(&self, forecast: &[(DateTime<Utc>, f64)]) -> Vec<ScalingRecommendation> {
+    async fn generate_scaling_recommendations(
+        &self,
+        forecast: &[(DateTime<Utc>, f64)],
+    ) -> Vec<ScalingRecommendation> {
         let max_utilization = forecast.iter().map(|(_, v)| *v).fold(0.0f64, f64::max);
-        
+
         let mut recommendations = Vec::new();
-        
+
         if max_utilization > 0.8 {
             recommendations.push(ScalingRecommendation {
                 recommendation_id: Uuid::new_v4().to_string(),
@@ -1160,7 +1206,7 @@ impl PredictiveAnalyticsEngine {
                 prerequisites: vec!["budget_approval".to_string()],
             });
         }
-        
+
         recommendations
     }
 
@@ -1170,7 +1216,7 @@ impl PredictiveAnalyticsEngine {
         resource_utilization.insert("cpu".to_string(), 0.75);
         resource_utilization.insert("memory".to_string(), 0.65);
         resource_utilization.insert("network".to_string(), 0.45);
-        
+
         Ok(PerformanceMetrics {
             throughput: 1000.0,
             latency: 50.0,
@@ -1181,9 +1227,13 @@ impl PredictiveAnalyticsEngine {
         })
     }
 
-    async fn identify_optimization_actions(&self, _component: &str, metrics: &PerformanceMetrics) -> Vec<OptimizationAction> {
+    async fn identify_optimization_actions(
+        &self,
+        _component: &str,
+        metrics: &PerformanceMetrics,
+    ) -> Vec<OptimizationAction> {
         let mut actions = Vec::new();
-        
+
         if metrics.latency > 100.0 {
             actions.push(OptimizationAction {
                 action_id: "cache_optimization".to_string(),
@@ -1195,83 +1245,89 @@ impl PredictiveAnalyticsEngine {
                 rollback_plan: "Disable cache and revert to direct access".to_string(),
             });
         }
-        
+
         if let Some(cpu_usage) = metrics.resource_utilization.get("cpu") {
             if *cpu_usage > 0.8 {
                 actions.push(OptimizationAction {
                     action_id: "load_balancing".to_string(),
                     action_type: OptimizationType::ResourceReallocation,
                     description: "Implement load balancing to distribute CPU usage".to_string(),
-                    parameters: HashMap::from([("algorithm".to_string(), "round_robin".to_string())]),
+                    parameters: HashMap::from([(
+                        "algorithm".to_string(),
+                        "round_robin".to_string(),
+                    )]),
                     expected_impact: 0.4,
                     implementation_complexity: ComplexityLevel::Complex,
                     rollback_plan: "Remove load balancer and route traffic directly".to_string(),
                 });
             }
         }
-        
+
         actions
     }
 
-    async fn predict_optimized_performance(&self, current: &PerformanceMetrics, actions: &[OptimizationAction]) -> PerformanceMetrics {
+    async fn predict_optimized_performance(
+        &self,
+        current: &PerformanceMetrics,
+        actions: &[OptimizationAction],
+    ) -> PerformanceMetrics {
         let mut optimized = current.clone();
-        
+
         for action in actions {
             match action.action_type {
                 OptimizationType::CacheOptimization => {
                     optimized.latency *= 1.0 - action.expected_impact;
                     optimized.response_time *= 1.0 - action.expected_impact;
-                },
+                }
                 OptimizationType::ResourceReallocation => {
                     optimized.throughput *= 1.0 + action.expected_impact;
                     if let Some(cpu_usage) = optimized.resource_utilization.get_mut("cpu") {
                         *cpu_usage *= 1.0 - action.expected_impact;
                     }
-                },
+                }
                 _ => {}
             }
         }
-        
+
         optimized
     }
 
-    fn calculate_improvement_percentage(&self, current: &PerformanceMetrics, optimized: &PerformanceMetrics) -> f64 {
+    fn calculate_improvement_percentage(
+        &self,
+        current: &PerformanceMetrics,
+        optimized: &PerformanceMetrics,
+    ) -> f64 {
         let latency_improvement = (current.latency - optimized.latency) / current.latency;
-        let throughput_improvement = (optimized.throughput - current.throughput) / current.throughput;
-        
+        let throughput_improvement =
+            (optimized.throughput - current.throughput) / current.throughput;
+
         (latency_improvement + throughput_improvement) / 2.0 * 100.0
     }
 
     async fn assess_optimization_risk(&self) -> RiskAssessment {
         RiskAssessment {
             overall_risk: RiskLevel::Medium,
-            risk_factors: vec![
-                RiskFactor {
-                    factor_name: "Implementation Complexity".to_string(),
-                    probability: 0.3,
-                    impact: 0.6,
-                    risk_score: 0.18,
-                    description: "Complex changes may introduce bugs".to_string(),
-                },
-            ],
-            mitigation_strategies: vec![
-                MitigationStrategy {
-                    strategy_name: "Gradual Rollout".to_string(),
-                    description: "Implement changes incrementally".to_string(),
-                    effectiveness: 0.8,
-                    implementation_cost: 1000.0,
-                    timeline: Duration::days(14),
-                },
-            ],
-            contingency_plans: vec![
-                ContingencyPlan {
-                    plan_name: "Quick Rollback".to_string(),
-                    trigger_conditions: vec!["Performance degradation > 20%".to_string()],
-                    actions: vec!["Revert to previous configuration".to_string()],
-                    responsible_party: "DevOps Team".to_string(),
-                    execution_time: Duration::hours(1),
-                },
-            ],
+            risk_factors: vec![RiskFactor {
+                factor_name: "Implementation Complexity".to_string(),
+                probability: 0.3,
+                impact: 0.6,
+                risk_score: 0.18,
+                description: "Complex changes may introduce bugs".to_string(),
+            }],
+            mitigation_strategies: vec![MitigationStrategy {
+                strategy_name: "Gradual Rollout".to_string(),
+                description: "Implement changes incrementally".to_string(),
+                effectiveness: 0.8,
+                implementation_cost: 1000.0,
+                timeline: Duration::days(14),
+            }],
+            contingency_plans: vec![ContingencyPlan {
+                plan_name: "Quick Rollback".to_string(),
+                trigger_conditions: vec!["Performance degradation > 20%".to_string()],
+                actions: vec!["Revert to previous configuration".to_string()],
+                responsible_party: "DevOps Team".to_string(),
+                execution_time: Duration::hours(1),
+            }],
         }
     }
 
@@ -1282,10 +1338,10 @@ impl PredictiveAnalyticsEngine {
 
         tokio::spawn(async move {
             let mut timer = tokio::time::interval(interval.to_std().unwrap());
-            
+
             loop {
                 timer.tick().await;
-                
+
                 // Check which models need retraining
                 for model_entry in models.iter() {
                     let model = model_entry.value();
@@ -1305,7 +1361,7 @@ impl PredictiveAnalyticsEngine {
                             metrics: None,
                             error_message: None,
                         };
-                        
+
                         training_queue.write().push(training_job);
                     }
                 }
@@ -1315,16 +1371,16 @@ impl PredictiveAnalyticsEngine {
 
     async fn start_feedback_processor(&self) {
         let feedback_collector = Arc::clone(&self.feedback_collector);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::minutes(5).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Process feedback and update model performance
                 let mut feedback_queue = feedback_collector.feedback_queue.write();
-                
+
                 for feedback in feedback_queue.drain(..) {
                     // Update model performance metrics
                     // This would involve recomputing accuracy, precision, recall, etc.
@@ -1336,17 +1392,17 @@ impl PredictiveAnalyticsEngine {
     async fn start_performance_monitor(&self) {
         let models = Arc::clone(&self.models);
         let performance_tracker = Arc::clone(&self.feedback_collector.performance_tracker);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::hours(1).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Monitor model performance and detect drift
                 for model_entry in models.iter() {
                     let model = model_entry.value();
-                    
+
                     // Calculate performance metrics
                     let performance = ModelPerformance {
                         model_id: model.model_id.clone(),
@@ -1360,7 +1416,7 @@ impl PredictiveAnalyticsEngine {
                         drift_score: 0.1,
                         last_updated: Utc::now(),
                     };
-                    
+
                     performance_tracker.insert(model.model_id.clone(), performance);
                 }
             }
@@ -1368,7 +1424,10 @@ impl PredictiveAnalyticsEngine {
     }
 
     pub async fn get_model_performance(&self, model_id: &str) -> Option<ModelPerformance> {
-        self.feedback_collector.performance_tracker.get(model_id).map(|p| p.clone())
+        self.feedback_collector
+            .performance_tracker
+            .get(model_id)
+            .map(|p| p.clone())
     }
 
     pub async fn submit_feedback(&self, feedback: PredictionFeedback) -> Result<()> {
@@ -1378,20 +1437,26 @@ impl PredictiveAnalyticsEngine {
     }
 
     pub async fn get_predictions(&self, limit: Option<usize>) -> Vec<Prediction> {
-        let mut predictions: Vec<Prediction> = self.predictions.iter()
+        let mut predictions: Vec<Prediction> = self
+            .predictions
+            .iter()
             .map(|entry| entry.value().clone())
             .collect();
-        
+
         predictions.sort_by(|a, b| b.predicted_at.cmp(&a.predicted_at));
-        
+
         if let Some(limit) = limit {
             predictions.truncate(limit);
         }
-        
+
         predictions
     }
 
-    pub async fn start_hyperparameter_tuning(&self, model_id: &str, search_space: SearchSpace) -> Result<String> {
+    pub async fn start_hyperparameter_tuning(
+        &self,
+        model_id: &str,
+        search_space: SearchSpace,
+    ) -> Result<String> {
         let tuning_job = TuningJob {
             job_id: Uuid::new_v4().to_string(),
             model_id: model_id.to_string(),
@@ -1410,13 +1475,15 @@ impl PredictiveAnalyticsEngine {
             trials: Vec::new(),
             created_at: Utc::now(),
         };
-        
+
         let job_id = tuning_job.job_id.clone();
-        self.auto_tuner.tuning_jobs.insert(job_id.clone(), tuning_job);
-        
+        self.auto_tuner
+            .tuning_jobs
+            .insert(job_id.clone(), tuning_job);
+
         // Start tuning process in background
         self.execute_hyperparameter_tuning(&job_id).await;
-        
+
         Ok(job_id)
     }
 

@@ -1,11 +1,11 @@
 // Enterprise Analytics & Business Intelligence Engine
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -1054,7 +1054,13 @@ pub enum TimeGranularity {
 impl EnterpriseAnalyticsEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("eae_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "eae_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             business_intelligence: Arc::new(BusinessIntelligence::new()),
             reporting_engine: Arc::new(ReportingEngine::new()),
             data_warehouse: Arc::new(DataWarehouse::new()),
@@ -1070,8 +1076,13 @@ impl EnterpriseAnalyticsEngine {
         self.business_intelligence.register_model(model).await
     }
 
-    pub async fn execute_analysis(&self, analysis_request: AnalysisRequest) -> Result<AnalysisResult> {
-        self.business_intelligence.execute_analysis(analysis_request).await
+    pub async fn execute_analysis(
+        &self,
+        analysis_request: AnalysisRequest,
+    ) -> Result<AnalysisResult> {
+        self.business_intelligence
+            .execute_analysis(analysis_request)
+            .await
     }
 
     pub async fn generate_report(&self, report_request: ReportRequest) -> Result<GeneratedReport> {
@@ -1079,18 +1090,31 @@ impl EnterpriseAnalyticsEngine {
     }
 
     pub async fn create_dashboard(&self, dashboard_config: DashboardConfig) -> Result<Dashboard> {
-        self.dashboard_service.create_dashboard(dashboard_config).await
+        self.dashboard_service
+            .create_dashboard(dashboard_config)
+            .await
     }
 
-    pub async fn run_predictive_model(&self, model_request: PredictiveModelRequest) -> Result<PredictionResult> {
-        self.predictive_analytics.run_prediction(model_request).await
+    pub async fn run_predictive_model(
+        &self,
+        model_request: PredictiveModelRequest,
+    ) -> Result<PredictionResult> {
+        self.predictive_analytics
+            .run_prediction(model_request)
+            .await
     }
 }
 
 impl BusinessIntelligence {
     pub fn new() -> Self {
         Self {
-            bi_id: format!("bi_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            bi_id: format!(
+                "bi_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             data_models: Arc::new(DashMap::new()),
             analysis_engines: Arc::new(DashMap::new()),
             insight_generator: Arc::new(InsightGenerator::new()),
@@ -1108,7 +1132,8 @@ impl BusinessIntelligence {
     }
 
     pub async fn execute_analysis(&self, request: AnalysisRequest) -> Result<AnalysisResult> {
-        let model = self.data_models
+        let model = self
+            .data_models
             .get(&request.model_id)
             .ok_or_else(|| crate::error::Error::NotFound("Data model not found".to_string()))?;
 
@@ -1136,12 +1161,17 @@ impl BusinessIntelligence {
         self.insight_generator.generate_insights(data_points).await
     }
 
-    pub async fn detect_trends(&self, time_series_data: Vec<TimeSeriesPoint>) -> Result<Vec<Trend>> {
+    pub async fn detect_trends(
+        &self,
+        time_series_data: Vec<TimeSeriesPoint>,
+    ) -> Result<Vec<Trend>> {
         self.trend_analyzer.analyze_trends(time_series_data).await
     }
 
     pub async fn forecast(&self, forecast_request: ForecastRequest) -> Result<ForecastResult> {
-        self.forecasting_engine.generate_forecast(forecast_request).await
+        self.forecasting_engine
+            .generate_forecast(forecast_request)
+            .await
     }
 }
 
@@ -2044,8 +2074,14 @@ macro_rules! impl_analytics_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -2099,7 +2135,10 @@ impl DashboardService {
 }
 
 impl PredictiveAnalytics {
-    pub async fn run_prediction(&self, _request: PredictiveModelRequest) -> Result<PredictionResult> {
+    pub async fn run_prediction(
+        &self,
+        _request: PredictiveModelRequest,
+    ) -> Result<PredictionResult> {
         Ok(PredictionResult {
             prediction_id: Uuid::new_v4().to_string(),
             model_id: "model_1".to_string(),

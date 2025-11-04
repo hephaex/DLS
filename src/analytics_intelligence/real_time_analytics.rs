@@ -1,11 +1,11 @@
 // Real-Time Analytics Engine for Live Data Processing
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, CircularEventBuffer};
+use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -241,9 +241,20 @@ pub struct FaultToleranceConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RestartStrategy {
     NoRestart,
-    FixedDelay { attempts: u32, delay: Duration },
-    FailureRate { max_failures: u32, failure_interval: Duration, delay: Duration },
-    Exponential { initial_backoff: Duration, max_backoff: Duration, backoff_multiplier: f64 },
+    FixedDelay {
+        attempts: u32,
+        delay: Duration,
+    },
+    FailureRate {
+        max_failures: u32,
+        failure_interval: Duration,
+        delay: Duration,
+    },
+    Exponential {
+        initial_backoff: Duration,
+        max_backoff: Duration,
+        backoff_multiplier: f64,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -338,7 +349,13 @@ pub struct EvictionConfiguration {
 impl RealTimeAnalyticsEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("rtae_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "rtae_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             stream_processor: Arc::new(StreamAnalyticsProcessor::new()),
             window_manager: Arc::new(WindowManager::new()),
             aggregation_engine: Arc::new(AggregationEngine::new()),
@@ -368,7 +385,13 @@ impl RealTimeAnalyticsEngine {
 impl StreamAnalyticsProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("sap_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "sap_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             stream_definitions: Arc::new(DashMap::new()),
             processing_engines: Arc::new(DashMap::new()),
             state_store: AsyncDataStore::new(),
@@ -401,7 +424,13 @@ impl StreamAnalyticsProcessor {
 impl WindowManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("wm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "wm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             window_definitions: Arc::new(DashMap::new()),
             window_states: AsyncDataStore::new(),
             trigger_manager: Arc::new(TriggerManager::new()),
@@ -472,7 +501,13 @@ pub struct CheckpointManager {
 impl CheckpointManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -485,7 +520,13 @@ pub struct BackpressureController {
 impl BackpressureController {
     pub fn new() -> Self {
         Self {
-            controller_id: format!("bc_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            controller_id: format!(
+                "bc_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -498,7 +539,13 @@ pub struct TriggerManager {
 impl TriggerManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("tm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "tm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -511,7 +558,13 @@ pub struct EvictorManager {
 impl EvictorManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("em_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "em_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -524,7 +577,13 @@ pub struct AggregationEngine {
 impl AggregationEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("ae_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "ae_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -537,7 +596,13 @@ pub struct PatternDetector {
 impl PatternDetector {
     pub fn new() -> Self {
         Self {
-            detector_id: format!("pd_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            detector_id: format!(
+                "pd_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -550,7 +615,13 @@ pub struct RealTimeAnomalyDetector {
 impl RealTimeAnomalyDetector {
     pub fn new() -> Self {
         Self {
-            detector_id: format!("rtad_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            detector_id: format!(
+                "rtad_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -563,7 +634,13 @@ pub struct EventCorrelator {
 impl EventCorrelator {
     pub fn new() -> Self {
         Self {
-            correlator_id: format!("ec_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            correlator_id: format!(
+                "ec_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -576,7 +653,13 @@ pub struct DashboardEngine {
 impl DashboardEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("de_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "de_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -589,7 +672,13 @@ pub struct RealTimeAlertManager {
 impl RealTimeAlertManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("rtam_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "rtam_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

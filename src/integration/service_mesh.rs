@@ -1,12 +1,12 @@
 // Service Mesh Integration for Advanced Microservices Management
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, PerformanceProfiler};
+use crate::optimization::{AsyncDataStore, LightweightStore, PerformanceProfiler};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
-use dashmap::DashMap;
 
 #[derive(Debug, Clone)]
 pub struct ServiceMesh {
@@ -584,7 +584,11 @@ pub struct LoadBalancer {
 }
 
 pub trait LoadBalancingAlgorithm: Send + Sync + std::fmt::Debug {
-    fn select_endpoint(&self, endpoints: &[ServiceEndpoint], request_context: &RequestContext) -> Option<ServiceEndpoint>;
+    fn select_endpoint(
+        &self,
+        endpoints: &[ServiceEndpoint],
+        request_context: &RequestContext,
+    ) -> Option<ServiceEndpoint>;
     fn update_metrics(&self, endpoint: &ServiceEndpoint, response_time: Duration, success: bool);
 }
 
@@ -873,7 +877,13 @@ pub enum NotificationChannelType {
 impl ServiceMesh {
     pub fn new(mesh_type: ServiceMeshType, config: ServiceMeshConfig) -> Self {
         Self {
-            mesh_id: format!("mesh_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            mesh_id: format!(
+                "mesh_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             mesh_type,
             configuration: config,
             service_registry: Arc::new(ServiceDiscovery::new()),
@@ -920,7 +930,13 @@ impl ServiceMesh {
 impl ServiceDiscovery {
     pub fn new() -> Self {
         Self {
-            discovery_id: format!("discovery_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            discovery_id: format!(
+                "discovery_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             registered_services: LightweightStore::new(Some(10000)),
             health_checker: Arc::new(ServiceHealthChecker::new()),
             dns_resolver: Arc::new(DnsResolver::new()),
@@ -940,11 +956,17 @@ impl ServiceDiscovery {
 
     pub async fn register_service(&self, registration: ServiceRegistration) -> Result<()> {
         // Register service
-        self.registered_services.insert(registration.service_id.clone(), registration.clone());
+        self.registered_services
+            .insert(registration.service_id.clone(), registration.clone());
 
         // Cache endpoints
         for endpoint in &registration.endpoints {
-            self.service_cache.insert(format!("{}:{}", registration.service_name, endpoint.endpoint_id), endpoint.clone()).await;
+            self.service_cache
+                .insert(
+                    format!("{}:{}", registration.service_name, endpoint.endpoint_id),
+                    endpoint.clone(),
+                )
+                .await;
         }
 
         // Set up health checks
@@ -974,7 +996,13 @@ impl ServiceDiscovery {
 impl ServiceHealthChecker {
     pub fn new() -> Self {
         Self {
-            checker_id: format!("health_checker_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            checker_id: format!(
+                "health_checker_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             active_checks: Arc::new(DashMap::new()),
             health_history: Arc::new(RwLock::new(Vec::new())),
             profiler: PerformanceProfiler::new(),
@@ -998,9 +1026,11 @@ impl ServiceHealthChecker {
                     let profiler = profiler.clone();
 
                     tokio::spawn(async move {
-                        let result = profiler.measure(&format!("health_check_{}", check.service_id), async {
-                            Self::perform_health_check(&check).await
-                        }).await;
+                        let result = profiler
+                            .measure(&format!("health_check_{}", check.service_id), async {
+                                Self::perform_health_check(&check).await
+                            })
+                            .await;
 
                         if let Ok(health_result) = result {
                             let mut history = health_history.write().await;
@@ -1031,7 +1061,8 @@ impl ServiceHealthChecker {
             consecutive_successes: 0,
         };
 
-        self.active_checks.insert(health_check.check_id.clone(), health_check);
+        self.active_checks
+            .insert(health_check.check_id.clone(), health_check);
         Ok(())
     }
 
@@ -1042,26 +1073,38 @@ impl ServiceHealthChecker {
         let (status, error_message) = match check.config.check_type {
             HealthCheckType::HTTP => {
                 // Simulate HTTP health check
-                if rand::random::<f64>() > 0.1 { // 90% success rate
+                if rand::random::<f64>() > 0.1 {
+                    // 90% success rate
                     (HealthCheckStatus::Passed, None)
                 } else {
-                    (HealthCheckStatus::Failed, Some("Connection timeout".to_string()))
+                    (
+                        HealthCheckStatus::Failed,
+                        Some("Connection timeout".to_string()),
+                    )
                 }
             }
             HealthCheckType::TCP => {
                 // Simulate TCP health check
-                if rand::random::<f64>() > 0.05 { // 95% success rate
+                if rand::random::<f64>() > 0.05 {
+                    // 95% success rate
                     (HealthCheckStatus::Passed, None)
                 } else {
-                    (HealthCheckStatus::Failed, Some("Port not reachable".to_string()))
+                    (
+                        HealthCheckStatus::Failed,
+                        Some("Port not reachable".to_string()),
+                    )
                 }
             }
             HealthCheckType::GRPC => {
                 // Simulate GRPC health check
-                if rand::random::<f64>() > 0.08 { // 92% success rate
+                if rand::random::<f64>() > 0.08 {
+                    // 92% success rate
                     (HealthCheckStatus::Passed, None)
                 } else {
-                    (HealthCheckStatus::Failed, Some("GRPC service unavailable".to_string()))
+                    (
+                        HealthCheckStatus::Failed,
+                        Some("GRPC service unavailable".to_string()),
+                    )
                 }
             }
             HealthCheckType::Custom => {
@@ -1073,7 +1116,13 @@ impl ServiceHealthChecker {
         let response_time = start_time.elapsed();
 
         Ok(HealthResult {
-            result_id: format!("result_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()),
+            result_id: format!(
+                "result_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            ),
             check_id: check.check_id.clone(),
             service_id: check.service_id.clone(),
             status,
@@ -1087,7 +1136,13 @@ impl ServiceHealthChecker {
 impl DnsResolver {
     pub fn new() -> Self {
         Self {
-            resolver_id: format!("dns_resolver_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            resolver_id: format!(
+                "dns_resolver_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             dns_cache: AsyncDataStore::new(),
             resolution_stats: Arc::new(DashMap::new()),
         }
@@ -1122,13 +1177,16 @@ impl DnsResolver {
     }
 
     async fn update_resolution_stats(&self, domain: &str, cache_hit: bool) {
-        let mut stats = self.resolution_stats.entry(domain.to_string()).or_insert(ResolutionStats {
-            domain: domain.to_string(),
-            resolution_count: 0,
-            cache_hits: 0,
-            resolution_time: Duration::from_millis(50),
-            last_resolved: SystemTime::now(),
-        });
+        let mut stats =
+            self.resolution_stats
+                .entry(domain.to_string())
+                .or_insert(ResolutionStats {
+                    domain: domain.to_string(),
+                    resolution_count: 0,
+                    cache_hits: 0,
+                    resolution_time: Duration::from_millis(50),
+                    last_resolved: SystemTime::now(),
+                });
 
         stats.resolution_count += 1;
         if cache_hit {
@@ -1141,7 +1199,13 @@ impl DnsResolver {
 impl TrafficManagement {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("traffic_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "traffic_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             routing_rules: LightweightStore::new(Some(5000)),
             traffic_policies: Arc::new(DashMap::new()),
             canary_deployments: Arc::new(DashMap::new()),
@@ -1175,7 +1239,8 @@ impl TrafficManagement {
     }
 
     pub async fn start_canary_deployment(&self, deployment: CanaryDeployment) -> Result<()> {
-        self.canary_deployments.insert(deployment.deployment_id.clone(), deployment);
+        self.canary_deployments
+            .insert(deployment.deployment_id.clone(), deployment);
         Ok(())
     }
 }
@@ -1183,7 +1248,13 @@ impl TrafficManagement {
 impl CircuitBreakerManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cb_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cb_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             circuit_breakers: Arc::new(DashMap::new()),
             metrics_collector: Arc::new(CircuitBreakerMetrics::new()),
         }
@@ -1195,7 +1266,8 @@ impl CircuitBreakerManager {
     }
 
     pub async fn add_circuit_breaker(&self, breaker: CircuitBreaker) -> Result<()> {
-        self.circuit_breakers.insert(breaker.breaker_id.clone(), breaker);
+        self.circuit_breakers
+            .insert(breaker.breaker_id.clone(), breaker);
         Ok(())
     }
 }
@@ -1203,7 +1275,13 @@ impl CircuitBreakerManager {
 impl CircuitBreakerMetrics {
     pub fn new() -> Self {
         Self {
-            metrics_id: format!("cb_metrics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            metrics_id: format!(
+                "cb_metrics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             breaker_stats: Arc::new(DashMap::new()),
         }
     }
@@ -1212,7 +1290,13 @@ impl CircuitBreakerMetrics {
 impl LoadBalancer {
     pub fn new() -> Self {
         Self {
-            balancer_id: format!("lb_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            balancer_id: format!(
+                "lb_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             balancing_algorithms: Arc::new(DashMap::new()),
             health_aware_routing: true,
             sticky_sessions: Arc::new(StickySessionManager::new()),
@@ -1223,7 +1307,13 @@ impl LoadBalancer {
 impl StickySessionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sticky_mgr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "sticky_mgr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             session_mappings: AsyncDataStore::new(),
             session_config: StickySessionConfig::default(),
         }
@@ -1233,7 +1323,13 @@ impl StickySessionManager {
 impl MeshObservability {
     pub fn new() -> Self {
         Self {
-            observability_id: format!("observability_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            observability_id: format!(
+                "observability_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             metrics_collector: Arc::new(MeshMetricsCollector::new()),
             tracing_system: Arc::new(DistributedTracing::new()),
             logging_aggregator: Arc::new(LoggingAggregator::new()),
@@ -1258,14 +1354,22 @@ impl MeshObservability {
     }
 
     pub async fn get_service_metrics(&self, service_name: &str) -> Result<ServiceMetrics> {
-        self.metrics_collector.get_service_metrics(service_name).await
+        self.metrics_collector
+            .get_service_metrics(service_name)
+            .await
     }
 }
 
 impl MeshMetricsCollector {
     pub fn new() -> Self {
         Self {
-            collector_id: format!("metrics_collector_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            collector_id: format!(
+                "metrics_collector_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             service_metrics: AsyncDataStore::new(),
             request_metrics: Arc::new(DashMap::new()),
             infrastructure_metrics: Arc::new(DashMap::new()),
@@ -1299,7 +1403,13 @@ impl MeshMetricsCollector {
 impl DistributedTracing {
     pub fn new() -> Self {
         Self {
-            tracing_id: format!("tracing_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracing_id: format!(
+                "tracing_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             trace_collector: Arc::new(TraceCollector::new()),
             span_processor: Arc::new(SpanProcessor::new()),
             trace_storage: AsyncDataStore::new(),
@@ -1315,7 +1425,13 @@ impl DistributedTracing {
 impl TraceCollector {
     pub fn new() -> Self {
         Self {
-            collector_id: format!("trace_collector_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            collector_id: format!(
+                "trace_collector_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             sampling_config: SamplingConfig::default(),
             trace_buffer: AsyncDataStore::new(),
         }
@@ -1325,7 +1441,13 @@ impl TraceCollector {
 impl SpanProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("span_processor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "span_processor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             processing_pipeline: vec![],
         }
     }
@@ -1334,7 +1456,13 @@ impl SpanProcessor {
 impl LoggingAggregator {
     pub fn new() -> Self {
         Self {
-            aggregator_id: format!("log_aggregator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            aggregator_id: format!(
+                "log_aggregator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             log_streams: Arc::new(DashMap::new()),
             log_processors: vec![],
             log_storage: AsyncDataStore::new(),
@@ -1350,7 +1478,13 @@ impl LoggingAggregator {
 impl MeshAlertingManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mesh_alerting_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mesh_alerting_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             alert_rules: Arc::new(DashMap::new()),
             active_alerts: Arc::new(DashMap::new()),
             notification_channels: Arc::new(DashMap::new()),
@@ -1366,7 +1500,13 @@ impl MeshAlertingManager {
 impl FaultInjectionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("fault_injection_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "fault_injection_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             fault_rules: Arc::new(DashMap::new()),
             active_faults: Arc::new(DashMap::new()),
         }

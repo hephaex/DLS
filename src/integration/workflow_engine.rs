@@ -1,11 +1,11 @@
 // Workflow Orchestration Engine for Complex Automation
 use crate::error::Result;
 use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 
 #[derive(Debug, Clone)]
 pub struct WorkflowEngine {
@@ -1067,7 +1067,13 @@ pub struct DispatchCondition {
 impl WorkflowEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("workflow_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "workflow_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             workflow_definitions: LightweightStore::new(Some(1000)),
             workflow_executions: AsyncDataStore::new(),
             state_manager: Arc::new(StateManager::new()),
@@ -1088,12 +1094,23 @@ impl WorkflowEngine {
     }
 
     pub async fn register_workflow(&self, workflow: WorkflowDefinition) -> Result<()> {
-        self.workflow_definitions.insert(workflow.workflow_id.clone(), workflow);
+        self.workflow_definitions
+            .insert(workflow.workflow_id.clone(), workflow);
         Ok(())
     }
 
-    pub async fn execute_workflow(&self, workflow_id: &str, input_data: HashMap<String, serde_json::Value>) -> Result<String> {
-        let execution_id = format!("exec_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs());
+    pub async fn execute_workflow(
+        &self,
+        workflow_id: &str,
+        input_data: HashMap<String, serde_json::Value>,
+    ) -> Result<String> {
+        let execution_id = format!(
+            "exec_{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs()
+        );
 
         let execution = WorkflowExecution {
             execution_id: execution_id.clone(),
@@ -1116,12 +1133,21 @@ impl WorkflowEngine {
             error_info: None,
         };
 
-        self.workflow_executions.insert(execution_id.clone(), execution).await;
+        self.workflow_executions
+            .insert(execution_id.clone(), execution)
+            .await;
         Ok(execution_id)
     }
 
-    pub async fn get_execution_status(&self, execution_id: &str) -> Result<Option<ExecutionStatus>> {
-        if let Some(execution) = self.workflow_executions.get(&execution_id.to_string()).await {
+    pub async fn get_execution_status(
+        &self,
+        execution_id: &str,
+    ) -> Result<Option<ExecutionStatus>> {
+        if let Some(execution) = self
+            .workflow_executions
+            .get(&execution_id.to_string())
+            .await
+        {
             Ok(Some(execution.execution_status))
         } else {
             Ok(None)
@@ -1133,7 +1159,13 @@ impl WorkflowEngine {
 impl StateManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("state_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "state_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             workflow_states: AsyncDataStore::new(),
             state_transitions: Arc::new(DashMap::new()),
             state_persistence: Arc::new(StatePersistence::new()),
@@ -1149,7 +1181,13 @@ impl StateManager {
 impl StatePersistence {
     pub fn new() -> Self {
         Self {
-            persistence_id: format!("state_persistence_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            persistence_id: format!(
+                "state_persistence_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             storage_backend: StorageBackend::Memory,
             persistence_strategy: PersistenceStrategy::Immediate,
             compression_enabled: false,
@@ -1160,7 +1198,13 @@ impl StatePersistence {
 impl CheckpointManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("checkpoint_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "checkpoint_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             checkpoints: AsyncDataStore::new(),
             checkpoint_strategy: CheckpointStrategy::default(),
             cleanup_policy: CheckpointCleanupPolicy::default(),
@@ -1171,7 +1215,13 @@ impl CheckpointManager {
 impl TaskExecutor {
     pub fn new() -> Self {
         Self {
-            executor_id: format!("task_executor_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            executor_id: format!(
+                "task_executor_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             execution_pool: Arc::new(ExecutionPool::new()),
             task_registry: Arc::new(TaskRegistry::new()),
             result_collector: Arc::new(ResultCollector::new()),
@@ -1187,7 +1237,13 @@ impl TaskExecutor {
 impl ExecutionPool {
     pub fn new() -> Self {
         Self {
-            pool_id: format!("execution_pool_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            pool_id: format!(
+                "execution_pool_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             max_concurrent_executions: 100,
             active_executions: AsyncDataStore::new(),
             execution_queue: AsyncDataStore::new(),
@@ -1199,11 +1255,19 @@ impl ExecutionPool {
 impl PoolMetrics {
     pub fn new() -> Self {
         Self {
-            metrics_id: format!("pool_metrics_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            metrics_id: format!(
+                "pool_metrics_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             total_executions: std::sync::atomic::AtomicU64::new(0),
             successful_executions: std::sync::atomic::AtomicU64::new(0),
             failed_executions: std::sync::atomic::AtomicU64::new(0),
-            average_execution_time: std::sync::Arc::new(std::sync::RwLock::new(Duration::from_secs(0))),
+            average_execution_time: std::sync::Arc::new(std::sync::RwLock::new(
+                Duration::from_secs(0),
+            )),
             resource_utilization: AsyncDataStore::new(),
         }
     }
@@ -1212,7 +1276,13 @@ impl PoolMetrics {
 impl TaskRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("task_registry_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "task_registry_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             registered_tasks: Arc::new(DashMap::new()),
             task_versions: AsyncDataStore::new(),
             task_metrics: AsyncDataStore::new(),
@@ -1223,7 +1293,13 @@ impl TaskRegistry {
 impl ResultCollector {
     pub fn new() -> Self {
         Self {
-            collector_id: format!("result_collector_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            collector_id: format!(
+                "result_collector_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             execution_results: AsyncDataStore::new(),
             result_aggregator: Arc::new(ResultAggregator::new()),
             result_cache: AsyncDataStore::new(),
@@ -1234,7 +1310,13 @@ impl ResultCollector {
 impl ResultAggregator {
     pub fn new() -> Self {
         Self {
-            aggregator_id: format!("result_aggregator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            aggregator_id: format!(
+                "result_aggregator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             aggregation_rules: Arc::new(DashMap::new()),
             aggregated_results: AsyncDataStore::new(),
         }
@@ -1244,7 +1326,13 @@ impl ResultAggregator {
 impl ResourceManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("resource_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "resource_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             resource_pools: Arc::new(DashMap::new()),
             allocation_strategy: AllocationStrategy::BestFit,
             resource_monitoring: Arc::new(ResourceMonitoring::new()),
@@ -1255,7 +1343,13 @@ impl ResourceManager {
 impl ResourceMonitoring {
     pub fn new() -> Self {
         Self {
-            monitoring_id: format!("resource_monitoring_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitoring_id: format!(
+                "resource_monitoring_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             usage_metrics: AsyncDataStore::new(),
             alerts: Arc::new(DashMap::new()),
         }
@@ -1265,7 +1359,13 @@ impl ResourceMonitoring {
 impl ConditionEvaluator {
     pub fn new() -> Self {
         Self {
-            evaluator_id: format!("condition_evaluator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            evaluator_id: format!(
+                "condition_evaluator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             expression_engine: Arc::new(ExpressionEngine::new()),
             context_provider: Arc::new(ContextProvider::new()),
             evaluation_cache: AsyncDataStore::new(),
@@ -1280,7 +1380,13 @@ impl ConditionEvaluator {
 impl ExpressionEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("expression_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "expression_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             supported_languages: vec![ExpressionLanguage::JavaScript, ExpressionLanguage::JSONPath],
             compiled_expressions: AsyncDataStore::new(),
             function_registry: Arc::new(FunctionRegistry::new()),
@@ -1291,7 +1397,13 @@ impl ExpressionEngine {
 impl FunctionRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("function_registry_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "function_registry_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             built_in_functions: Arc::new(DashMap::new()),
             custom_functions: Arc::new(DashMap::new()),
         }
@@ -1301,7 +1413,13 @@ impl FunctionRegistry {
 impl ContextProvider {
     pub fn new() -> Self {
         Self {
-            provider_id: format!("context_provider_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            provider_id: format!(
+                "context_provider_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             context_sources: Arc::new(DashMap::new()),
             context_cache: AsyncDataStore::new(),
         }
@@ -1311,7 +1429,13 @@ impl ContextProvider {
 impl WorkflowScheduler {
     pub fn new() -> Self {
         Self {
-            scheduler_id: format!("workflow_scheduler_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            scheduler_id: format!(
+                "workflow_scheduler_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             scheduled_workflows: AsyncDataStore::new(),
             schedule_engine: Arc::new(ScheduleEngine::new()),
             trigger_manager: Arc::new(TriggerManager::new()),
@@ -1326,7 +1450,13 @@ impl WorkflowScheduler {
 impl ScheduleEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("schedule_engine_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "schedule_engine_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             schedule_calculator: Arc::new(ScheduleCalculator::new()),
             execution_dispatcher: Arc::new(ExecutionDispatcher::new()),
         }
@@ -1336,7 +1466,13 @@ impl ScheduleEngine {
 impl ScheduleCalculator {
     pub fn new() -> Self {
         Self {
-            calculator_id: format!("schedule_calculator_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            calculator_id: format!(
+                "schedule_calculator_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             cron_parser: Arc::new(CronParser::new()),
             schedule_cache: AsyncDataStore::new(),
         }
@@ -1346,7 +1482,13 @@ impl ScheduleCalculator {
 impl CronParser {
     pub fn new() -> Self {
         Self {
-            parser_id: format!("cron_parser_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            parser_id: format!(
+                "cron_parser_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             supported_formats: vec![CronFormat::Standard, CronFormat::Quartz],
         }
     }
@@ -1355,7 +1497,13 @@ impl CronParser {
 impl ExecutionDispatcher {
     pub fn new() -> Self {
         Self {
-            dispatcher_id: format!("execution_dispatcher_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            dispatcher_id: format!(
+                "execution_dispatcher_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             dispatch_queue: AsyncDataStore::new(),
             execution_tracker: Arc::new(ExecutionTracker::new()),
         }
@@ -1365,7 +1513,13 @@ impl ExecutionDispatcher {
 impl ExecutionTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("execution_tracker_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "execution_tracker_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             tracked_executions: AsyncDataStore::new(),
             execution_metrics: Arc::new(DashMap::new()),
         }
@@ -1375,7 +1529,13 @@ impl ExecutionTracker {
 impl TriggerManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("trigger_manager_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "trigger_manager_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             active_triggers: Arc::new(DashMap::new()),
             trigger_handlers: Arc::new(DashMap::new()),
             event_dispatcher: Arc::new(EventDispatcher::new()),
@@ -1386,7 +1546,13 @@ impl TriggerManager {
 impl EventDispatcher {
     pub fn new() -> Self {
         Self {
-            dispatcher_id: format!("event_dispatcher_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            dispatcher_id: format!(
+                "event_dispatcher_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             event_queue: AsyncDataStore::new(),
             dispatch_rules: Arc::new(DashMap::new()),
         }
@@ -1410,7 +1576,7 @@ impl Default for CheckpointCleanupPolicy {
         Self {
             retention_count: 10,
             retention_duration: Duration::from_secs(24 * 3600), // 24 hours
-            cleanup_interval: Duration::from_secs(3600), // 1 hour
+            cleanup_interval: Duration::from_secs(3600),        // 1 hour
         }
     }
 }

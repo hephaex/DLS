@@ -1,12 +1,15 @@
-pub mod zero_trust;
-pub mod threat_detection;
 pub mod legacy;
+pub mod threat_detection;
+pub mod zero_trust;
 
 // Zero Trust components
-pub use zero_trust::{ZeroTrustManager, ZeroTrustConfig, TrustScore, TrustFactor,
-                     TrustSession, SecurityContext, ThreatIndicator as ZeroTrustThreatIndicator};
+pub use zero_trust::{
+    SecurityContext, ThreatIndicator as ZeroTrustThreatIndicator, TrustFactor, TrustScore,
+    TrustSession, ZeroTrustConfig, ZeroTrustManager,
+};
 
 // Threat Detection components
-pub use threat_detection::{ThreatDetectionEngine, ThreatDetectionConfig,
-                          ThreatIndicator as ThreatDetectionIndicator};
-pub use legacy::{SecurityManager, NetworkSegment};
+pub use legacy::{NetworkSegment, SecurityManager};
+pub use threat_detection::{
+    ThreatDetectionConfig, ThreatDetectionEngine, ThreatIndicator as ThreatDetectionIndicator,
+};

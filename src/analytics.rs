@@ -1,11 +1,11 @@
 use crate::error::Result;
+use chrono::{DateTime, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 // Note: ML/analytics imports commented out as they're not currently used
 // These can be uncommented when machine learning features are implemented
 // use ndarray::{Array1, Array2, Axis};
@@ -396,8 +396,14 @@ impl AnalyticsEngine {
     }
 
     pub async fn ingest_metric(&self, metric: Metric) -> Result<()> {
-        let series_key = format!("{}:{}", metric.name, 
-            metric.labels.get("instance").unwrap_or(&"default".to_string()));
+        let series_key = format!(
+            "{}:{}",
+            metric.name,
+            metric
+                .labels
+                .get("instance")
+                .unwrap_or(&"default".to_string())
+        );
 
         let data_point = DataPoint {
             timestamp: metric.timestamp,
@@ -409,10 +415,12 @@ impl AnalyticsEngine {
         if let Some(mut series) = self.metrics.get_mut(&series_key) {
             series.data_points.push(data_point);
             series.end_time = metric.timestamp;
-            
+
             // Keep only recent data points based on retention
             let retention_cutoff = Utc::now() - Duration::days(self.config.retention_days as i64);
-            series.data_points.retain(|dp| dp.timestamp > retention_cutoff);
+            series
+                .data_points
+                .retain(|dp| dp.timestamp > retention_cutoff);
         } else {
             let series = MetricSeries {
                 id: Uuid::new_v4().to_string(),
@@ -444,7 +452,9 @@ impl AnalyticsEngine {
         };
 
         let insights = self.generate_insights(&request, &results).await?;
-        let recommendations = self.generate_recommendations(&request, &results, &insights).await?;
+        let recommendations = self
+            .generate_recommendations(&request, &results, &insights)
+            .await?;
 
         let processing_time = start_time.elapsed().as_millis() as u64;
 
@@ -461,7 +471,8 @@ impl AnalyticsEngine {
         };
 
         // Store results
-        self.analysis_results.insert(analysis_result.id, analysis_result.clone());
+        self.analysis_results
+            .insert(analysis_result.id, analysis_result.clone());
 
         // Update insights and recommendations
         {
@@ -483,11 +494,13 @@ impl AnalyticsEngine {
         target_metric: String,
     ) -> Result<Uuid> {
         // Collect training data
-        let training_data = self.collect_training_data(&features, &target_metric).await?;
-        
+        let training_data = self
+            .collect_training_data(&features, &target_metric)
+            .await?;
+
         if training_data.len() < 10 {
             return Err(crate::error::DlsError::Validation(
-                "Insufficient training data".to_string()
+                "Insufficient training data".to_string(),
             ));
         }
 
@@ -518,8 +531,9 @@ impl AnalyticsEngine {
         input_features: HashMap<String, f64>,
         horizon: Duration,
     ) -> Result<Prediction> {
-        let model = self.ml_models.get(&model_id)
-            .ok_or_else(|| crate::error::Error::NotFound(format!("ML model {} not found", model_id)))?;
+        let model = self.ml_models.get(&model_id).ok_or_else(|| {
+            crate::error::Error::NotFound(format!("ML model {} not found", model_id))
+        })?;
 
         // Simple prediction logic - in production, use actual ML framework
         let predicted_value = self.simple_predict(&model, &input_features).await?;
@@ -542,11 +556,15 @@ impl AnalyticsEngine {
         Ok(prediction)
     }
 
-    pub async fn detect_real_time_anomalies(&self, metric_name: &str) -> Result<Vec<AnomalyDetection>> {
+    pub async fn detect_real_time_anomalies(
+        &self,
+        metric_name: &str,
+    ) -> Result<Vec<AnomalyDetection>> {
         let series_key = format!("{}:default", metric_name);
-        
-        let series = self.metrics.get(&series_key)
-            .ok_or_else(|| crate::error::Error::NotFound(format!("Metric series {} not found", metric_name)))?;
+
+        let series = self.metrics.get(&series_key).ok_or_else(|| {
+            crate::error::Error::NotFound(format!("Metric series {} not found", metric_name))
+        })?;
 
         if series.data_points.len() < 10 {
             return Ok(Vec::new());
@@ -554,7 +572,8 @@ impl AnalyticsEngine {
 
         let values: Vec<f64> = series.data_points.iter().map(|dp| dp.value).collect();
         let mean = values.iter().sum::<f64>() / values.len() as f64;
-        let std_dev = (values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64).sqrt();
+        let std_dev =
+            (values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64).sqrt();
 
         let mut anomalies = Vec::new();
         let threshold = self.config.anomaly_threshold * std_dev;
@@ -613,19 +632,27 @@ impl AnalyticsEngine {
             .collect()
     }
 
-    pub async fn get_metric_series(&self, metric_name: &str, time_range: TimeRange) -> Option<MetricSeries> {
+    pub async fn get_metric_series(
+        &self,
+        metric_name: &str,
+        time_range: TimeRange,
+    ) -> Option<MetricSeries> {
         let series_key = format!("{}:default", metric_name);
-        
+
         self.metrics.get(&series_key).map(|series| {
             let mut filtered_series = series.clone();
-            filtered_series.data_points.retain(|dp| {
-                dp.timestamp >= time_range.start && dp.timestamp <= time_range.end
-            });
+            filtered_series
+                .data_points
+                .retain(|dp| dp.timestamp >= time_range.start && dp.timestamp <= time_range.end);
             filtered_series
         })
     }
 
-    pub async fn get_insights(&self, tenant_id: Option<Uuid>, limit: Option<usize>) -> Vec<Insight> {
+    pub async fn get_insights(
+        &self,
+        tenant_id: Option<Uuid>,
+        limit: Option<usize>,
+    ) -> Vec<Insight> {
         let insights = self.insights.read();
         let mut filtered: Vec<Insight> = insights
             .iter()
@@ -636,7 +663,11 @@ impl AnalyticsEngine {
             .cloned()
             .collect();
 
-        filtered.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal));
+        filtered.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         if let Some(limit) = limit {
             filtered.truncate(limit);
@@ -645,7 +676,11 @@ impl AnalyticsEngine {
         filtered
     }
 
-    pub async fn get_recommendations(&self, tenant_id: Option<Uuid>, limit: Option<usize>) -> Vec<Recommendation> {
+    pub async fn get_recommendations(
+        &self,
+        tenant_id: Option<Uuid>,
+        limit: Option<usize>,
+    ) -> Vec<Recommendation> {
         let recommendations = self.recommendations.read();
         let mut filtered: Vec<Recommendation> = recommendations
             .iter()
@@ -660,7 +695,9 @@ impl AnalyticsEngine {
             // Sort by priority and confidence
             let priority_cmp = b.priority.cmp(&a.priority);
             if priority_cmp == std::cmp::Ordering::Equal {
-                b.confidence.partial_cmp(&a.confidence).unwrap_or(std::cmp::Ordering::Equal)
+                b.confidence
+                    .partial_cmp(&a.confidence)
+                    .unwrap_or(std::cmp::Ordering::Equal)
             } else {
                 priority_cmp
             }
@@ -677,9 +714,12 @@ impl AnalyticsEngine {
         let mut trend_results = HashMap::new();
 
         for metric_name in &request.metric_names {
-            if let Some(series) = self.get_metric_series(metric_name, request.time_range.clone()).await {
+            if let Some(series) = self
+                .get_metric_series(metric_name, request.time_range.clone())
+                .await
+            {
                 let values: Vec<f64> = series.data_points.iter().map(|dp| dp.value).collect();
-                
+
                 if values.len() > 1 {
                     let trend = self.calculate_trend(&values);
                     trend_results.insert(metric_name, serde_json::json!({
@@ -709,15 +749,21 @@ impl AnalyticsEngine {
         let mut forecast_results = HashMap::new();
 
         for metric_name in &request.metric_names {
-            if let Some(series) = self.get_metric_series(metric_name, request.time_range.clone()).await {
+            if let Some(series) = self
+                .get_metric_series(metric_name, request.time_range.clone())
+                .await
+            {
                 let values: Vec<f64> = series.data_points.iter().map(|dp| dp.value).collect();
-                
+
                 if values.len() > 5 {
                     let forecast = self.simple_forecast(&values, 10);
-                    forecast_results.insert(metric_name, serde_json::json!({
-                        "forecast": forecast,
-                        "confidence": 0.8
-                    }));
+                    forecast_results.insert(
+                        metric_name,
+                        serde_json::json!({
+                            "forecast": forecast,
+                            "confidence": 0.8
+                        }),
+                    );
                 }
             }
         }
@@ -730,7 +776,10 @@ impl AnalyticsEngine {
         Ok(serde_json::json!({"clusters": [], "centroids": []}))
     }
 
-    async fn perform_classification(&self, _request: &AnalysisRequest) -> Result<serde_json::Value> {
+    async fn perform_classification(
+        &self,
+        _request: &AnalysisRequest,
+    ) -> Result<serde_json::Value> {
         // Simplified classification implementation
         Ok(serde_json::json!({"predictions": [], "accuracy": 0.85}))
     }
@@ -746,7 +795,9 @@ impl AnalyticsEngine {
         for metric_a in &request.metric_names {
             for metric_b in &request.metric_names {
                 if metric_a != metric_b {
-                    let correlation = self.calculate_correlation(metric_a, metric_b, &request.time_range).await?;
+                    let correlation = self
+                        .calculate_correlation(metric_a, metric_b, &request.time_range)
+                        .await?;
                     let key = format!("{}_{}", metric_a, metric_b);
                     correlation_matrix.insert(key, correlation);
                 }
@@ -756,7 +807,11 @@ impl AnalyticsEngine {
         Ok(serde_json::to_value(correlation_matrix)?)
     }
 
-    async fn generate_insights(&self, request: &AnalysisRequest, results: &serde_json::Value) -> Result<Vec<Insight>> {
+    async fn generate_insights(
+        &self,
+        request: &AnalysisRequest,
+        results: &serde_json::Value,
+    ) -> Result<Vec<Insight>> {
         let mut insights = Vec::new();
 
         // Generate trend insights
@@ -768,7 +823,10 @@ impl AnalyticsEngine {
                             let insight = Insight {
                                 id: Uuid::new_v4(),
                                 title: format!("{} Trend Detected", metric),
-                                description: format!("Metric {} is showing a {} trend", metric, direction),
+                                description: format!(
+                                    "Metric {} is showing a {} trend",
+                                    metric, direction
+                                ),
                                 insight_type: InsightType::Trend,
                                 severity: InsightSeverity::Medium,
                                 metrics: vec![metric.clone()],
@@ -786,7 +844,12 @@ impl AnalyticsEngine {
         Ok(insights)
     }
 
-    async fn generate_recommendations(&self, _request: &AnalysisRequest, _results: &serde_json::Value, insights: &[Insight]) -> Result<Vec<Recommendation>> {
+    async fn generate_recommendations(
+        &self,
+        _request: &AnalysisRequest,
+        _results: &serde_json::Value,
+        insights: &[Insight],
+    ) -> Result<Vec<Recommendation>> {
         let mut recommendations = Vec::new();
 
         for insight in insights {
@@ -795,7 +858,10 @@ impl AnalyticsEngine {
                     let recommendation = Recommendation {
                         id: Uuid::new_v4(),
                         title: "Monitor Trending Metric".to_string(),
-                        description: format!("Consider monitoring {} more closely due to detected trend", insight.metrics.join(", ")),
+                        description: format!(
+                            "Consider monitoring {} more closely due to detected trend",
+                            insight.metrics.join(", ")
+                        ),
                         recommendation_type: RecommendationType::Performance,
                         priority: RecommendationPriority::Medium,
                         estimated_impact: EstimatedImpact {
@@ -827,15 +893,18 @@ impl AnalyticsEngine {
         // Start anomaly detection task
         let analytics_engine = self.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(
-                std::time::Duration::from_secs(analytics_engine.config.processing_interval_seconds as u64)
-            );
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+                analytics_engine.config.processing_interval_seconds as u64,
+            ));
             loop {
                 interval.tick().await;
                 if analytics_engine.config.anomaly_detection_enabled {
                     // Run anomaly detection on all metrics
                     for metric_series in analytics_engine.metrics.iter() {
-                        if let Ok(anomalies) = analytics_engine.detect_real_time_anomalies(&metric_series.name).await {
+                        if let Ok(anomalies) = analytics_engine
+                            .detect_real_time_anomalies(&metric_series.name)
+                            .await
+                        {
                             let mut anomalies_guard = analytics_engine.anomalies.write();
                             anomalies_guard.extend(anomalies);
                         }
@@ -848,9 +917,9 @@ impl AnalyticsEngine {
         if self.config.ml_training_enabled {
             let analytics_engine = self.clone();
             tokio::spawn(async move {
-                let mut interval = tokio::time::interval(
-                    std::time::Duration::from_secs(analytics_engine.config.ml_training_interval_hours as u64 * 3600)
-                );
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+                    analytics_engine.config.ml_training_interval_hours as u64 * 3600,
+                ));
                 loop {
                     interval.tick().await;
                     // Retrain ML models periodically
@@ -861,24 +930,34 @@ impl AnalyticsEngine {
         Ok(())
     }
 
-    async fn collect_training_data(&self, features: &[String], target_metric: &str) -> Result<Vec<(Vec<f64>, f64)>> {
+    async fn collect_training_data(
+        &self,
+        features: &[String],
+        target_metric: &str,
+    ) -> Result<Vec<(Vec<f64>, f64)>> {
         let mut training_data = Vec::new();
 
         // Collect data for features and target
         if let Some(target_series) = self.metrics.get(&format!("{}:default", target_metric)) {
-            let target_values: Vec<f64> = target_series.data_points.iter().map(|dp| dp.value).collect();
-            
+            let target_values: Vec<f64> = target_series
+                .data_points
+                .iter()
+                .map(|dp| dp.value)
+                .collect();
+
             for (i, target_value) in target_values.iter().enumerate() {
                 let mut feature_values = Vec::new();
-                
+
                 for feature_name in features {
-                    if let Some(feature_series) = self.metrics.get(&format!("{}:default", feature_name)) {
+                    if let Some(feature_series) =
+                        self.metrics.get(&format!("{}:default", feature_name))
+                    {
                         if let Some(data_point) = feature_series.data_points.get(i) {
                             feature_values.push(data_point.value);
                         }
                     }
                 }
-                
+
                 if feature_values.len() == features.len() {
                     training_data.push((feature_values, *target_value));
                 }
@@ -888,7 +967,11 @@ impl AnalyticsEngine {
         Ok(training_data)
     }
 
-    async fn train_model(&self, model_type: &MLModelType, training_data: &[(Vec<f64>, f64)]) -> Result<f64> {
+    async fn train_model(
+        &self,
+        model_type: &MLModelType,
+        training_data: &[(Vec<f64>, f64)],
+    ) -> Result<f64> {
         // Simplified model training - in production, use actual ML framework
         match model_type {
             MLModelType::LinearRegression => {
@@ -899,7 +982,11 @@ impl AnalyticsEngine {
         }
     }
 
-    async fn simple_predict(&self, _model: &MLModel, input_features: &HashMap<String, f64>) -> Result<f64> {
+    async fn simple_predict(
+        &self,
+        _model: &MLModel,
+        input_features: &HashMap<String, f64>,
+    ) -> Result<f64> {
         // Simplified prediction - in production, use actual trained model
         let sum: f64 = input_features.values().sum();
         Ok(sum / input_features.len() as f64)
@@ -923,13 +1010,18 @@ impl AnalyticsEngine {
     fn simple_forecast(&self, values: &[f64], periods: usize) -> Vec<f64> {
         let trend = self.calculate_trend(values);
         let last_value = values[values.len() - 1];
-        
+
         (0..periods)
             .map(|i| last_value + trend * (i + 1) as f64)
             .collect()
     }
 
-    async fn calculate_correlation(&self, metric_a: &str, metric_b: &str, time_range: &TimeRange) -> Result<f64> {
+    async fn calculate_correlation(
+        &self,
+        metric_a: &str,
+        metric_b: &str,
+        time_range: &TimeRange,
+    ) -> Result<f64> {
         let series_a = self.get_metric_series(metric_a, time_range.clone()).await;
         let series_b = self.get_metric_series(metric_b, time_range.clone()).await;
 
@@ -942,12 +1034,22 @@ impl AnalyticsEngine {
                 let mean_a = values_a.iter().sum::<f64>() / values_a.len() as f64;
                 let mean_b = values_b.iter().sum::<f64>() / values_b.len() as f64;
 
-                let numerator: f64 = values_a.iter().zip(values_b.iter())
+                let numerator: f64 = values_a
+                    .iter()
+                    .zip(values_b.iter())
                     .map(|(a, b)| (a - mean_a) * (b - mean_b))
                     .sum();
 
-                let denom_a: f64 = values_a.iter().map(|a| (a - mean_a).powi(2)).sum::<f64>().sqrt();
-                let denom_b: f64 = values_b.iter().map(|b| (b - mean_b).powi(2)).sum::<f64>().sqrt();
+                let denom_a: f64 = values_a
+                    .iter()
+                    .map(|a| (a - mean_a).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
+                let denom_b: f64 = values_b
+                    .iter()
+                    .map(|b| (b - mean_b).powi(2))
+                    .sum::<f64>()
+                    .sqrt();
 
                 if denom_a > 0.0 && denom_b > 0.0 {
                     return Ok(numerator / (denom_a * denom_b));
@@ -982,7 +1084,6 @@ impl Clone for AnalyticsEngine {
         }
     }
 }
-
 
 impl Ord for RecommendationPriority {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
@@ -1022,7 +1123,7 @@ mod tests {
     #[tokio::test]
     async fn test_metric_ingestion() {
         let engine = AnalyticsEngine::default();
-        
+
         let metric = Metric {
             id: "test_metric_1".to_string(),
             name: "cpu_usage".to_string(),
@@ -1035,11 +1136,16 @@ mod tests {
         };
 
         engine.ingest_metric(metric).await.unwrap();
-        
-        let series = engine.get_metric_series("cpu_usage", TimeRange {
-            start: Utc::now() - Duration::hours(1),
-            end: Utc::now(),
-        }).await;
+
+        let series = engine
+            .get_metric_series(
+                "cpu_usage",
+                TimeRange {
+                    start: Utc::now() - Duration::hours(1),
+                    end: Utc::now(),
+                },
+            )
+            .await;
 
         assert!(series.is_some());
         assert_eq!(series.unwrap().data_points.len(), 1);
@@ -1077,7 +1183,10 @@ mod tests {
         };
         engine.ingest_metric(anomalous_metric).await.unwrap();
 
-        let anomalies = engine.detect_real_time_anomalies("response_time").await.unwrap();
+        let anomalies = engine
+            .detect_real_time_anomalies("response_time")
+            .await
+            .unwrap();
         assert!(!anomalies.is_empty());
         assert!(anomalies[0].anomaly_score > 2.0);
     }
@@ -1150,11 +1259,14 @@ mod tests {
             engine.ingest_metric(target_metric).await.unwrap();
         }
 
-        let model_id = engine.train_ml_model(
-            MLModelType::LinearRegression,
-            vec!["cpu_usage".to_string()],
-            "response_time".to_string(),
-        ).await.unwrap();
+        let model_id = engine
+            .train_ml_model(
+                MLModelType::LinearRegression,
+                vec!["cpu_usage".to_string()],
+                "response_time".to_string(),
+            )
+            .await
+            .unwrap();
 
         assert!(engine.ml_models.contains_key(&model_id));
     }
@@ -1183,11 +1295,10 @@ mod tests {
         let mut input_features = HashMap::new();
         input_features.insert("cpu_usage".to_string(), 75.0);
 
-        let prediction = engine.make_prediction(
-            model_id,
-            input_features,
-            Duration::hours(1),
-        ).await.unwrap();
+        let prediction = engine
+            .make_prediction(model_id, input_features, Duration::hours(1))
+            .await
+            .unwrap();
 
         assert_eq!(prediction.model_id, model_id);
         assert!(prediction.predicted_value > 0.0);
@@ -1202,24 +1313,25 @@ mod tests {
             name: "Test Dashboard".to_string(),
             description: "Test dashboard for analytics".to_string(),
             tenant_id: None,
-            widgets: vec![
-                Widget {
-                    id: Uuid::new_v4(),
-                    title: "CPU Usage".to_string(),
-                    widget_type: WidgetType::LineChart,
-                    position: Position { x: 0, y: 0 },
-                    size: Size { width: 400, height: 300 },
-                    configuration: WidgetConfiguration {
-                        metrics: vec!["cpu_usage".to_string()],
-                        time_range: TimeRange {
-                            start: Utc::now() - Duration::hours(1),
-                            end: Utc::now(),
-                        },
-                        aggregation: AggregationType::Average,
-                        display_options: HashMap::new(),
+            widgets: vec![Widget {
+                id: Uuid::new_v4(),
+                title: "CPU Usage".to_string(),
+                widget_type: WidgetType::LineChart,
+                position: Position { x: 0, y: 0 },
+                size: Size {
+                    width: 400,
+                    height: 300,
+                },
+                configuration: WidgetConfiguration {
+                    metrics: vec!["cpu_usage".to_string()],
+                    time_range: TimeRange {
+                        start: Utc::now() - Duration::hours(1),
+                        end: Utc::now(),
                     },
-                }
-            ],
+                    aggregation: AggregationType::Average,
+                    display_options: HashMap::new(),
+                },
+            }],
             refresh_interval_seconds: 60,
             created_at: Utc::now(),
             updated_at: Utc::now(),

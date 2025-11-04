@@ -1,11 +1,11 @@
 use crate::error::{DlsError, Result};
+use chrono::{DateTime, Datelike, Duration, Timelike, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration, Datelike, Timelike};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnomalyDetector {
@@ -661,23 +661,23 @@ impl AnomalyDetectionEngine {
 
         // Initialize default detectors
         self.initialize_default_detectors().await?;
-        
+
         // Load known anomaly patterns
         self.load_anomaly_patterns().await?;
-        
+
         // Initialize baseline models
         self.initialize_baseline_models().await?;
-        
+
         // Start adaptive learning
         if self.config.adaptive_learning {
             self.start_adaptive_learning().await;
         }
-        
+
         // Start pattern recognition
         if self.config.pattern_recognition {
             self.start_pattern_recognition().await;
         }
-        
+
         // Start baseline model updates
         self.start_baseline_updates().await;
 
@@ -714,15 +714,13 @@ impl AnomalyDetectionEngine {
                         matthews_correlation: 0.75,
                         roc_auc: 0.89,
                     },
-                    seasonal_components: vec![
-                        SeasonalComponent {
-                            component_id: "daily".to_string(),
-                            period: Duration::hours(24),
-                            amplitude: 0.2,
-                            phase: 0.25,
-                            confidence: 0.8,
-                        },
-                    ],
+                    seasonal_components: vec![SeasonalComponent {
+                        component_id: "daily".to_string(),
+                        period: Duration::hours(24),
+                        amplitude: 0.2,
+                        phase: 0.25,
+                        confidence: 0.8,
+                    }],
                     trend_components: vec![],
                 },
                 anomaly_history: Vec::new(),
@@ -759,15 +757,13 @@ impl AnomalyDetectionEngine {
                         roc_auc: 0.91,
                     },
                     seasonal_components: vec![],
-                    trend_components: vec![
-                        TrendComponent {
-                            component_id: "weekly_trend".to_string(),
-                            slope: 0.02,
-                            intercept: 0.65,
-                            r_squared: 0.85,
-                            confidence_interval: (0.01, 0.03),
-                        },
-                    ],
+                    trend_components: vec![TrendComponent {
+                        component_id: "weekly_trend".to_string(),
+                        slope: 0.02,
+                        intercept: 0.65,
+                        r_squared: 0.85,
+                        confidence_interval: (0.01, 0.03),
+                    }],
                 },
                 anomaly_history: Vec::new(),
                 enabled: true,
@@ -777,104 +773,93 @@ impl AnomalyDetectionEngine {
         ];
 
         for detector in detectors {
-            self.detectors.insert(detector.detector_id.clone(), detector);
+            self.detectors
+                .insert(detector.detector_id.clone(), detector);
         }
 
         Ok(())
     }
 
     async fn load_anomaly_patterns(&self) -> Result<()> {
-        let patterns = vec![
-            AnomalyPattern {
-                pattern_id: "cpu_spike_pattern".to_string(),
-                pattern_name: "CPU Spike Pattern".to_string(),
-                pattern_type: PatternType::Spike,
-                signature: PatternSignature {
-                    statistical_features: StatisticalFeatures {
-                        mean: 0.85,
-                        variance: 0.15,
-                        skewness: 1.2,
-                        kurtosis: 3.5,
-                        entropy: 2.1,
-                        percentiles: HashMap::from([
-                            (50, 0.8),
-                            (90, 0.95),
-                            (95, 0.98),
-                            (99, 0.99),
-                        ]),
-                    },
-                    temporal_features: TemporalFeatures {
-                        duration: Duration::minutes(5),
-                        onset_speed: 0.9,
-                        recovery_speed: 0.7,
-                        peak_time: None,
-                        periodicity: None,
-                    },
-                    frequency_features: FrequencyFeatures {
-                        dominant_frequency: 0.2,
-                        frequency_spectrum: vec![(0.1, 0.3), (0.2, 0.8), (0.3, 0.2)],
-                        spectral_centroid: 0.18,
-                        spectral_bandwidth: 0.15,
-                        spectral_rolloff: 0.25,
-                    },
-                    correlation_features: CorrelationFeatures {
-                        autocorrelation: vec![1.0, 0.8, 0.4, 0.1],
-                        cross_correlations: HashMap::from([
-                            ("memory_usage".to_string(), 0.6),
-                            ("network_traffic".to_string(), 0.3),
-                        ]),
-                        lag_correlations: HashMap::from([
-                            (1, 0.7),
-                            (2, 0.4),
-                            (3, 0.2),
-                        ]),
-                        mutual_information: HashMap::from([
-                            ("system_load".to_string(), 0.8),
-                        ]),
-                    },
+        let patterns = vec![AnomalyPattern {
+            pattern_id: "cpu_spike_pattern".to_string(),
+            pattern_name: "CPU Spike Pattern".to_string(),
+            pattern_type: PatternType::Spike,
+            signature: PatternSignature {
+                statistical_features: StatisticalFeatures {
+                    mean: 0.85,
+                    variance: 0.15,
+                    skewness: 1.2,
+                    kurtosis: 3.5,
+                    entropy: 2.1,
+                    percentiles: HashMap::from([(50, 0.8), (90, 0.95), (95, 0.98), (99, 0.99)]),
                 },
-                prevalence: 0.15,
-                severity_distribution: HashMap::from([
-                    (AnomalySeverity::Low, 0.1),
-                    (AnomalySeverity::Medium, 0.4),
-                    (AnomalySeverity::High, 0.4),
-                    (AnomalySeverity::Critical, 0.1),
-                ]),
-                typical_causes: vec![
-                    "Resource intensive process".to_string(),
-                    "Memory leak".to_string(),
-                    "Infinite loop".to_string(),
-                    "DDoS attack".to_string(),
-                ],
-                recommended_actions: vec![
-                    RecommendedAction {
-                        action_id: "investigate_processes".to_string(),
-                        action_type: ActionType::Investigation,
-                        description: "Investigate running processes for unusual behavior".to_string(),
-                        priority: ActionPriority::High,
-                        automated: false,
-                        prerequisites: vec!["system_access".to_string()],
-                        expected_outcome: "Identify root cause of CPU spike".to_string(),
-                        risk_level: RiskLevel::Low,
-                    },
-                    RecommendedAction {
-                        action_id: "scale_resources".to_string(),
-                        action_type: ActionType::ResourceAdjustment,
-                        description: "Scale up CPU resources temporarily".to_string(),
-                        priority: ActionPriority::Medium,
-                        automated: true,
-                        prerequisites: vec!["auto_scaling_enabled".to_string()],
-                        expected_outcome: "Alleviate CPU pressure".to_string(),
-                        risk_level: RiskLevel::Low,
-                    },
-                ],
-                false_positive_rate: 0.05,
-                detection_accuracy: 0.92,
+                temporal_features: TemporalFeatures {
+                    duration: Duration::minutes(5),
+                    onset_speed: 0.9,
+                    recovery_speed: 0.7,
+                    peak_time: None,
+                    periodicity: None,
+                },
+                frequency_features: FrequencyFeatures {
+                    dominant_frequency: 0.2,
+                    frequency_spectrum: vec![(0.1, 0.3), (0.2, 0.8), (0.3, 0.2)],
+                    spectral_centroid: 0.18,
+                    spectral_bandwidth: 0.15,
+                    spectral_rolloff: 0.25,
+                },
+                correlation_features: CorrelationFeatures {
+                    autocorrelation: vec![1.0, 0.8, 0.4, 0.1],
+                    cross_correlations: HashMap::from([
+                        ("memory_usage".to_string(), 0.6),
+                        ("network_traffic".to_string(), 0.3),
+                    ]),
+                    lag_correlations: HashMap::from([(1, 0.7), (2, 0.4), (3, 0.2)]),
+                    mutual_information: HashMap::from([("system_load".to_string(), 0.8)]),
+                },
             },
-        ];
+            prevalence: 0.15,
+            severity_distribution: HashMap::from([
+                (AnomalySeverity::Low, 0.1),
+                (AnomalySeverity::Medium, 0.4),
+                (AnomalySeverity::High, 0.4),
+                (AnomalySeverity::Critical, 0.1),
+            ]),
+            typical_causes: vec![
+                "Resource intensive process".to_string(),
+                "Memory leak".to_string(),
+                "Infinite loop".to_string(),
+                "DDoS attack".to_string(),
+            ],
+            recommended_actions: vec![
+                RecommendedAction {
+                    action_id: "investigate_processes".to_string(),
+                    action_type: ActionType::Investigation,
+                    description: "Investigate running processes for unusual behavior".to_string(),
+                    priority: ActionPriority::High,
+                    automated: false,
+                    prerequisites: vec!["system_access".to_string()],
+                    expected_outcome: "Identify root cause of CPU spike".to_string(),
+                    risk_level: RiskLevel::Low,
+                },
+                RecommendedAction {
+                    action_id: "scale_resources".to_string(),
+                    action_type: ActionType::ResourceAdjustment,
+                    description: "Scale up CPU resources temporarily".to_string(),
+                    priority: ActionPriority::Medium,
+                    automated: true,
+                    prerequisites: vec!["auto_scaling_enabled".to_string()],
+                    expected_outcome: "Alleviate CPU pressure".to_string(),
+                    risk_level: RiskLevel::Low,
+                },
+            ],
+            false_positive_rate: 0.05,
+            detection_accuracy: 0.92,
+        }];
 
         for pattern in patterns {
-            self.anomaly_patterns.insert(pattern.pattern_id.clone(), pattern);
+            self.anomaly_patterns
+                .insert(pattern.pattern_id.clone(), pattern);
         }
 
         Ok(())
@@ -886,26 +871,34 @@ impl AnomalyDetectionEngine {
             let detector = detector_entry.value();
             self.baseline_models.insert(
                 detector.detector_id.clone(),
-                detector.baseline_model.clone()
+                detector.baseline_model.clone(),
             );
         }
 
         Ok(())
     }
 
-    pub async fn detect_anomalies(&self, metric_name: &str, value: f64, timestamp: DateTime<Utc>) -> Result<Vec<AnomalyRecord>> {
+    pub async fn detect_anomalies(
+        &self,
+        metric_name: &str,
+        value: f64,
+        timestamp: DateTime<Utc>,
+    ) -> Result<Vec<AnomalyRecord>> {
         let mut anomalies = Vec::new();
 
         // Find applicable detectors
         for detector_entry in self.detectors.iter() {
             let detector = detector_entry.value();
-            
+
             if !detector.enabled || !detector.target_metrics.contains(&metric_name.to_string()) {
                 continue;
             }
 
             // Run anomaly detection with the specific detector
-            if let Some(anomaly) = self.run_detector(&detector, metric_name, value, timestamp).await? {
+            if let Some(anomaly) = self
+                .run_detector(&detector, metric_name, value, timestamp)
+                .await?
+            {
                 anomalies.push(anomaly);
             }
         }
@@ -914,7 +907,7 @@ impl AnomalyDetectionEngine {
         if !anomalies.is_empty() {
             let mut history = self.anomaly_history.write();
             history.extend(anomalies.clone());
-            
+
             // Keep only recent anomalies (last 30 days)
             let cutoff = Utc::now() - Duration::days(30);
             history.retain(|a| a.detected_at > cutoff);
@@ -923,19 +916,35 @@ impl AnomalyDetectionEngine {
         Ok(anomalies)
     }
 
-    async fn run_detector(&self, detector: &AnomalyDetector, metric_name: &str, value: f64, timestamp: DateTime<Utc>) -> Result<Option<AnomalyRecord>> {
+    async fn run_detector(
+        &self,
+        detector: &AnomalyDetector,
+        metric_name: &str,
+        value: f64,
+        timestamp: DateTime<Utc>,
+    ) -> Result<Option<AnomalyRecord>> {
         // Get baseline model
-        let baseline = self.baseline_models.get(&detector.detector_id)
+        let baseline = self
+            .baseline_models
+            .get(&detector.detector_id)
             .ok_or_else(|| DlsError::Internal("Baseline model not found".to_string()))?;
 
         // Calculate expected value based on baseline
         let expected_value = self.calculate_expected_value(&baseline, timestamp).await;
-        
+
         // Calculate anomaly score based on algorithm
         let anomaly_score = match detector.algorithm {
-            AnomalyAlgorithm::ZScore => self.calculate_z_score(value, expected_value, &baseline).await,
-            AnomalyAlgorithm::ModifiedZScore => self.calculate_modified_z_score(value, expected_value, &baseline).await,
-            AnomalyAlgorithm::IsolationForest => self.calculate_isolation_score(value, &baseline).await,
+            AnomalyAlgorithm::ZScore => {
+                self.calculate_z_score(value, expected_value, &baseline)
+                    .await
+            }
+            AnomalyAlgorithm::ModifiedZScore => {
+                self.calculate_modified_z_score(value, expected_value, &baseline)
+                    .await
+            }
+            AnomalyAlgorithm::IsolationForest => {
+                self.calculate_isolation_score(value, &baseline).await
+            }
             _ => self.calculate_default_score(value, expected_value).await,
         };
 
@@ -949,12 +958,17 @@ impl AnomalyDetectionEngine {
             };
 
             // Determine anomaly type and severity
-            let anomaly_type = self.classify_anomaly_type(value, expected_value, anomaly_score).await;
-            let severity = self.assess_severity(anomaly_score, anomaly_type.clone()).await;
+            let anomaly_type = self
+                .classify_anomaly_type(value, expected_value, anomaly_score)
+                .await;
+            let severity = self
+                .assess_severity(anomaly_score, anomaly_type.clone())
+                .await;
 
             // Assess impact
             let impact_assessment = if self.config.impact_assessment {
-                self.assess_impact(&anomaly_type, severity.clone(), &context).await
+                self.assess_impact(&anomaly_type, severity.clone(), &context)
+                    .await
             } else {
                 self.create_basic_impact_assessment()
             };
@@ -982,55 +996,73 @@ impl AnomalyDetectionEngine {
         }
     }
 
-    async fn calculate_expected_value(&self, baseline: &BaselineModel, timestamp: DateTime<Utc>) -> f64 {
+    async fn calculate_expected_value(
+        &self,
+        baseline: &BaselineModel,
+        timestamp: DateTime<Utc>,
+    ) -> f64 {
         match baseline.model_type {
-            BaselineType::MovingAverage => {
-                baseline.parameters.get("mean").copied().unwrap_or(0.5)
-            },
+            BaselineType::MovingAverage => baseline.parameters.get("mean").copied().unwrap_or(0.5),
             BaselineType::ExponentialSmoothing => {
                 // Simple exponential smoothing calculation
                 let alpha = baseline.parameters.get("alpha").copied().unwrap_or(0.3);
                 let base_value = baseline.parameters.get("base").copied().unwrap_or(0.5);
-                
+
                 // Add seasonal component if present
-                let seasonal_adjustment = self.calculate_seasonal_adjustment(&baseline.seasonal_components, timestamp).await;
-                
+                let seasonal_adjustment = self
+                    .calculate_seasonal_adjustment(&baseline.seasonal_components, timestamp)
+                    .await;
+
                 base_value + seasonal_adjustment
-            },
+            }
             BaselineType::SeasonalDecomposition => {
-                let trend = self.calculate_trend_component(&baseline.trend_components, timestamp).await;
-                let seasonal = self.calculate_seasonal_adjustment(&baseline.seasonal_components, timestamp).await;
+                let trend = self
+                    .calculate_trend_component(&baseline.trend_components, timestamp)
+                    .await;
+                let seasonal = self
+                    .calculate_seasonal_adjustment(&baseline.seasonal_components, timestamp)
+                    .await;
                 trend + seasonal
-            },
+            }
             _ => 0.5, // Default baseline
         }
     }
 
-    async fn calculate_seasonal_adjustment(&self, components: &[SeasonalComponent], timestamp: DateTime<Utc>) -> f64 {
+    async fn calculate_seasonal_adjustment(
+        &self,
+        components: &[SeasonalComponent],
+        timestamp: DateTime<Utc>,
+    ) -> f64 {
         let mut adjustment = 0.0;
-        
+
         for component in components {
             let phase_offset = match component.period.num_seconds() {
                 86400 => (timestamp.hour() as f64) / 24.0, // Daily pattern
                 604800 => (timestamp.weekday().num_days_from_sunday() as f64) / 7.0, // Weekly pattern
                 _ => 0.0,
             };
-            
-            let seasonal_value = component.amplitude * (2.0 * std::f64::consts::PI * (phase_offset + component.phase)).sin();
+
+            let seasonal_value = component.amplitude
+                * (2.0 * std::f64::consts::PI * (phase_offset + component.phase)).sin();
             adjustment += seasonal_value * component.confidence;
         }
-        
+
         adjustment
     }
 
-    async fn calculate_trend_component(&self, components: &[TrendComponent], timestamp: DateTime<Utc>) -> f64 {
+    async fn calculate_trend_component(
+        &self,
+        components: &[TrendComponent],
+        timestamp: DateTime<Utc>,
+    ) -> f64 {
         if components.is_empty() {
             return 0.5;
         }
-        
+
         let component = &components[0]; // Use first trend component
-        let days_since_epoch = (timestamp - DateTime::from_timestamp(0, 0).unwrap()).num_days() as f64;
-        
+        let days_since_epoch =
+            (timestamp - DateTime::from_timestamp(0, 0).unwrap()).num_days() as f64;
+
         component.intercept + component.slope * days_since_epoch
     }
 
@@ -1042,7 +1074,12 @@ impl AnomalyDetectionEngine {
         ((value - expected) / std_dev).abs()
     }
 
-    async fn calculate_modified_z_score(&self, value: f64, expected: f64, baseline: &BaselineModel) -> f64 {
+    async fn calculate_modified_z_score(
+        &self,
+        value: f64,
+        expected: f64,
+        baseline: &BaselineModel,
+    ) -> f64 {
         let median_deviation = baseline.parameters.get("mad").copied().unwrap_or(0.1);
         if median_deviation == 0.0 {
             return 0.0;
@@ -1068,7 +1105,8 @@ impl AnomalyDetectionEngine {
                 day_of_month: timestamp.day() as u8,
                 month: timestamp.month() as u8,
                 quarter: ((timestamp.month() - 1) / 3 + 1) as u8,
-                is_weekend: timestamp.weekday().num_days_from_sunday() == 0 || timestamp.weekday().num_days_from_sunday() == 6,
+                is_weekend: timestamp.weekday().num_days_from_sunday() == 0
+                    || timestamp.weekday().num_days_from_sunday() == 6,
                 is_holiday: false, // Would check holiday calendar
                 timezone: "UTC".to_string(),
             },
@@ -1098,10 +1136,7 @@ impl AnomalyDetectionEngine {
             },
             user_context: UserContext {
                 user_count: 150,
-                user_types: HashMap::from([
-                    ("admin".to_string(), 5),
-                    ("regular".to_string(), 145),
-                ]),
+                user_types: HashMap::from([("admin".to_string(), 5), ("regular".to_string(), 145)]),
                 user_behavior_patterns: vec![],
                 access_patterns: vec![],
             },
@@ -1118,7 +1153,8 @@ impl AnomalyDetectionEngine {
                 day_of_month: timestamp.day() as u8,
                 month: timestamp.month() as u8,
                 quarter: ((timestamp.month() - 1) / 3 + 1) as u8,
-                is_weekend: timestamp.weekday().num_days_from_sunday() == 0 || timestamp.weekday().num_days_from_sunday() == 6,
+                is_weekend: timestamp.weekday().num_days_from_sunday() == 0
+                    || timestamp.weekday().num_days_from_sunday() == 6,
                 is_holiday: false,
                 timezone: "UTC".to_string(),
             },
@@ -1158,7 +1194,7 @@ impl AnomalyDetectionEngine {
 
     async fn classify_anomaly_type(&self, value: f64, expected: f64, score: f64) -> AnomalyType {
         let deviation_ratio = (value - expected) / expected.max(0.001);
-        
+
         match (deviation_ratio.abs(), score) {
             (r, s) if r > 2.0 && s > 0.9 => AnomalyType::PointAnomaly,
             (r, s) if r > 1.5 && s > 0.8 => AnomalyType::ContextualAnomaly,
@@ -1184,7 +1220,12 @@ impl AnomalyDetectionEngine {
         }
     }
 
-    async fn assess_impact(&self, anomaly_type: &AnomalyType, severity: AnomalySeverity, _context: &AnomalyContext) -> ImpactAssessment {
+    async fn assess_impact(
+        &self,
+        anomaly_type: &AnomalyType,
+        severity: AnomalySeverity,
+        _context: &AnomalyContext,
+    ) -> ImpactAssessment {
         let impact_multiplier = match severity {
             AnomalySeverity::Critical => 1.0,
             AnomalySeverity::High => 0.8,
@@ -1275,25 +1316,27 @@ impl AnomalyDetectionEngine {
     async fn start_adaptive_learning(&self) {
         let detectors = Arc::clone(&self.detectors);
         let adaptive_thresholds = Arc::clone(&self.adaptive_thresholds);
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::hours(1).to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Update adaptive thresholds based on recent performance
                 for detector_entry in detectors.iter() {
                     let detector = detector_entry.value();
-                    
+
                     // Calculate new adaptive threshold
-                    let current_threshold = adaptive_thresholds.get(&detector.detector_id)
+                    let current_threshold = adaptive_thresholds
+                        .get(&detector.detector_id)
                         .map(|t| t.current_threshold)
                         .unwrap_or(detector.confidence_threshold);
-                    
+
                     // Simple adaptive adjustment (would be more sophisticated in production)
-                    let new_threshold = current_threshold * 0.99 + detector.confidence_threshold * 0.01;
-                    
+                    let new_threshold =
+                        current_threshold * 0.99 + detector.confidence_threshold * 0.01;
+
                     let adaptive_threshold = AdaptiveThreshold {
                         metric_name: detector.target_metrics.first().cloned().unwrap_or_default(),
                         base_threshold: detector.confidence_threshold,
@@ -1304,7 +1347,7 @@ impl AnomalyDetectionEngine {
                         false_positive_count: 0,
                         false_negative_count: 0,
                     };
-                    
+
                     adaptive_thresholds.insert(detector.detector_id.clone(), adaptive_threshold);
                 }
             }
@@ -1321,13 +1364,13 @@ impl AnomalyDetectionEngine {
     async fn start_baseline_updates(&self) {
         let baseline_models = Arc::clone(&self.baseline_models);
         let update_frequency = self.config.baseline_update_frequency;
-        
+
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(update_frequency.to_std().unwrap());
-            
+
             loop {
                 interval.tick().await;
-                
+
                 // Update baseline models with recent data
                 for mut baseline_entry in baseline_models.iter_mut() {
                     let baseline = baseline_entry.value_mut();
@@ -1342,11 +1385,11 @@ impl AnomalyDetectionEngine {
         let history = self.anomaly_history.read();
         let mut anomalies = history.clone();
         anomalies.sort_by(|a, b| b.detected_at.cmp(&a.detected_at));
-        
+
         if let Some(limit) = limit {
             anomalies.truncate(limit);
         }
-        
+
         anomalies
     }
 
@@ -1365,12 +1408,13 @@ impl AnomalyDetectionEngine {
         if let Some(anomaly) = history.iter_mut().find(|a| a.anomaly_id == anomaly_id) {
             anomaly.false_positive = true;
             anomaly.resolution_status = ResolutionStatus::FalsePositive;
-            
+
             // Update detector sensitivity if false positive learning is enabled
             if self.config.false_positive_learning {
-                self.adjust_detector_sensitivity(&anomaly.detector_id, false).await;
+                self.adjust_detector_sensitivity(&anomaly.detector_id, false)
+                    .await;
             }
-            
+
             Ok(())
         } else {
             Err(DlsError::Internal("Anomaly not found".to_string()))
@@ -1386,10 +1430,17 @@ impl AnomalyDetectionEngine {
     }
 
     pub async fn get_detector_performance(&self, detector_id: &str) -> Option<AccuracyMetrics> {
-        self.baseline_models.get(detector_id).map(|model| model.accuracy_metrics.clone())
+        self.baseline_models
+            .get(detector_id)
+            .map(|model| model.accuracy_metrics.clone())
     }
 
-    pub async fn update_detector_config(&self, detector_id: &str, sensitivity: f64, threshold: f64) -> Result<()> {
+    pub async fn update_detector_config(
+        &self,
+        detector_id: &str,
+        sensitivity: f64,
+        threshold: f64,
+    ) -> Result<()> {
         if let Some(mut detector) = self.detectors.get_mut(detector_id) {
             detector.sensitivity = sensitivity.clamp(0.1, 1.0);
             detector.confidence_threshold = threshold.clamp(0.5, 1.0);

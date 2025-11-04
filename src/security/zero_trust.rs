@@ -1,15 +1,15 @@
 use crate::error::{DlsError, Result};
+use chrono::{DateTime, Datelike, Duration, Utc};
+use dashmap::DashMap;
+use parking_lot::RwLock;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
-use chrono::{DateTime, Utc, Duration, Datelike};
 use uuid::Uuid;
-use dashmap::DashMap;
-use parking_lot::RwLock;
 // JWT functionality not currently used - removed unused imports
-use sha2::{Sha256, Digest};
 use rand::{thread_rng, Rng};
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TrustLevel {
@@ -316,17 +316,17 @@ impl ZeroTrustManager {
 
         // Load default policies
         self.load_default_policies().await?;
-        
+
         // Start continuous verification
         if self.config.continuous_verification_interval > Duration::zero() {
             self.start_continuous_verification().await;
         }
-        
+
         // Start behavioral analysis
         if self.config.behavioral_analysis {
             self.start_behavioral_analysis().await;
         }
-        
+
         // Start threat intelligence updates
         if self.config.threat_intelligence_enabled {
             self.start_threat_intelligence_updates().await;
@@ -343,33 +343,26 @@ impl ZeroTrustManager {
             security_context: SecurityContext::Confidential,
             allowed_devices: Vec::new(),
             allowed_users: Vec::new(),
-            allowed_operations: vec![
-                "read".to_string(),
-                "execute".to_string(),
-            ],
-            time_restrictions: vec![
-                TimeRestriction {
-                    start_time: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
-                    end_time: chrono::NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
-                    days_of_week: vec![
-                        chrono::Weekday::Mon,
-                        chrono::Weekday::Tue,
-                        chrono::Weekday::Wed,
-                        chrono::Weekday::Thu,
-                        chrono::Weekday::Fri,
-                    ],
-                    timezone: "UTC".to_string(),
-                },
-            ],
-            location_restrictions: vec![
-                LocationRestriction {
-                    allowed_subnets: vec!["192.168.1.0/24".to_string()],
-                    allowed_countries: vec!["US".to_string()],
-                    blocked_ips: Vec::new(),
-                    geofence_enabled: true,
-                    max_distance_km: Some(100.0),
-                },
-            ],
+            allowed_operations: vec!["read".to_string(), "execute".to_string()],
+            time_restrictions: vec![TimeRestriction {
+                start_time: chrono::NaiveTime::from_hms_opt(8, 0, 0).unwrap(),
+                end_time: chrono::NaiveTime::from_hms_opt(18, 0, 0).unwrap(),
+                days_of_week: vec![
+                    chrono::Weekday::Mon,
+                    chrono::Weekday::Tue,
+                    chrono::Weekday::Wed,
+                    chrono::Weekday::Thu,
+                    chrono::Weekday::Fri,
+                ],
+                timezone: "UTC".to_string(),
+            }],
+            location_restrictions: vec![LocationRestriction {
+                allowed_subnets: vec!["192.168.1.0/24".to_string()],
+                allowed_countries: vec!["US".to_string()],
+                blocked_ips: Vec::new(),
+                geofence_enabled: true,
+                max_distance_km: Some(100.0),
+            }],
             conditions: vec![
                 PolicyCondition {
                     condition_type: "trust_score".to_string(),
@@ -389,7 +382,8 @@ impl ZeroTrustManager {
             enabled: true,
         };
 
-        self.access_policies.insert(high_security_policy.policy_id, high_security_policy);
+        self.access_policies
+            .insert(high_security_policy.policy_id, high_security_policy);
 
         Ok(())
     }
@@ -407,10 +401,12 @@ impl ZeroTrustManager {
 
         // Initialize trust score
         let initial_trust_score = self.calculate_initial_trust_score(&device).await;
-        self.trust_scores.insert(device.device_id, initial_trust_score);
+        self.trust_scores
+            .insert(device.device_id, initial_trust_score);
 
         // Register device
-        self.device_registry.insert(device.device_id, device.clone());
+        self.device_registry
+            .insert(device.device_id, device.clone());
 
         // Create behavioral profile
         let behavioral_profile = BehavioralProfile {
@@ -423,13 +419,21 @@ impl ZeroTrustManager {
             anomaly_threshold: 0.3,
             last_updated: Utc::now(),
         };
-        self.behavioral_profiles.insert(device.device_id, behavioral_profile);
+        self.behavioral_profiles
+            .insert(device.device_id, behavioral_profile);
 
         Ok(())
     }
 
-    pub async fn authenticate_device(&self, device_id: Uuid, source_ip: IpAddr, proof: &str) -> Result<String> {
-        let device = self.device_registry.get(&device_id)
+    pub async fn authenticate_device(
+        &self,
+        device_id: Uuid,
+        source_ip: IpAddr,
+        proof: &str,
+    ) -> Result<String> {
+        let device = self
+            .device_registry
+            .get(&device_id)
             .ok_or_else(|| DlsError::Auth("Device not registered".to_string()))?;
 
         // Verify device proof (signature, certificate, etc.)
@@ -442,9 +446,12 @@ impl ZeroTrustManager {
 
         // Calculate current trust score
         let trust_score = self.calculate_trust_score(device_id, source_ip).await?;
-        
+
         if trust_score.overall_trust < self.config.min_trust_threshold {
-            return Err(DlsError::Auth(format!("Trust score too low: {}", trust_score.overall_trust)));
+            return Err(DlsError::Auth(format!(
+                "Trust score too low: {}",
+                trust_score.overall_trust
+            )));
         }
 
         // Create session
@@ -469,8 +476,15 @@ impl ZeroTrustManager {
         Ok(session_id)
     }
 
-    pub async fn authorize_access(&self, session_id: &str, resource: &str, operation: &str) -> Result<bool> {
-        let mut session = self.active_sessions.get_mut(session_id)
+    pub async fn authorize_access(
+        &self,
+        session_id: &str,
+        resource: &str,
+        operation: &str,
+    ) -> Result<bool> {
+        let mut session = self
+            .active_sessions
+            .get_mut(session_id)
             .ok_or_else(|| DlsError::Auth("Invalid session".to_string()))?;
 
         if !session.active || session.expires_at < Utc::now() {
@@ -478,10 +492,15 @@ impl ZeroTrustManager {
         }
 
         // Check applicable policies
-        let applicable_policies = self.get_applicable_policies(session.device_id, session.user_id).await;
-        
+        let applicable_policies = self
+            .get_applicable_policies(session.device_id, session.user_id)
+            .await;
+
         for policy in applicable_policies {
-            if self.evaluate_policy(&policy, &session, resource, operation).await? {
+            if self
+                .evaluate_policy(&policy, &session, resource, operation)
+                .await?
+            {
                 // Grant access
                 let grant = AccessGrant {
                     resource: resource.to_string(),
@@ -508,13 +527,20 @@ impl ZeroTrustManager {
             timestamp: Utc::now(),
             resolved: false,
             response_actions: Vec::new(),
-        }).await;
+        })
+        .await;
 
         Ok(false)
     }
 
-    async fn calculate_trust_score(&self, device_id: Uuid, source_ip: IpAddr) -> Result<TrustScore> {
-        let device = self.device_registry.get(&device_id)
+    async fn calculate_trust_score(
+        &self,
+        device_id: Uuid,
+        source_ip: IpAddr,
+    ) -> Result<TrustScore> {
+        let device = self
+            .device_registry
+            .get(&device_id)
             .ok_or_else(|| DlsError::Auth("Device not found".to_string()))?;
 
         let mut factors = Vec::new();
@@ -576,9 +602,7 @@ impl ZeroTrustManager {
         });
 
         // Calculate overall trust score
-        let overall_trust = factors.iter()
-            .map(|f| f.weight * f.score)
-            .sum::<f64>();
+        let overall_trust = factors.iter().map(|f| f.weight * f.score).sum::<f64>();
 
         Ok(TrustScore {
             device_trust,
@@ -628,7 +652,11 @@ impl ZeroTrustManager {
         Ok(())
     }
 
-    async fn check_threat_intelligence(&self, source_ip: IpAddr, _device: &DeviceIdentity) -> Result<()> {
+    async fn check_threat_intelligence(
+        &self,
+        source_ip: IpAddr,
+        _device: &DeviceIdentity,
+    ) -> Result<()> {
         // Check IP reputation
         if let Some(reputation) = self.threat_intelligence.reputation_scores.get(&source_ip) {
             if reputation.score < 0.3 {
@@ -645,19 +673,30 @@ impl ZeroTrustManager {
         hex::encode(session_bytes)
     }
 
-    async fn get_applicable_policies(&self, device_id: Uuid, _user_id: Option<Uuid>) -> Vec<AccessPolicy> {
+    async fn get_applicable_policies(
+        &self,
+        device_id: Uuid,
+        _user_id: Option<Uuid>,
+    ) -> Vec<AccessPolicy> {
         self.access_policies
             .iter()
             .filter(|entry| {
                 let policy = entry.value();
-                policy.enabled && 
-                (policy.allowed_devices.is_empty() || policy.allowed_devices.contains(&device_id))
+                policy.enabled
+                    && (policy.allowed_devices.is_empty()
+                        || policy.allowed_devices.contains(&device_id))
             })
             .map(|entry| entry.value().clone())
             .collect()
     }
 
-    async fn evaluate_policy(&self, policy: &AccessPolicy, session: &TrustSession, resource: &str, operation: &str) -> Result<bool> {
+    async fn evaluate_policy(
+        &self,
+        policy: &AccessPolicy,
+        session: &TrustSession,
+        resource: &str,
+        operation: &str,
+    ) -> Result<bool> {
         // Check if operation is allowed
         if !policy.allowed_operations.contains(&operation.to_string()) {
             return Ok(false);
@@ -665,25 +704,38 @@ impl ZeroTrustManager {
 
         // Check conditions
         for condition in &policy.conditions {
-            if !self.evaluate_condition(condition, session, resource).await? {
+            if !self
+                .evaluate_condition(condition, session, resource)
+                .await?
+            {
                 return Ok(false);
             }
         }
 
         // Check time restrictions
-        if !self.check_time_restrictions(&policy.time_restrictions).await {
+        if !self
+            .check_time_restrictions(&policy.time_restrictions)
+            .await
+        {
             return Ok(false);
         }
 
         Ok(true)
     }
 
-    async fn evaluate_condition(&self, condition: &PolicyCondition, session: &TrustSession, _resource: &str) -> Result<bool> {
+    async fn evaluate_condition(
+        &self,
+        condition: &PolicyCondition,
+        session: &TrustSession,
+        _resource: &str,
+    ) -> Result<bool> {
         match condition.condition_type.as_str() {
             "trust_score" => {
-                let threshold: f64 = condition.value.parse()
+                let threshold: f64 = condition
+                    .value
+                    .parse()
                     .map_err(|_| DlsError::Auth("Invalid trust score threshold".to_string()))?;
-                
+
                 match condition.operator.as_str() {
                     ">=" => Ok(session.current_trust_score >= threshold),
                     ">" => Ok(session.current_trust_score > threshold),
@@ -692,19 +744,21 @@ impl ZeroTrustManager {
                     "==" => Ok((session.current_trust_score - threshold).abs() < 0.001),
                     _ => Err(DlsError::Auth("Invalid condition operator".to_string())),
                 }
-            },
+            }
             "device_compliance" => {
                 if let Some(device) = self.device_registry.get(&session.device_id) {
                     let compliant = match condition.value.as_str() {
                         "compliant" => device.compliance_status == ComplianceStatus::Compliant,
-                        "non_compliant" => device.compliance_status == ComplianceStatus::NonCompliant,
+                        "non_compliant" => {
+                            device.compliance_status == ComplianceStatus::NonCompliant
+                        }
                         _ => false,
                     };
                     Ok(compliant)
                 } else {
                     Ok(false)
                 }
-            },
+            }
             _ => Ok(true), // Unknown conditions pass by default
         }
     }
@@ -719,9 +773,10 @@ impl ZeroTrustManager {
         let time = now.time();
 
         for restriction in restrictions {
-            if restriction.days_of_week.contains(&weekday) &&
-               time >= restriction.start_time &&
-               time <= restriction.end_time {
+            if restriction.days_of_week.contains(&weekday)
+                && time >= restriction.start_time
+                && time <= restriction.end_time
+            {
                 return true;
             }
         }
@@ -729,7 +784,11 @@ impl ZeroTrustManager {
         false
     }
 
-    async fn calculate_behavioral_trust(&self, _profile: &BehavioralProfile, _source_ip: IpAddr) -> f64 {
+    async fn calculate_behavioral_trust(
+        &self,
+        _profile: &BehavioralProfile,
+        _source_ip: IpAddr,
+    ) -> f64 {
         // TODO: Implement behavioral analysis
         0.7
     }
@@ -755,19 +814,19 @@ impl ZeroTrustManager {
 
         tokio::spawn(async move {
             let mut timer = tokio::time::interval(interval.to_std().unwrap());
-            
+
             loop {
                 timer.tick().await;
-                
+
                 // Re-verify all active sessions
                 for mut session_entry in active_sessions.iter_mut() {
                     let session = session_entry.value_mut();
-                    
+
                     if session.active && session.expires_at > Utc::now() {
                         // Recalculate trust score
                         // This would normally involve complex behavioral analysis
                         session.last_verification = Utc::now();
-                        
+
                         // If trust score drops below threshold, invalidate session
                         if session.current_trust_score < 0.5 {
                             session.active = false;
@@ -796,11 +855,11 @@ impl ZeroTrustManager {
         let events = self.security_events.read();
         let mut result = events.clone();
         result.sort_by(|a, b| b.timestamp.cmp(&a.timestamp));
-        
+
         if let Some(limit) = limit {
             result.truncate(limit);
         }
-        
+
         result
     }
 
@@ -808,7 +867,11 @@ impl ZeroTrustManager {
         self.trust_scores.get(&device_id).map(|score| score.clone())
     }
 
-    pub async fn update_device_compliance(&self, device_id: Uuid, status: ComplianceStatus) -> Result<()> {
+    pub async fn update_device_compliance(
+        &self,
+        device_id: Uuid,
+        status: ComplianceStatus,
+    ) -> Result<()> {
         if let Some(mut device) = self.device_registry.get_mut(&device_id) {
             device.compliance_status = status;
             device.last_verified = Utc::now();

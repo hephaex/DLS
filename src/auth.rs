@@ -1,13 +1,13 @@
 use crate::error::{DlsError, Result};
-use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use argon2::password_hash::{rand_core::OsRng, SaltString};
+use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
 use jwt_simple::prelude::*;
+use ldap3::{LdapConn, Scope, SearchEntry};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use ldap3::{LdapConn, Scope, SearchEntry};
-use regex::Regex;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
@@ -152,7 +152,10 @@ impl std::str::FromStr for UserRole {
             "viewer" => Ok(UserRole::Viewer),
             "guest" => Ok(UserRole::Guest),
             "service_account" | "serviceaccount" => Ok(UserRole::ServiceAccount),
-            _ => Err(crate::error::DlsError::Auth(format!("Invalid user role: {}", s))),
+            _ => Err(crate::error::DlsError::Auth(format!(
+                "Invalid user role: {}",
+                s
+            ))),
         }
     }
 }
@@ -214,16 +217,16 @@ impl LdapAuthenticator {
             config,
             connection_pool: Arc::new(RwLock::new(Vec::new())),
         };
-        
+
         // Initialize connection pool
         authenticator.ensure_connection_pool().await?;
-        
+
         Ok(authenticator)
     }
 
     async fn ensure_connection_pool(&self) -> Result<()> {
         let mut pool = self.connection_pool.write().await;
-        
+
         if pool.is_empty() {
             // Create initial connections
             for _ in 0..5 {
@@ -232,7 +235,7 @@ impl LdapAuthenticator {
                 }
             }
         }
-        
+
         Ok(())
     }
 
@@ -255,7 +258,7 @@ impl LdapAuthenticator {
 
     async fn get_connection(&self) -> Result<LdapConn> {
         let mut pool = self.connection_pool.write().await;
-        
+
         if let Some(conn) = pool.pop() {
             Ok(conn)
         } else {
@@ -271,9 +274,13 @@ impl LdapAuthenticator {
         }
     }
 
-    pub async fn authenticate(&self, username: &str, password: &str) -> Result<(User, Vec<String>)> {
+    pub async fn authenticate(
+        &self,
+        username: &str,
+        password: &str,
+    ) -> Result<(User, Vec<String>)> {
         let user_dn = self.find_user_dn(username).await?;
-        
+
         // Create new connection for authentication
         let ldap_url = if self.config.use_tls {
             format!("ldaps://{}:{}", self.config.server, self.config.port)
@@ -286,7 +293,7 @@ impl LdapAuthenticator {
 
         // Try to bind with user credentials
         let bind_result = auth_ldap.simple_bind(&user_dn, password);
-        
+
         match bind_result {
             Ok(_) => {
                 // Authentication successful, get user info and groups
@@ -300,10 +307,15 @@ impl LdapAuthenticator {
 
     async fn find_user_dn(&self, username: &str) -> Result<String> {
         let mut ldap = self.get_connection().await?;
-        
+
         let filter = self.config.user_filter.replace("{username}", username);
         let search_result = ldap
-            .search(&self.config.user_base_dn, Scope::Subtree, &filter, vec!["dn"])
+            .search(
+                &self.config.user_base_dn,
+                Scope::Subtree,
+                &filter,
+                vec!["dn"],
+            )
             .map_err(|e| DlsError::Auth(format!("LDAP search failed: {}", e)))?;
 
         let entries = search_result.0;
@@ -319,7 +331,7 @@ impl LdapAuthenticator {
 
     async fn get_user_info(&self, user_dn: &str) -> Result<User> {
         let mut ldap = self.get_connection().await?;
-        
+
         let search_result = ldap
             .search(
                 user_dn,
@@ -341,8 +353,9 @@ impl LdapAuthenticator {
         }
 
         let entry = SearchEntry::construct(entries.into_iter().next().unwrap());
-        
-        let username = entry.attrs
+
+        let username = entry
+            .attrs
             .get(&self.config.user_id_attribute)
             .and_then(|v| v.first())
             .ok_or_else(|| DlsError::Auth("Missing user ID attribute".to_string()))?
@@ -361,7 +374,7 @@ impl LdapAuthenticator {
 
     async fn get_user_groups(&self, user_dn: &str) -> Result<Vec<String>> {
         let mut ldap = self.get_connection().await?;
-        
+
         let filter = self.config.group_filter.replace("{user_dn}", user_dn);
         let search_result = ldap
             .search(
@@ -432,7 +445,7 @@ impl AuthManager {
     pub fn new(secret: &str, token_expiry_hours: u64) -> Self {
         let jwt_key = HS256Key::from_bytes(secret.as_bytes());
         let config = EnterpriseAuthConfig::default();
-        
+
         Self {
             jwt_key,
             token_expiry_hours,
@@ -445,9 +458,13 @@ impl AuthManager {
         }
     }
 
-    pub async fn new_with_config(secret: &str, token_expiry_hours: u64, config: EnterpriseAuthConfig) -> Result<Self> {
+    pub async fn new_with_config(
+        secret: &str,
+        token_expiry_hours: u64,
+        config: EnterpriseAuthConfig,
+    ) -> Result<Self> {
         let jwt_key = HS256Key::from_bytes(secret.as_bytes());
-        
+
         let ldap_authenticator = if let Some(ldap_config) = &config.ldap {
             Some(Arc::new(LdapAuthenticator::new(ldap_config.clone()).await?))
         } else {
@@ -456,7 +473,7 @@ impl AuthManager {
 
         let password_regex = if config.password_complexity_enabled {
             let mut pattern = String::from("^");
-            
+
             if config.password_require_lowercase {
                 pattern.push_str("(?=.*[a-z])");
             }
@@ -469,10 +486,13 @@ impl AuthManager {
             if config.password_require_special {
                 pattern.push_str("(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>\\/?])");
             }
-            
+
             pattern.push_str(&format!(".{{{},}}$", config.password_min_length));
-            
-            Some(Regex::new(&pattern).map_err(|e| DlsError::Auth(format!("Invalid password regex: {}", e)))?)
+
+            Some(
+                Regex::new(&pattern)
+                    .map_err(|e| DlsError::Auth(format!("Invalid password regex: {}", e)))?,
+            )
         } else {
             None
         };
@@ -505,25 +525,31 @@ impl AuthManager {
 
         let mut failed_attempts = self.failed_attempts.write().await;
         let now = chrono::Utc::now();
-        let attempts = failed_attempts.entry(username.to_string()).or_insert_with(Vec::new);
-        
+        let attempts = failed_attempts
+            .entry(username.to_string())
+            .or_insert_with(Vec::new);
+
         // Clean old attempts (older than lockout duration)
         let cutoff = now - chrono::Duration::minutes(self.config.lockout_duration_minutes as i64);
         attempts.retain(|&attempt| attempt > cutoff);
-        
+
         attempts.push(now);
 
         if attempts.len() >= self.config.max_failed_attempts as usize {
             // Lock the account
             let mut locked_accounts = self.locked_accounts.write().await;
-            locked_accounts.insert(username.to_string(), AccountLockout {
-                username: username.to_string(),
-                locked_at: now,
-                unlock_at: now + chrono::Duration::minutes(self.config.lockout_duration_minutes as i64),
-                failed_attempts: attempts.len() as u32,
-                active: true,
-            });
-            
+            locked_accounts.insert(
+                username.to_string(),
+                AccountLockout {
+                    username: username.to_string(),
+                    locked_at: now,
+                    unlock_at: now
+                        + chrono::Duration::minutes(self.config.lockout_duration_minutes as i64),
+                    failed_attempts: attempts.len() as u32,
+                    active: true,
+                },
+            );
+
             // Clear failed attempts for this user
             attempts.clear();
         }
@@ -543,24 +569,34 @@ impl AuthManager {
 
         if password.len() < self.config.password_min_length as usize {
             return Err(DlsError::Auth(format!(
-                "Password must be at least {} characters long", 
+                "Password must be at least {} characters long",
                 self.config.password_min_length
             )));
         }
 
         if let Some(regex) = &self.password_regex {
             if !regex.is_match(password) {
-                return Err(DlsError::Auth("Password does not meet complexity requirements".to_string()));
+                return Err(DlsError::Auth(
+                    "Password does not meet complexity requirements".to_string(),
+                ));
             }
         }
 
         Ok(())
     }
 
-    pub async fn authenticate_enterprise(&self, username: &str, password: &str, ip_address: &str, user_agent: &str) -> Result<(User, String)> {
+    pub async fn authenticate_enterprise(
+        &self,
+        username: &str,
+        password: &str,
+        ip_address: &str,
+        user_agent: &str,
+    ) -> Result<(User, String)> {
         // Check if account is locked
         if self.is_account_locked(username).await {
-            return Err(DlsError::Auth("Account is locked due to too many failed attempts".to_string()));
+            return Err(DlsError::Auth(
+                "Account is locked due to too many failed attempts".to_string(),
+            ));
         }
 
         let mut user: User;
@@ -581,19 +617,25 @@ impl AuthManager {
                             self.record_failed_attempt(username).await?;
                             if self.config.fallback_to_local {
                                 // Try local authentication
-                                return self.authenticate_local(username, password, ip_address, user_agent).await;
+                                return self
+                                    .authenticate_local(username, password, ip_address, user_agent)
+                                    .await;
                             } else {
                                 return Err(e);
                             }
                         }
                     }
                 } else {
-                    return Err(DlsError::Auth("LDAP authenticator not configured".to_string()));
+                    return Err(DlsError::Auth(
+                        "LDAP authenticator not configured".to_string(),
+                    ));
                 }
             }
             _ => {
                 // Default to local authentication
-                return self.authenticate_local(username, password, ip_address, user_agent).await;
+                return self
+                    .authenticate_local(username, password, ip_address, user_agent)
+                    .await;
             }
         }
 
@@ -609,7 +651,8 @@ impl AuthManager {
             provider: provider.clone(),
             created_at: chrono::Utc::now(),
             last_activity: chrono::Utc::now(),
-            expires_at: chrono::Utc::now() + chrono::Duration::minutes(self.config.session_timeout_minutes as i64),
+            expires_at: chrono::Utc::now()
+                + chrono::Duration::minutes(self.config.session_timeout_minutes as i64),
             ip_address: ip_address.to_string(),
             user_agent: user_agent.to_string(),
             active: true,
@@ -625,14 +668,28 @@ impl AuthManager {
         Ok((user, token))
     }
 
-    pub async fn authenticate_local(&self, _username: &str, _password: &str, _ip_address: &str, _user_agent: &str) -> Result<(User, String)> {
+    pub async fn authenticate_local(
+        &self,
+        _username: &str,
+        _password: &str,
+        _ip_address: &str,
+        _user_agent: &str,
+    ) -> Result<(User, String)> {
         // This is a placeholder - in real implementation, this would authenticate against local database
-        Err(DlsError::Auth("Local authentication not implemented".to_string()))
+        Err(DlsError::Auth(
+            "Local authentication not implemented".to_string(),
+        ))
     }
 
-    pub fn create_enterprise_token(&self, user: &User, session_id: &str, groups: &[String], provider: &AuthenticationProvider) -> Result<String> {
+    pub fn create_enterprise_token(
+        &self,
+        user: &User,
+        session_id: &str,
+        groups: &[String],
+        provider: &AuthenticationProvider,
+    ) -> Result<String> {
         let permissions = self.get_permissions_for_role(&user.role);
-        
+
         let claims = Claims {
             username: user.username.clone(),
             role: user.role.clone(),
@@ -644,7 +701,9 @@ impl AuthManager {
 
         let jwt_claims = JWTClaims {
             issued_at: Some(Clock::now_since_epoch()),
-            expires_at: Some(Clock::now_since_epoch() + Duration::from_secs(self.token_expiry_hours * 3600)),
+            expires_at: Some(
+                Clock::now_since_epoch() + Duration::from_secs(self.token_expiry_hours * 3600),
+            ),
             invalid_before: None,
             issuer: Some("DLS-Server".to_string()),
             subject: Some(user.id.to_string()),
@@ -681,18 +740,14 @@ impl AuthManager {
                 "clients:read".to_string(),
                 "images:read".to_string(),
             ],
-            UserRole::Guest => vec![
-                "system:read".to_string(),
-            ],
-            UserRole::ServiceAccount => vec![
-                "api:access".to_string(),
-                "system:read".to_string(),
-            ],
+            UserRole::Guest => vec!["system:read".to_string()],
+            UserRole::ServiceAccount => vec!["api:access".to_string(), "system:read".to_string()],
         }
     }
 
     pub async fn verify_enterprise_token(&self, token: &str) -> Result<Claims> {
-        let jwt_claims = self.jwt_key
+        let jwt_claims = self
+            .jwt_key
             .verify_token::<Claims>(token, None)
             .map_err(|e| DlsError::Auth(format!("Invalid token: {}", e)))?;
 
@@ -715,7 +770,8 @@ impl AuthManager {
         let mut sessions = self.sessions.write().await;
         if let Some(session) = sessions.get_mut(session_id) {
             session.last_activity = chrono::Utc::now();
-            session.expires_at = chrono::Utc::now() + chrono::Duration::minutes(self.config.session_timeout_minutes as i64);
+            session.expires_at = chrono::Utc::now()
+                + chrono::Duration::minutes(self.config.session_timeout_minutes as i64);
             Ok(())
         } else {
             Err(DlsError::Auth("Session not found".to_string()))
@@ -742,7 +798,11 @@ impl AuthManager {
         let sessions = self.sessions.read().await;
         sessions
             .values()
-            .filter(|session| session.username == username && session.active && session.expires_at > chrono::Utc::now())
+            .filter(|session| {
+                session.username == username
+                    && session.active
+                    && session.expires_at > chrono::Utc::now()
+            })
             .cloned()
             .collect()
     }
@@ -751,28 +811,30 @@ impl AuthManager {
         if let Some(ldap_auth) = &self.ldap_authenticator {
             ldap_auth.test_connection().await
         } else {
-            Err(DlsError::Auth("LDAP authenticator not configured".to_string()))
+            Err(DlsError::Auth(
+                "LDAP authenticator not configured".to_string(),
+            ))
         }
     }
 
     pub fn hash_password(&self, password: &str) -> Result<String> {
         // Validate password complexity first
         self.validate_password_complexity(password)?;
-        
+
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
-        
+
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
             .map_err(|e| DlsError::Auth(format!("Failed to hash password: {}", e)))?;
-        
+
         Ok(password_hash.to_string())
     }
 
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
         let parsed_hash = PasswordHash::new(hash)
             .map_err(|e| DlsError::Auth(format!("Invalid password hash: {}", e)))?;
-        
+
         let argon2 = Argon2::default();
         match argon2.verify_password(password.as_bytes(), &parsed_hash) {
             Ok(()) => Ok(true),
@@ -793,7 +855,9 @@ impl AuthManager {
 
         let jwt_claims = JWTClaims {
             issued_at: Some(Clock::now_since_epoch()),
-            expires_at: Some(Clock::now_since_epoch() + Duration::from_secs(self.token_expiry_hours * 3600)),
+            expires_at: Some(
+                Clock::now_since_epoch() + Duration::from_secs(self.token_expiry_hours * 3600),
+            ),
             invalid_before: None,
             issuer: Some("DLS-Server".to_string()),
             subject: Some(user.id.to_string()),
@@ -810,21 +874,22 @@ impl AuthManager {
 
     // Legacy verify_token method for backward compatibility
     pub fn verify_token(&self, token: &str) -> Result<Claims> {
-        let jwt_claims = self.jwt_key
+        let jwt_claims = self
+            .jwt_key
             .verify_token::<Claims>(token, None)
             .map_err(|e| DlsError::Auth(format!("Invalid token: {}", e)))?;
-        
+
         Ok(jwt_claims.custom)
     }
 
     pub async fn refresh_token(&self, token: &str) -> Result<String> {
         let claims = self.verify_token(token)?;
-        
+
         // Refresh the session if session_id is present
         if !claims.session_id.is_empty() {
             self.refresh_session(&claims.session_id).await?;
         }
-        
+
         let user = User {
             id: uuid::Uuid::new_v4(),
             username: claims.username,
@@ -834,7 +899,7 @@ impl AuthManager {
             last_login: None,
             active: true,
         };
-        
+
         self.create_enterprise_token(&user, &claims.session_id, &claims.groups, &claims.provider)
     }
 }
@@ -852,11 +917,13 @@ impl AuthMiddleware {
     pub fn verify_request(&self, auth_header: Option<&str>) -> Result<Claims> {
         let auth_header = auth_header
             .ok_or_else(|| DlsError::Auth("Missing authorization header".to_string()))?;
-        
+
         if !auth_header.starts_with("Bearer ") {
-            return Err(DlsError::Auth("Invalid authorization header format".to_string()));
+            return Err(DlsError::Auth(
+                "Invalid authorization header format".to_string(),
+            ));
         }
-        
+
         let token = &auth_header[7..];
         self.auth_manager.verify_token(token)
     }
@@ -864,11 +931,13 @@ impl AuthMiddleware {
     pub async fn verify_enterprise_request(&self, auth_header: Option<&str>) -> Result<Claims> {
         let auth_header = auth_header
             .ok_or_else(|| DlsError::Auth("Missing authorization header".to_string()))?;
-        
+
         if !auth_header.starts_with("Bearer ") {
-            return Err(DlsError::Auth("Invalid authorization header format".to_string()));
+            return Err(DlsError::Auth(
+                "Invalid authorization header format".to_string(),
+            ));
         }
-        
+
         let token = &auth_header[7..];
         self.auth_manager.verify_enterprise_token(token).await
     }
@@ -888,18 +957,31 @@ impl AuthMiddleware {
     }
 
     pub fn require_permission(&self, claims: &Claims, required_permission: &str) -> Result<()> {
-        if claims.permissions.contains(&required_permission.to_string()) {
+        if claims
+            .permissions
+            .contains(&required_permission.to_string())
+        {
             Ok(())
         } else {
-            Err(DlsError::Auth(format!("Missing required permission: {}", required_permission)))
+            Err(DlsError::Auth(format!(
+                "Missing required permission: {}",
+                required_permission
+            )))
         }
     }
 
     pub fn require_group_membership(&self, claims: &Claims, required_group: &str) -> Result<()> {
-        if claims.groups.iter().any(|group| group.contains(required_group)) {
+        if claims
+            .groups
+            .iter()
+            .any(|group| group.contains(required_group))
+        {
             Ok(())
         } else {
-            Err(DlsError::Auth(format!("Missing required group membership: {}", required_group)))
+            Err(DlsError::Auth(format!(
+                "Missing required group membership: {}",
+                required_group
+            )))
         }
     }
 }
@@ -911,19 +993,40 @@ pub struct UserService {
 }
 
 impl UserService {
-    pub fn new(auth_manager: AuthManager, db: std::sync::Arc<crate::database::DatabaseManager>) -> Self {
+    pub fn new(
+        auth_manager: AuthManager,
+        db: std::sync::Arc<crate::database::DatabaseManager>,
+    ) -> Self {
         Self { auth_manager, db }
     }
 
-    pub async fn create_user(&self, username: &str, password: &str, role: UserRole, 
-                            email: Option<&str>, created_by: Option<uuid::Uuid>) -> Result<uuid::Uuid> {
+    pub async fn create_user(
+        &self,
+        username: &str,
+        password: &str,
+        role: UserRole,
+        email: Option<&str>,
+        created_by: Option<uuid::Uuid>,
+    ) -> Result<uuid::Uuid> {
         let password_hash = self.auth_manager.hash_password(password)?;
-        self.db.create_user(username, &password_hash, role, email, created_by).await
+        self.db
+            .create_user(username, &password_hash, role, email, created_by)
+            .await
     }
 
-    pub async fn authenticate(&self, username: &str, password: &str, ip_address: &str, user_agent: &str) -> Result<(User, String)> {
+    pub async fn authenticate(
+        &self,
+        username: &str,
+        password: &str,
+        ip_address: &str,
+        user_agent: &str,
+    ) -> Result<(User, String)> {
         // Try enterprise authentication first
-        match self.auth_manager.authenticate_enterprise(username, password, ip_address, user_agent).await {
+        match self
+            .auth_manager
+            .authenticate_enterprise(username, password, ip_address, user_agent)
+            .await
+        {
             Ok(result) => {
                 // Update last login
                 self.db.update_user_last_login(result.0.id).await?;
@@ -931,10 +1034,16 @@ impl UserService {
             }
             Err(_) => {
                 // Fallback to legacy authentication
-                let user_record = self.db.get_user_by_username(username).await?
+                let user_record = self
+                    .db
+                    .get_user_by_username(username)
+                    .await?
                     .ok_or_else(|| DlsError::Auth("Invalid credentials".to_string()))?;
 
-                if !self.auth_manager.verify_password(password, &user_record.password_hash)? {
+                if !self
+                    .auth_manager
+                    .verify_password(password, &user_record.password_hash)?
+                {
                     return Err(DlsError::Auth("Invalid credentials".to_string()));
                 }
 
@@ -951,28 +1060,46 @@ impl UserService {
 
     pub async fn verify_token(&self, token: &str) -> Result<User> {
         let claims = self.auth_manager.verify_token(token)?;
-        
-        let user_record = self.db.get_user_by_username(&claims.username).await?
+
+        let user_record = self
+            .db
+            .get_user_by_username(&claims.username)
+            .await?
             .ok_or_else(|| DlsError::Auth("User not found".to_string()))?;
 
         user_record.to_user()
     }
 
-    pub async fn change_password(&self, user_id: uuid::Uuid, old_password: &str, new_password: &str) -> Result<()> {
-        let user_record = self.db.get_user_by_id(user_id).await?
+    pub async fn change_password(
+        &self,
+        user_id: uuid::Uuid,
+        old_password: &str,
+        new_password: &str,
+    ) -> Result<()> {
+        let user_record = self
+            .db
+            .get_user_by_id(user_id)
+            .await?
             .ok_or_else(|| DlsError::Auth("User not found".to_string()))?;
 
-        if !self.auth_manager.verify_password(old_password, &user_record.password_hash)? {
+        if !self
+            .auth_manager
+            .verify_password(old_password, &user_record.password_hash)?
+        {
             return Err(DlsError::Auth("Invalid current password".to_string()));
         }
 
         let new_password_hash = self.auth_manager.hash_password(new_password)?;
-        self.db.update_user_password(user_id, &new_password_hash).await
+        self.db
+            .update_user_password(user_id, &new_password_hash)
+            .await
     }
 
     pub async fn reset_password(&self, user_id: uuid::Uuid, new_password: &str) -> Result<()> {
         let new_password_hash = self.auth_manager.hash_password(new_password)?;
-        self.db.update_user_password(user_id, &new_password_hash).await
+        self.db
+            .update_user_password(user_id, &new_password_hash)
+            .await
     }
 
     pub async fn update_user_role(&self, user_id: uuid::Uuid, role: UserRole) -> Result<()> {
@@ -986,11 +1113,11 @@ impl UserService {
     pub async fn list_users(&self, active_only: bool) -> Result<Vec<User>> {
         let user_records = self.db.list_users(active_only).await?;
         let mut users = Vec::new();
-        
+
         for record in user_records {
             users.push(record.to_user()?);
         }
-        
+
         Ok(users)
     }
 
@@ -1207,10 +1334,16 @@ impl EnterpriseAuthService {
         self
     }
 
-    pub async fn authenticate(&self, request: EnterpriseLoginRequest, ip_address: &str, user_agent: &str) -> Result<EnterpriseLoginResponse> {
+    pub async fn authenticate(
+        &self,
+        request: EnterpriseLoginRequest,
+        ip_address: &str,
+        user_agent: &str,
+    ) -> Result<EnterpriseLoginResponse> {
         let start_time = std::time::Instant::now();
-        
-        let result = self.auth_manager
+
+        let result = self
+            .auth_manager
             .authenticate_enterprise(&request.username, &request.password, ip_address, user_agent)
             .await;
 
@@ -1242,7 +1375,17 @@ impl EnterpriseAuthService {
 
                 // Audit successful authentication
                 if self.audit_enabled {
-                    self.audit_authentication(&request.username, &claims.provider, true, ip_address, user_agent, None, &Some(claims.session_id.clone()), &claims.groups).await;
+                    self.audit_authentication(
+                        &request.username,
+                        &claims.provider,
+                        true,
+                        ip_address,
+                        user_agent,
+                        None,
+                        &Some(claims.session_id.clone()),
+                        &claims.groups,
+                    )
+                    .await;
                 }
 
                 Ok(response)
@@ -1251,7 +1394,17 @@ impl EnterpriseAuthService {
                 // Audit failed authentication
                 if self.audit_enabled {
                     let provider = request.provider.unwrap_or(AuthenticationProvider::Local);
-                    self.audit_authentication(&request.username, &provider, false, ip_address, user_agent, Some(e.to_string()), &None, &Vec::new()).await;
+                    self.audit_authentication(
+                        &request.username,
+                        &provider,
+                        false,
+                        ip_address,
+                        user_agent,
+                        Some(e.to_string()),
+                        &None,
+                        &Vec::new(),
+                    )
+                    .await;
                 }
                 Err(e)
             }
@@ -1259,7 +1412,10 @@ impl EnterpriseAuthService {
     }
 
     pub async fn get_active_sessions(&self, username: &str) -> Result<Vec<SessionInfo>> {
-        let sessions = self.auth_manager.get_active_sessions_for_user(username).await;
+        let sessions = self
+            .auth_manager
+            .get_active_sessions_for_user(username)
+            .await;
         Ok(sessions.into_iter().map(SessionInfo::from).collect())
     }
 
@@ -1267,7 +1423,10 @@ impl EnterpriseAuthService {
         self.auth_manager.invalidate_session(session_id).await
     }
 
-    pub async fn test_ldap_configuration(&self, config: LdapConfigRequest) -> Result<LdapTestResult> {
+    pub async fn test_ldap_configuration(
+        &self,
+        config: LdapConfigRequest,
+    ) -> Result<LdapTestResult> {
         let ldap_config = LdapConfig {
             server: config.server,
             port: config.port,
@@ -1290,46 +1449,48 @@ impl EnterpriseAuthService {
         };
 
         let start_time = std::time::Instant::now();
-        
+
         match LdapAuthenticator::new(ldap_config).await {
-            Ok(authenticator) => {
-                match authenticator.test_connection().await {
-                    Ok(_) => {
-                        let elapsed = start_time.elapsed();
-                        Ok(LdapTestResult {
-                            success: true,
-                            message: "LDAP connection successful".to_string(),
-                            connection_time_ms: elapsed.as_millis() as u64,
-                            user_count: None,
-                            group_count: None,
-                        })
-                    }
-                    Err(e) => {
-                        Ok(LdapTestResult {
-                            success: false,
-                            message: format!("LDAP connection failed: {}", e),
-                            connection_time_ms: start_time.elapsed().as_millis() as u64,
-                            user_count: None,
-                            group_count: None,
-                        })
-                    }
+            Ok(authenticator) => match authenticator.test_connection().await {
+                Ok(_) => {
+                    let elapsed = start_time.elapsed();
+                    Ok(LdapTestResult {
+                        success: true,
+                        message: "LDAP connection successful".to_string(),
+                        connection_time_ms: elapsed.as_millis() as u64,
+                        user_count: None,
+                        group_count: None,
+                    })
                 }
-            }
-            Err(e) => {
-                Ok(LdapTestResult {
+                Err(e) => Ok(LdapTestResult {
                     success: false,
-                    message: format!("Failed to create LDAP authenticator: {}", e),
+                    message: format!("LDAP connection failed: {}", e),
                     connection_time_ms: start_time.elapsed().as_millis() as u64,
                     user_count: None,
                     group_count: None,
-                })
-            }
+                }),
+            },
+            Err(e) => Ok(LdapTestResult {
+                success: false,
+                message: format!("Failed to create LDAP authenticator: {}", e),
+                connection_time_ms: start_time.elapsed().as_millis() as u64,
+                user_count: None,
+                group_count: None,
+            }),
         }
     }
 
-    async fn audit_authentication(&self, username: &str, provider: &AuthenticationProvider, success: bool, 
-                                 ip_address: &str, user_agent: &str, failure_reason: Option<String>, 
-                                 session_id: &Option<String>, groups: &[String]) {
+    async fn audit_authentication(
+        &self,
+        username: &str,
+        provider: &AuthenticationProvider,
+        success: bool,
+        ip_address: &str,
+        user_agent: &str,
+        failure_reason: Option<String>,
+        session_id: &Option<String>,
+        groups: &[String],
+    ) {
         let _audit_entry = AuthenticationAuditLog {
             id: uuid::Uuid::new_v4(),
             username: username.to_string(),

@@ -1,11 +1,11 @@
 // Advanced Data Pipeline for Multi-Source Analytics Processing
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, CircularEventBuffer};
+use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -719,7 +719,13 @@ pub enum PipelineStatus {
 impl AdvancedDataPipeline {
     pub fn new() -> Self {
         Self {
-            pipeline_id: format!("adp_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            pipeline_id: format!(
+                "adp_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             data_ingestion_engine: Arc::new(DataIngestionEngine::new()),
             stream_processor: Arc::new(StreamProcessor::new()),
             batch_processor: Arc::new(BatchProcessor::new()),
@@ -731,7 +737,11 @@ impl AdvancedDataPipeline {
         }
     }
 
-    pub async fn create_ingestion_pipeline(&self, source: DataSource, config: PipelineConfig) -> Result<String> {
+    pub async fn create_ingestion_pipeline(
+        &self,
+        source: DataSource,
+        config: PipelineConfig,
+    ) -> Result<String> {
         let pipeline_id = format!("ing_{}", Uuid::new_v4());
 
         // Register data source
@@ -786,7 +796,10 @@ impl AdvancedDataPipeline {
             status: PipelineStatus::Stopped,
         };
 
-        self.data_ingestion_engine.ingestion_pipelines.insert(pipeline_id.clone(), pipeline).await;
+        self.data_ingestion_engine
+            .ingestion_pipelines
+            .insert(pipeline_id.clone(), pipeline)
+            .await;
 
         Ok(pipeline_id)
     }
@@ -800,14 +813,22 @@ impl AdvancedDataPipeline {
     }
 
     pub async fn get_pipeline_metrics(&self, pipeline_id: &str) -> Result<PipelineMetrics> {
-        self.pipeline_orchestrator.get_pipeline_metrics(pipeline_id).await
+        self.pipeline_orchestrator
+            .get_pipeline_metrics(pipeline_id)
+            .await
     }
 }
 
 impl DataIngestionEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("die_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "die_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             data_sources: Arc::new(DashMap::new()),
             ingestion_pipelines: AsyncDataStore::new(),
             connector_registry: Arc::new(ConnectorRegistry::new()),
@@ -824,7 +845,9 @@ impl DataIngestionEngine {
         self.data_validation.validate_source_config(&source).await?;
 
         // Register schema
-        self.schema_registry.register_schema(&source.schema_definition).await?;
+        self.schema_registry
+            .register_schema(&source.schema_definition)
+            .await?;
 
         // Store source
         self.data_sources.insert(source_id, source);
@@ -850,7 +873,13 @@ pub struct StreamProcessor {
 impl StreamProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("sp_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "sp_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -863,7 +892,13 @@ pub struct BatchProcessor {
 impl BatchProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("bp_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "bp_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -876,7 +911,13 @@ pub struct DataTransformationEngine {
 impl DataTransformationEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("dte_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "dte_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -889,7 +930,13 @@ pub struct DataQualityEngine {
 impl DataQualityEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("dqe_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "dqe_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -902,7 +949,13 @@ pub struct DataLineageTracker {
 impl DataLineageTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("dlt_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "dlt_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -915,7 +968,13 @@ pub struct MetadataManager {
 impl MetadataManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -928,7 +987,13 @@ pub struct PipelineOrchestrator {
 impl PipelineOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("po_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "po_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -964,7 +1029,13 @@ pub struct ConnectorRegistry {
 impl ConnectorRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("cr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "cr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -981,7 +1052,13 @@ pub struct SchemaRegistry {
 impl SchemaRegistry {
     pub fn new() -> Self {
         Self {
-            registry_id: format!("sr_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            registry_id: format!(
+                "sr_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -998,7 +1075,13 @@ pub struct DataValidation {
 impl DataValidation {
     pub fn new() -> Self {
         Self {
-            validation_id: format!("dv_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            validation_id: format!(
+                "dv_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1015,7 +1098,13 @@ pub struct IngestionMonitor {
 impl IngestionMonitor {
     pub fn new() -> Self {
         Self {
-            monitor_id: format!("im_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitor_id: format!(
+                "im_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

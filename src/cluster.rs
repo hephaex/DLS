@@ -210,9 +210,9 @@ impl ClusterManager {
 
     pub async fn start(&self) -> Result<()> {
         info!("Starting cluster manager for node: {}", self.config.node_id);
-        
+
         *self.is_running.write().await = true;
-        
+
         // Update local node status
         {
             let mut local_node = self.local_node.write().await;
@@ -221,48 +221,48 @@ impl ClusterManager {
 
         // Start TCP listener for cluster communication
         self.start_cluster_listener().await?;
-        
+
         // Start periodic tasks
         self.start_heartbeat_sender().await;
         self.start_health_monitor().await;
         self.start_election_timer().await;
         self.start_cluster_sync().await;
-        
+
         // Join cluster
         self.join_cluster().await?;
-        
+
         info!("Cluster manager started successfully");
         Ok(())
     }
 
     pub async fn stop(&self) -> Result<()> {
         info!("Stopping cluster manager");
-        
+
         *self.is_running.write().await = false;
-        
+
         // Update local node status
         {
             let mut local_node = self.local_node.write().await;
             local_node.status = NodeStatus::Leaving;
         }
-        
+
         // Send leave notification
         self.send_leave_notification().await;
-        
+
         // Cancel all running tasks
         let mut handlers = self.message_handlers.write().await;
         for (_, handle) in handlers.drain() {
             handle.abort();
         }
-        
+
         if let Some(timer) = self.heartbeat_timer.write().await.take() {
             timer.abort();
         }
-        
+
         if let Some(timer) = self.election_timer.write().await.take() {
             timer.abort();
         }
-        
+
         info!("Cluster manager stopped successfully");
         Ok(())
     }
@@ -271,17 +271,24 @@ impl ClusterManager {
         let local_node = self.local_node.read().await;
         let cluster_nodes = self.cluster_nodes.read().await;
         let current_term = *self.current_term.read().await;
-        
-        let leader_node = cluster_nodes.values()
+
+        let leader_node = cluster_nodes
+            .values()
             .find(|node| node.role == NodeRole::Leader)
             .cloned();
-        
-        let online_nodes = cluster_nodes.values()
+
+        let online_nodes = cluster_nodes
+            .values()
             .filter(|node| node.status == NodeStatus::Online)
-            .count() + if local_node.status == NodeStatus::Online { 1 } else { 0 };
-        
+            .count()
+            + if local_node.status == NodeStatus::Online {
+                1
+            } else {
+                0
+            };
+
         let total_nodes = cluster_nodes.len() + 1;
-        
+
         ClusterStatus {
             cluster_healthy: online_nodes > total_nodes / 2,
             current_leader: leader_node.map(|n| n.node_id),
@@ -300,65 +307,65 @@ impl ClusterManager {
 
     pub async fn initiate_failover(&self, failed_node_id: &str) -> Result<()> {
         info!("Initiating failover for failed node: {}", failed_node_id);
-        
+
         let local_node = self.local_node.read().await;
         if local_node.role != NodeRole::Leader {
             return Err(crate::error::DlsError::InvalidOperation(
-                "Only leader can initiate failover".to_string()
+                "Only leader can initiate failover".to_string(),
             ));
         }
-        
+
         // Get services running on failed node
         let services_to_migrate = self.get_services_on_node(failed_node_id).await;
-        
+
         // Find target nodes for service migration
         let target_nodes = self.select_failover_targets(&services_to_migrate).await;
-        
+
         // Create failover plan
         let failover_data = FailoverData {
             failed_node: failed_node_id.to_string(),
             services_to_migrate,
             target_nodes,
         };
-        
+
         // Execute failover
         self.execute_failover_plan(&failover_data).await?;
-        
+
         // Notify cluster about failover
         self.broadcast_failover_notification(failover_data).await;
-        
+
         info!("Failover completed for node: {}", failed_node_id);
         Ok(())
     }
 
     pub async fn request_leadership(&self) -> Result<()> {
         info!("Requesting leadership");
-        
+
         let current_term = {
             let mut term = self.current_term.write().await;
             *term += 1;
             *term
         };
-        
+
         // Update local node role
         {
             let mut local_node = self.local_node.write().await;
             local_node.role = NodeRole::Candidate;
         }
-        
+
         // Vote for self
         *self.voted_for.write().await = Some(self.config.node_id.clone());
-        
+
         // Request votes from peers
         self.request_votes(current_term).await;
-        
+
         Ok(())
     }
 
     async fn start_cluster_listener(&self) -> Result<()> {
         let listener = TcpListener::bind(self.config.listen_addr).await?;
         info!("Cluster listener started on: {}", self.config.listen_addr);
-        
+
         let cluster_manager = self.clone();
         let handle = tokio::spawn(async move {
             while *cluster_manager.is_running.read().await {
@@ -378,16 +385,16 @@ impl ClusterManager {
                 }
             }
         });
-        
+
         let mut handlers = self.message_handlers.write().await;
         handlers.insert("cluster_listener".to_string(), handle);
-        
+
         Ok(())
     }
 
     async fn handle_cluster_connection(&self, mut stream: TcpStream) -> Result<()> {
         let mut buffer = vec![0; 4096];
-        
+
         loop {
             match timeout(Duration::from_secs(30), stream.readable()).await {
                 Ok(_) => {
@@ -414,13 +421,13 @@ impl ClusterManager {
                 }
             }
         }
-        
+
         Ok(())
     }
 
     async fn process_cluster_message(&self, message: ClusterMessage) {
         debug!("Processing cluster message: {:?}", message.message_type);
-        
+
         match message.payload {
             MessagePayload::Heartbeat(data) => {
                 self.handle_heartbeat(message.from_node, data).await;
@@ -445,7 +452,7 @@ impl ClusterManager {
 
     async fn handle_heartbeat(&self, from_node: String, data: HeartbeatData) {
         let mut cluster_nodes = self.cluster_nodes.write().await;
-        
+
         if let Some(node) = cluster_nodes.get_mut(&from_node) {
             node.last_seen = SystemTime::now();
             node.status = data.node_status;
@@ -464,10 +471,10 @@ impl ClusterManager {
                 load_metrics: data.load_metrics,
                 services_status: data.services_status,
             };
-            
+
             cluster_nodes.insert(from_node, new_node);
         }
-        
+
         // Update term if necessary
         if data.term > *self.current_term.read().await {
             *self.current_term.write().await = data.term;
@@ -483,7 +490,7 @@ impl ClusterManager {
                 let cluster_nodes = self.cluster_nodes.read().await;
                 let total_nodes = cluster_nodes.len() + 1;
                 let required_votes = (total_nodes / 2) + 1;
-                
+
                 // This is simplified - in practice, you'd track votes properly
                 if self.count_votes().await >= required_votes {
                     self.become_leader().await;
@@ -498,16 +505,16 @@ impl ClusterManager {
     async fn handle_vote_request(&self, from_node: String, mut data: ElectionData) {
         let current_term = *self.current_term.read().await;
         let voted_for = self.voted_for.read().await.clone();
-        
-        let should_grant_vote = data.term >= current_term 
+
+        let should_grant_vote = data.term >= current_term
             && (voted_for.is_none() || voted_for == Some(from_node.clone()));
-        
+
         if should_grant_vote {
             *self.voted_for.write().await = Some(from_node.clone());
         }
-        
+
         data.vote_granted = Some(should_grant_vote);
-        
+
         // Send vote response
         let response = ClusterMessage {
             message_id: Uuid::new_v4().to_string(),
@@ -517,21 +524,21 @@ impl ClusterManager {
             payload: MessagePayload::Election(data),
             timestamp: SystemTime::now(),
         };
-        
+
         self.send_message_to_node(&from_node, response).await;
     }
 
     async fn become_leader(&self) {
         info!("Becoming cluster leader");
-        
+
         {
             let mut local_node = self.local_node.write().await;
             local_node.role = NodeRole::Leader;
         }
-        
+
         // Send leadership announcement
         self.announce_leadership().await;
-        
+
         // Start leader-specific tasks
         self.start_leader_tasks().await;
     }
@@ -550,30 +557,30 @@ impl ClusterManager {
             }),
             timestamp: SystemTime::now(),
         };
-        
+
         self.broadcast_message(announcement).await;
     }
 
     async fn start_heartbeat_sender(&self) {
         let cluster_manager = self.clone();
         let interval_ms = self.config.heartbeat_interval_ms;
-        
+
         let handle = tokio::spawn(async move {
             let mut interval = interval(Duration::from_millis(interval_ms));
-            
+
             while *cluster_manager.is_running.read().await {
                 interval.tick().await;
                 cluster_manager.send_heartbeat().await;
             }
         });
-        
+
         *self.heartbeat_timer.write().await = Some(handle);
     }
 
     async fn send_heartbeat(&self) {
         let local_node = self.local_node.read().await;
         let current_term = *self.current_term.read().await;
-        
+
         let heartbeat = ClusterMessage {
             message_id: Uuid::new_v4().to_string(),
             from_node: self.config.node_id.clone(),
@@ -587,13 +594,14 @@ impl ClusterManager {
             }),
             timestamp: SystemTime::now(),
         };
-        
+
         self.broadcast_message(heartbeat).await;
     }
 
     async fn broadcast_message(&self, message: ClusterMessage) {
         for peer in &self.config.peers {
-            self.send_message_to_node(&peer.node_id, message.clone()).await;
+            self.send_message_to_node(&peer.node_id, message.clone())
+                .await;
         }
     }
 
@@ -723,7 +731,7 @@ mod tests {
     async fn test_cluster_manager_creation() {
         let config = ClusterConfig::default();
         let manager = ClusterManager::new(config);
-        
+
         let local_node = manager.local_node.read().await;
         assert_eq!(local_node.role, NodeRole::Follower);
         assert_eq!(local_node.status, NodeStatus::Joining);
@@ -750,7 +758,7 @@ mod tests {
     fn test_node_status_transitions() {
         let status = NodeStatus::Joining;
         assert_eq!(status, NodeStatus::Joining);
-        
+
         let status = NodeStatus::Online;
         assert_eq!(status, NodeStatus::Online);
     }
@@ -776,7 +784,7 @@ mod tests {
             }),
             timestamp: SystemTime::now(),
         };
-        
+
         assert_eq!(message.from_node, "node-1");
         assert_eq!(message.to_node, Some("node-2".to_string()));
     }
@@ -785,7 +793,7 @@ mod tests {
     async fn test_cluster_status() {
         let config = ClusterConfig::default();
         let manager = ClusterManager::new(config);
-        
+
         let status = manager.get_cluster_status().await;
         assert_eq!(status.total_nodes, 1);
         assert_eq!(status.local_node_role, NodeRole::Follower);
@@ -800,7 +808,7 @@ mod tests {
             active_connections: 150,
             requests_per_second: 100.5,
         };
-        
+
         assert_eq!(metrics.cpu_usage, 75.5);
         assert_eq!(metrics.active_connections, 150);
     }
@@ -814,7 +822,7 @@ mod tests {
             error_rate: 0.1,
             last_check: SystemTime::now(),
         };
-        
+
         assert_eq!(health.service_name, "dhcp");
         assert_eq!(health.status, ServiceStatus::Healthy);
     }
@@ -826,7 +834,7 @@ mod tests {
             addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 10)), 7777),
             priority: 100,
         };
-        
+
         assert_eq!(peer.node_id, "peer-1");
         assert_eq!(peer.priority, 100);
     }
@@ -840,7 +848,7 @@ mod tests {
             last_log_term: 4,
             vote_granted: Some(true),
         };
-        
+
         assert_eq!(election_data.term, 5);
         assert_eq!(election_data.vote_granted, Some(true));
     }
@@ -852,7 +860,7 @@ mod tests {
             services_to_migrate: vec!["dhcp".to_string(), "tftp".to_string()],
             target_nodes: vec!["node-1".to_string(), "node-2".to_string()],
         };
-        
+
         assert_eq!(failover_data.services_to_migrate.len(), 2);
         assert_eq!(failover_data.target_nodes.len(), 2);
     }

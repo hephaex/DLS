@@ -1,25 +1,25 @@
 pub mod dhcp;
-pub mod tftp;
 pub mod iscsi;
+pub mod tftp;
 
-use crate::error::Result;
-use std::collections::HashMap;
-use crate::boot::{PxeOrchestrator, BootOrchestratorConfig};
+use crate::analytics::{AnalyticsConfig, AnalyticsEngine, Metric, MetricType};
+use crate::boot::{BootOrchestratorConfig, PxeOrchestrator};
 use crate::client::{ClientManager, ClientManagerConfig};
-use crate::web::WebServer;
-use crate::provisioning::ProvisioningManager;
+use crate::cloud::multi_cloud::MultiCloudManager;
+use crate::cluster::{ClusterConfig, ClusterManager};
+use crate::error::Result;
 use crate::performance::PerformanceMonitor;
-use crate::cluster::{ClusterManager, ClusterConfig};
+use crate::provisioning::ProvisioningManager;
 use crate::security::{SecurityManager, ZeroTrustConfig};
 use crate::tenant::TenantManager;
-use crate::cloud::multi_cloud::MultiCloudManager;
-use crate::analytics::{AnalyticsEngine, AnalyticsConfig, Metric, MetricType};
-use std::net::IpAddr;
+use crate::web::WebServer;
 use chrono::Utc;
+use std::collections::HashMap;
+use std::net::IpAddr;
 
 pub use dhcp::DhcpServer;
-pub use tftp::TftpServer;
 pub use iscsi::IscsiTarget;
+pub use tftp::TftpServer;
 
 #[derive(Debug, Clone)]
 pub struct NetworkConfig {
@@ -95,7 +95,7 @@ impl NetworkManager {
             boot_filename: Some("pxelinux.0".to_string()),
             vendor_class_identifier: None,
         };
-        
+
         let mut server = DhcpServer::new(
             self.config.dhcp_range_start,
             self.config.dhcp_range_end,
@@ -122,7 +122,7 @@ impl NetworkManager {
 
     pub async fn start_client_manager(&mut self) -> Result<()> {
         let config = ClientManagerConfig::default();
-        
+
         let mut manager = ClientManager::new(config);
         manager.start().await?;
         self.client_manager = Some(manager);
@@ -135,7 +135,7 @@ impl NetworkManager {
             tftp_root: std::path::PathBuf::from(&self.config.tftp_root),
             ..Default::default()
         };
-        
+
         let mut orchestrator = PxeOrchestrator::new(config);
         orchestrator.start().await?;
         self.pxe_orchestrator = Some(orchestrator);
@@ -205,7 +205,8 @@ impl NetworkManager {
     }
 
     pub async fn start_provisioning_manager(&mut self) -> Result<()> {
-        let provisioning_dir = std::path::PathBuf::from(&self.config.tftp_root).join("provisioning");
+        let provisioning_dir =
+            std::path::PathBuf::from(&self.config.tftp_root).join("provisioning");
         let mut manager = ProvisioningManager::new(provisioning_dir, 4);
         manager.start().await?;
         self.provisioning_manager = Some(manager);
@@ -229,7 +230,7 @@ impl NetworkManager {
 
     pub async fn start_security_manager(&mut self) -> Result<()> {
         let _zero_trust_config = ZeroTrustConfig::default();
-        
+
         let manager = SecurityManager::new();
         manager.start().await?;
         self.security_manager = Some(manager);
@@ -239,11 +240,12 @@ impl NetworkManager {
     pub async fn start_cluster_manager(&mut self) -> Result<()> {
         let cluster_config = ClusterConfig {
             node_name: format!("{}-cluster", self.config.iscsi_target_name),
-            listen_addr: "0.0.0.0:7777".parse()
-                .map_err(|e| crate::error::Error::InvalidConfig(format!("Invalid listen address: {}", e)))?,
+            listen_addr: "0.0.0.0:7777".parse().map_err(|e| {
+                crate::error::Error::InvalidConfig(format!("Invalid listen address: {}", e))
+            })?,
             ..Default::default()
         };
-        
+
         let manager = ClusterManager::new(cluster_config);
         manager.start().await?;
         self.cluster_manager = Some(manager);
@@ -254,15 +256,24 @@ impl NetworkManager {
         self.security_manager.as_ref()
     }
 
-    pub async fn evaluate_network_access(&self, ip: std::net::IpAddr, segment: &str) -> Result<bool> {
+    pub async fn evaluate_network_access(
+        &self,
+        ip: std::net::IpAddr,
+        segment: &str,
+    ) -> Result<bool> {
         if let Some(security_manager) = &self.security_manager {
-            security_manager.validate_access(ip, segment, "network_access").await
+            security_manager
+                .validate_access(ip, segment, "network_access")
+                .await
         } else {
             Ok(true) // Allow if security manager is not enabled
         }
     }
 
-    pub async fn get_security_events(&self, limit: Option<usize>) -> Vec<crate::security::legacy::SecurityEvent> {
+    pub async fn get_security_events(
+        &self,
+        limit: Option<usize>,
+    ) -> Vec<crate::security::legacy::SecurityEvent> {
         if let Some(security_manager) = &self.security_manager {
             security_manager.get_security_events(limit).await
         } else {
@@ -270,7 +281,9 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_network_segments(&self) -> std::collections::HashMap<String, crate::security::NetworkSegment> {
+    pub async fn get_network_segments(
+        &self,
+    ) -> std::collections::HashMap<String, crate::security::NetworkSegment> {
         if let Some(_security_manager) = &self.security_manager {
             HashMap::new() // Return empty map for now
         } else {
@@ -308,11 +321,19 @@ impl NetworkManager {
         self.tenant_manager.as_ref()
     }
 
-    pub async fn register_tenant_client(&self, client_ip: IpAddr, tenant_id: uuid::Uuid) -> Result<()> {
+    pub async fn register_tenant_client(
+        &self,
+        client_ip: IpAddr,
+        tenant_id: uuid::Uuid,
+    ) -> Result<()> {
         if let Some(tenant_manager) = &self.tenant_manager {
-            tenant_manager.register_client_connection(client_ip, tenant_id).await
+            tenant_manager
+                .register_client_connection(client_ip, tenant_id)
+                .await
         } else {
-            Err(crate::error::Error::Internal("Tenant manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Tenant manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -320,7 +341,9 @@ impl NetworkManager {
         if let Some(tenant_manager) = &self.tenant_manager {
             tenant_manager.unregister_client_connection(client_ip).await
         } else {
-            Err(crate::error::Error::Internal("Tenant manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Tenant manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -330,7 +353,11 @@ impl NetworkManager {
             .and_then(|tm| tm.get_tenant_for_client(client_ip))
     }
 
-    pub async fn validate_tenant_access(&self, client_ip: IpAddr, _requested_resource: &str) -> Result<bool> {
+    pub async fn validate_tenant_access(
+        &self,
+        client_ip: IpAddr,
+        _requested_resource: &str,
+    ) -> Result<bool> {
         if let Some(tenant_manager) = &self.tenant_manager {
             if let Some(tenant_id) = tenant_manager.get_tenant_for_client(&client_ip) {
                 if let Some(tenant) = tenant_manager.get_tenant(&tenant_id) {
@@ -340,11 +367,13 @@ impl NetworkManager {
 
                     // Additional access validation based on tenant policies
                     // This could include resource-specific checks, network segment validation, etc.
-                    
+
                     // Example: Check if client is in allowed network ranges
                     if let Some(security_manager) = &self.security_manager {
                         let network_segment = format!("tenant-{}", tenant.namespace);
-                        return security_manager.validate_access(client_ip, &network_segment, "network_access").await;
+                        return security_manager
+                            .validate_access(client_ip, &network_segment, "network_access")
+                            .await;
                     }
 
                     return Ok(true);
@@ -356,7 +385,10 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_tenant_resource_usage(&self, tenant_id: &uuid::Uuid) -> Option<crate::tenant::ResourceUsage> {
+    pub async fn get_tenant_resource_usage(
+        &self,
+        tenant_id: &uuid::Uuid,
+    ) -> Option<crate::tenant::ResourceUsage> {
         self.tenant_manager
             .as_ref()
             .and_then(|tm| tm.get_resource_usage(tenant_id))
@@ -364,7 +396,8 @@ impl NetworkManager {
 
     pub async fn list_tenant_clients(&self) -> std::collections::HashMap<IpAddr, uuid::Uuid> {
         if let Some(tenant_manager) = &self.tenant_manager {
-            tenant_manager.client_connections
+            tenant_manager
+                .client_connections
                 .iter()
                 .map(|entry| (*entry.key(), *entry.value()))
                 .collect()
@@ -396,22 +429,43 @@ impl NetworkManager {
 
             // Create default ResourceSpecifications from config
             let specifications = crate::cloud::multi_cloud::ResourceSpecifications {
-                cpu_cores: config.get("cpu_cores").and_then(|v| v.as_u64()).unwrap_or(2) as u32,
-                memory_gb: config.get("memory_gb").and_then(|v| v.as_u64()).unwrap_or(4) as u32,
-                storage_gb: config.get("storage_gb").and_then(|v| v.as_u64()).unwrap_or(50),
-                network_bandwidth_gbps: config.get("bandwidth").and_then(|v| v.as_u64()).unwrap_or(1) as u32,
-                gpu_count: config.get("gpu_count").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+                cpu_cores: config
+                    .get("cpu_cores")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(2) as u32,
+                memory_gb: config
+                    .get("memory_gb")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(4) as u32,
+                storage_gb: config
+                    .get("storage_gb")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(50),
+                network_bandwidth_gbps: config
+                    .get("bandwidth")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(1) as u32,
+                gpu_count: config
+                    .get("gpu_count")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32,
                 special_features: vec![],
             };
 
-            cloud_manager.provision_cloud_resource(
-                crate::cloud::ResourceType::Compute,
-                provider_id,
-                specifications,
-            ).await
-                .map_err(|e| crate::error::Error::Internal(format!("Resource provisioning failed: {}", e)))
+            cloud_manager
+                .provision_cloud_resource(
+                    crate::cloud::ResourceType::Compute,
+                    provider_id,
+                    specifications,
+                )
+                .await
+                .map_err(|e| {
+                    crate::error::Error::Internal(format!("Resource provisioning failed: {}", e))
+                })
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -420,23 +474,31 @@ impl NetworkManager {
         deployment: crate::cloud::multi_cloud::HybridDeployment,
     ) -> Result<String> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            cloud_manager.create_hybrid_deployment(deployment).await
-                .map_err(|e| crate::error::Error::Internal(format!("Hybrid deployment failed: {}", e)))
+            cloud_manager
+                .create_hybrid_deployment(deployment)
+                .await
+                .map_err(|e| {
+                    crate::error::Error::Internal(format!("Hybrid deployment failed: {}", e))
+                })
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
-    pub async fn migrate_to_cloud(
-        &self,
-        resource_id: &str,
-        target_provider: &str,
-    ) -> Result<()> {
+    pub async fn migrate_to_cloud(&self, resource_id: &str, target_provider: &str) -> Result<()> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            cloud_manager.migrate_resource(resource_id, target_provider).await
-                .map_err(|e| crate::error::Error::Internal(format!("Resource migration failed: {}", e)))
+            cloud_manager
+                .migrate_resource(resource_id, target_provider)
+                .await
+                .map_err(|e| {
+                    crate::error::Error::Internal(format!("Resource migration failed: {}", e))
+                })
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -447,27 +509,41 @@ impl NetworkManager {
         max_capacity: u32,
     ) -> Result<()> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            cloud_manager.setup_auto_scaling(resource_id, min_capacity, max_capacity).await
+            cloud_manager
+                .setup_auto_scaling(resource_id, min_capacity, max_capacity)
+                .await
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
-    pub async fn get_cloud_cost_analysis(&self, tenant_id: Option<uuid::Uuid>) -> Option<crate::cloud::multi_cloud::CostAnalysis> {
+    pub async fn get_cloud_cost_analysis(
+        &self,
+        tenant_id: Option<uuid::Uuid>,
+    ) -> Option<crate::cloud::multi_cloud::CostAnalysis> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            let tenant_str = tenant_id.map(|id| id.to_string()).unwrap_or_else(|| "default".to_string());
+            let tenant_str = tenant_id
+                .map(|id| id.to_string())
+                .unwrap_or_else(|| "default".to_string());
             cloud_manager.get_cost_analysis(&tenant_str).await
         } else {
             None
         }
     }
 
-    pub async fn optimize_cloud_costs(&self) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRecommendation>> {
+    pub async fn optimize_cloud_costs(
+        &self,
+    ) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRecommendation>> {
         if let Some(cloud_manager) = &self.cloud_manager {
-            cloud_manager.optimize_costs().await
-                .map_err(|e| crate::error::Error::Internal(format!("Cost optimization failed: {}", e)))
+            cloud_manager.optimize_costs().await.map_err(|e| {
+                crate::error::Error::Internal(format!("Cost optimization failed: {}", e))
+            })
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -475,7 +551,9 @@ impl NetworkManager {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.sync_data(source, destination).await
         } else {
-            Err(crate::error::Error::Internal("Cloud manager not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Cloud manager not initialized".to_string(),
+            ))
         }
     }
 
@@ -507,7 +585,12 @@ impl NetworkManager {
         self.analytics_engine.as_ref()
     }
 
-    pub async fn record_metric(&self, name: &str, value: f64, labels: std::collections::HashMap<String, String>) -> Result<()> {
+    pub async fn record_metric(
+        &self,
+        name: &str,
+        value: f64,
+        labels: std::collections::HashMap<String, String>,
+    ) -> Result<()> {
         if let Some(analytics) = &self.analytics_engine {
             let metric = Metric {
                 id: uuid::Uuid::new_v4().to_string(),
@@ -525,7 +608,11 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_system_insights(&self, tenant_id: Option<uuid::Uuid>, limit: Option<usize>) -> Vec<crate::analytics::Insight> {
+    pub async fn get_system_insights(
+        &self,
+        tenant_id: Option<uuid::Uuid>,
+        limit: Option<usize>,
+    ) -> Vec<crate::analytics::Insight> {
         if let Some(analytics) = &self.analytics_engine {
             analytics.get_insights(tenant_id, limit).await
         } else {
@@ -533,7 +620,11 @@ impl NetworkManager {
         }
     }
 
-    pub async fn get_system_recommendations(&self, tenant_id: Option<uuid::Uuid>, limit: Option<usize>) -> Vec<crate::analytics::Recommendation> {
+    pub async fn get_system_recommendations(
+        &self,
+        tenant_id: Option<uuid::Uuid>,
+        limit: Option<usize>,
+    ) -> Vec<crate::analytics::Recommendation> {
         if let Some(analytics) = &self.analytics_engine {
             analytics.get_recommendations(tenant_id, limit).await
         } else {
@@ -562,31 +653,42 @@ impl NetworkManager {
             };
             analytics.analyze_metrics(request).await
         } else {
-            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Analytics engine not initialized".to_string(),
+            ))
         }
     }
 
     pub async fn detect_system_anomalies(&self) -> Result<Vec<crate::analytics::AnomalyDetection>> {
         if let Some(analytics) = &self.analytics_engine {
             let mut all_anomalies = Vec::new();
-            
+
             // Check critical system metrics for anomalies
-            let critical_metrics = ["cpu_usage", "memory_usage", "network_throughput", "response_time"];
-            
+            let critical_metrics = [
+                "cpu_usage",
+                "memory_usage",
+                "network_throughput",
+                "response_time",
+            ];
+
             for metric in &critical_metrics {
                 match analytics.detect_real_time_anomalies(metric).await {
                     Ok(mut anomalies) => all_anomalies.append(&mut anomalies),
                     Err(_) => continue, // Skip metrics that don't exist
                 }
             }
-            
+
             Ok(all_anomalies)
         } else {
             Ok(Vec::new())
         }
     }
 
-    pub async fn generate_performance_forecast(&self, metric_name: &str, hours_ahead: u32) -> Result<Vec<f64>> {
+    pub async fn generate_performance_forecast(
+        &self,
+        metric_name: &str,
+        hours_ahead: u32,
+    ) -> Result<Vec<f64>> {
         if let Some(analytics) = &self.analytics_engine {
             let request = crate::analytics::AnalysisRequest {
                 id: uuid::Uuid::new_v4(),
@@ -598,34 +700,42 @@ impl NetworkManager {
                 },
                 parameters: {
                     let mut params = std::collections::HashMap::new();
-                    params.insert("forecast_hours".to_string(), serde_json::Value::Number(serde_json::Number::from(hours_ahead)));
+                    params.insert(
+                        "forecast_hours".to_string(),
+                        serde_json::Value::Number(serde_json::Number::from(hours_ahead)),
+                    );
                     params
                 },
                 tenant_id: None,
                 created_at: Utc::now(),
             };
-            
+
             let result = analytics.analyze_metrics(request).await?;
-            
+
             // Extract forecast values from result
             if let Some(forecasts) = result.results.get(metric_name) {
                 if let Some(forecast_data) = forecasts.get("forecast") {
                     if let Some(values) = forecast_data.as_array() {
-                        let forecast_values: Vec<f64> = values.iter()
-                            .filter_map(|v| v.as_f64())
-                            .collect();
+                        let forecast_values: Vec<f64> =
+                            values.iter().filter_map(|v| v.as_f64()).collect();
                         return Ok(forecast_values);
                     }
                 }
             }
-            
+
             Ok(Vec::new())
         } else {
-            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Analytics engine not initialized".to_string(),
+            ))
         }
     }
 
-    pub async fn create_analytics_dashboard(&self, name: &str, tenant_id: Option<uuid::Uuid>) -> Result<uuid::Uuid> {
+    pub async fn create_analytics_dashboard(
+        &self,
+        name: &str,
+        tenant_id: Option<uuid::Uuid>,
+    ) -> Result<uuid::Uuid> {
         if let Some(analytics) = &self.analytics_engine {
             let dashboard = crate::analytics::Dashboard {
                 id: uuid::Uuid::new_v4(),
@@ -638,7 +748,10 @@ impl NetworkManager {
                         title: "System CPU Usage".to_string(),
                         widget_type: crate::analytics::WidgetType::LineChart,
                         position: crate::analytics::Position { x: 0, y: 0 },
-                        size: crate::analytics::Size { width: 400, height: 300 },
+                        size: crate::analytics::Size {
+                            width: 400,
+                            height: 300,
+                        },
                         configuration: crate::analytics::WidgetConfiguration {
                             metrics: vec!["cpu_usage".to_string()],
                             time_range: crate::analytics::TimeRange {
@@ -654,7 +767,10 @@ impl NetworkManager {
                         title: "Memory Usage".to_string(),
                         widget_type: crate::analytics::WidgetType::Gauge,
                         position: crate::analytics::Position { x: 400, y: 0 },
-                        size: crate::analytics::Size { width: 200, height: 200 },
+                        size: crate::analytics::Size {
+                            width: 200,
+                            height: 200,
+                        },
                         configuration: crate::analytics::WidgetConfiguration {
                             metrics: vec!["memory_usage".to_string()],
                             time_range: crate::analytics::TimeRange {
@@ -664,7 +780,7 @@ impl NetworkManager {
                             aggregation: crate::analytics::AggregationType::Average,
                             display_options: std::collections::HashMap::new(),
                         },
-                    }
+                    },
                 ],
                 refresh_interval_seconds: 30,
                 created_at: Utc::now(),
@@ -673,7 +789,9 @@ impl NetworkManager {
 
             analytics.create_dashboard(dashboard).await
         } else {
-            Err(crate::error::Error::Internal("Analytics engine not initialized".to_string()))
+            Err(crate::error::Error::Internal(
+                "Analytics engine not initialized".to_string(),
+            ))
         }
     }
 }

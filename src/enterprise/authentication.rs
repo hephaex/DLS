@@ -1,11 +1,11 @@
 // Enterprise Authentication Management System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore, CircularEventBuffer};
+use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -400,9 +400,13 @@ pub enum ChallengeStatus {
 impl EnterpriseAuthenticationManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("eam_{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)
-                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
+            manager_id: format!(
+                "eam_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0))
+                    .as_secs()
+            ),
             authentication_providers: Arc::new(DashMap::new()),
             sso_manager: Arc::new(SSOManager::new()),
             session_manager: Arc::new(SessionManager::new()),
@@ -416,14 +420,21 @@ impl EnterpriseAuthenticationManager {
 
     pub async fn register_provider(&self, provider: AuthenticationProvider) -> Result<String> {
         let provider_id = provider.provider_id.clone();
-        self.authentication_providers.insert(provider_id.clone(), provider);
+        self.authentication_providers
+            .insert(provider_id.clone(), provider);
         Ok(provider_id)
     }
 
-    pub async fn authenticate_user(&self, credentials: AuthenticationCredentials) -> Result<AuthenticationResult> {
-        let provider = self.authentication_providers
+    pub async fn authenticate_user(
+        &self,
+        credentials: AuthenticationCredentials,
+    ) -> Result<AuthenticationResult> {
+        let provider = self
+            .authentication_providers
             .get(&credentials.provider_id)
-            .ok_or_else(|| crate::error::Error::NotFound("Authentication provider not found".to_string()))?;
+            .ok_or_else(|| {
+                crate::error::Error::NotFound("Authentication provider not found".to_string())
+            })?;
 
         let risk_assessment = self.risk_engine.assess_risk(&credentials).await?;
 
@@ -442,7 +453,10 @@ impl EnterpriseAuthenticationManager {
 
         if auth_result.success {
             if let Some(user_info) = auth_result.user_info.clone() {
-                let session = self.session_manager.create_session(user_info.clone(), &credentials).await?;
+                let session = self
+                    .session_manager
+                    .create_session(user_info.clone(), &credentials)
+                    .await?;
                 return Ok(AuthenticationResult {
                     success: true,
                     user_info: Some(user_info.clone()),
@@ -461,7 +475,11 @@ impl EnterpriseAuthenticationManager {
         self.session_manager.validate_session(session_id).await
     }
 
-    async fn perform_authentication(&self, _provider: &AuthenticationProvider, _credentials: &AuthenticationCredentials) -> Result<AuthenticationResult> {
+    async fn perform_authentication(
+        &self,
+        _provider: &AuthenticationProvider,
+        _credentials: &AuthenticationCredentials,
+    ) -> Result<AuthenticationResult> {
         Ok(AuthenticationResult {
             success: true,
             user_info: Some(UserInfo {
@@ -491,9 +509,13 @@ impl EnterpriseAuthenticationManager {
 impl SSOManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sso_{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)
-                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
+            manager_id: format!(
+                "sso_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0))
+                    .as_secs()
+            ),
             sso_providers: Arc::new(DashMap::new()),
             sso_sessions: AsyncDataStore::new(),
             assertion_processor: Arc::new(AssertionProcessor::new()),
@@ -503,11 +525,15 @@ impl SSOManager {
     }
 
     pub async fn process_sso_request(&self, request: SSORequest) -> Result<SSOResponse> {
-        let provider = self.sso_providers
+        let provider = self
+            .sso_providers
             .get(&request.provider_id)
             .ok_or_else(|| crate::error::Error::NotFound("SSO provider not found".to_string()))?;
 
-        let assertion = self.assertion_processor.process_assertion(&request.assertion, &provider).await?;
+        let assertion = self
+            .assertion_processor
+            .process_assertion(&request.assertion, &provider)
+            .await?;
 
         let session = SSOSession {
             session_id: Uuid::new_v4().to_string(),
@@ -521,7 +547,9 @@ impl SSOManager {
             user_agent: request.user_agent,
         };
 
-        self.sso_sessions.insert(session.session_id.clone(), session.clone()).await;
+        self.sso_sessions
+            .insert(session.session_id.clone(), session.clone())
+            .await;
 
         Ok(SSOResponse {
             success: true,
@@ -535,9 +563,13 @@ impl SSOManager {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("sm_{}",
-                SystemTime::now().duration_since(UNIX_EPOCH)
-                    .unwrap_or_else(|_| Duration::from_secs(0)).as_secs()),
+            manager_id: format!(
+                "sm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or_else(|_| Duration::from_secs(0))
+                    .as_secs()
+            ),
             active_sessions: Arc::new(DashMap::new()),
             session_store: AsyncDataStore::new(),
             session_config: SessionConfiguration {
@@ -553,7 +585,11 @@ impl SessionManager {
         }
     }
 
-    pub async fn create_session(&self, user_info: UserInfo, credentials: &AuthenticationCredentials) -> Result<UserSession> {
+    pub async fn create_session(
+        &self,
+        user_info: UserInfo,
+        credentials: &AuthenticationCredentials,
+    ) -> Result<UserSession> {
         let session_id = Uuid::new_v4().to_string();
         let now = SystemTime::now();
 
@@ -578,7 +614,8 @@ impl SessionManager {
             roles: vec!["user".to_string()],
         };
 
-        self.active_sessions.insert(session_id.clone(), session.clone());
+        self.active_sessions
+            .insert(session_id.clone(), session.clone());
 
         let session_data = SessionData {
             session_id: session_id.clone(),
@@ -611,7 +648,13 @@ impl SessionManager {
 impl MFAManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mfa_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mfa_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             mfa_providers: Arc::new(DashMap::new()),
             user_mfa_settings: AsyncDataStore::new(),
             mfa_challenges: LightweightStore::new(None),
@@ -619,7 +662,11 @@ impl MFAManager {
         }
     }
 
-    pub async fn initiate_mfa_challenge(&self, user_id: &str, method: MFAMethod) -> Result<MFAChallenge> {
+    pub async fn initiate_mfa_challenge(
+        &self,
+        user_id: &str,
+        method: MFAMethod,
+    ) -> Result<MFAChallenge> {
         let challenge_id = Uuid::new_v4().to_string();
         let challenge_data = self.generate_challenge_data(&method).await?;
 
@@ -642,7 +689,8 @@ impl MFAManager {
         if let Some(mut challenge) = self.mfa_challenges.get(&challenge_id.to_string()) {
             if challenge.expires_at < SystemTime::now() {
                 challenge.status = ChallengeStatus::Expired;
-                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
+                self.mfa_challenges
+                    .insert(challenge_id.to_string(), challenge);
                 return Ok(false);
             }
 
@@ -650,13 +698,15 @@ impl MFAManager {
 
             if self.verify_challenge_response(&challenge, response).await? {
                 challenge.status = ChallengeStatus::Verified;
-                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
+                self.mfa_challenges
+                    .insert(challenge_id.to_string(), challenge);
                 return Ok(true);
             } else {
                 if challenge.attempts >= 3 {
                     challenge.status = ChallengeStatus::Failed;
                 }
-                self.mfa_challenges.insert(challenge_id.to_string(), challenge);
+                self.mfa_challenges
+                    .insert(challenge_id.to_string(), challenge);
                 return Ok(false);
             }
         }
@@ -667,7 +717,11 @@ impl MFAManager {
         Ok("123456".to_string())
     }
 
-    async fn verify_challenge_response(&self, _challenge: &MFAChallenge, _response: &str) -> Result<bool> {
+    async fn verify_challenge_response(
+        &self,
+        _challenge: &MFAChallenge,
+        _response: &str,
+    ) -> Result<bool> {
         Ok(true)
     }
 }
@@ -758,7 +812,13 @@ pub struct IdentityFederation {
 impl IdentityFederation {
     pub fn new() -> Self {
         Self {
-            federation_id: format!("if_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            federation_id: format!(
+                "if_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -771,7 +831,13 @@ pub struct TokenManager {
 impl TokenManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("tm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "tm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -784,7 +850,13 @@ pub struct DirectoryConnector {
 impl DirectoryConnector {
     pub fn new() -> Self {
         Self {
-            connector_id: format!("dc_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            connector_id: format!(
+                "dc_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -797,11 +869,20 @@ pub struct AuthenticationRiskEngine {
 impl AuthenticationRiskEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("are_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "are_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn assess_risk(&self, _credentials: &AuthenticationCredentials) -> Result<RiskAssessment> {
+    pub async fn assess_risk(
+        &self,
+        _credentials: &AuthenticationCredentials,
+    ) -> Result<RiskAssessment> {
         Ok(RiskAssessment {
             risk_level: RiskLevel::Low,
             risk_score: 0.2,
@@ -819,11 +900,21 @@ pub struct AssertionProcessor {
 impl AssertionProcessor {
     pub fn new() -> Self {
         Self {
-            processor_id: format!("ap_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            processor_id: format!(
+                "ap_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn process_assertion(&self, _assertion: &str, _provider: &SSOProvider) -> Result<ProcessedAssertion> {
+    pub async fn process_assertion(
+        &self,
+        _assertion: &str,
+        _provider: &SSOProvider,
+    ) -> Result<ProcessedAssertion> {
         Ok(ProcessedAssertion {
             subject: "user123".to_string(),
             attributes: HashMap::new(),
@@ -840,7 +931,13 @@ pub struct MetadataManager {
 impl MetadataManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("mm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "mm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -853,7 +950,13 @@ pub struct CertificateManager {
 impl CertificateManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -866,7 +969,13 @@ pub struct SessionCleanupScheduler {
 impl SessionCleanupScheduler {
     pub fn new() -> Self {
         Self {
-            scheduler_id: format!("scs_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            scheduler_id: format!(
+                "scs_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -879,7 +988,13 @@ pub struct BackupCodesManager {
 impl BackupCodesManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("bcm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "bcm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }

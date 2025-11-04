@@ -1,5 +1,5 @@
-use dls_server::disaster_recovery::*;
 use chrono::{Duration, Utc};
+use dls_server::disaster_recovery::*;
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -7,7 +7,7 @@ use uuid::Uuid;
 async fn test_disaster_recovery_manager_creation() {
     let config = DisasterRecoveryConfig::default();
     let manager = DisasterRecoveryManager::new(config);
-    
+
     // Verify manager is created with empty collections
     assert!(manager.backup_jobs().is_empty());
     assert!(manager.recovery_plans().is_empty());
@@ -18,15 +18,12 @@ async fn test_disaster_recovery_manager_creation() {
 async fn test_backup_job_creation_and_retrieval() {
     let config = DisasterRecoveryConfig::default();
     let manager = DisasterRecoveryManager::new(config);
-    
+
     let job = BackupJob {
         id: Uuid::new_v4(),
         name: "Critical System Backup".to_string(),
         backup_type: BackupType::Full,
-        source_paths: vec![
-            "/etc/dls".to_string(),
-            "/var/lib/dls".to_string(),
-        ],
+        source_paths: vec!["/etc/dls".to_string(), "/var/lib/dls".to_string()],
         destination: "/backups/system".to_string(),
         schedule: BackupSchedule {
             frequency: ScheduleFrequency::Daily,
@@ -61,11 +58,11 @@ async fn test_backup_job_creation_and_retrieval() {
             metadata
         },
     };
-    
+
     // Create backup job
     let job_id = manager.create_backup_job(job.clone()).await.unwrap();
     assert_eq!(job_id, job.id);
-    
+
     // Retrieve and verify backup job
     let retrieved_job = manager.get_backup_job(job_id).await.unwrap();
     assert_eq!(retrieved_job.name, "Critical System Backup");
@@ -81,10 +78,10 @@ async fn test_backup_job_creation_and_retrieval() {
 async fn test_backup_job_listing_with_tenant_filter() {
     let config = DisasterRecoveryConfig::default();
     let manager = DisasterRecoveryManager::new(config);
-    
+
     let tenant1 = Uuid::new_v4();
     let tenant2 = Uuid::new_v4();
-    
+
     // Create backup jobs for different tenants
     for i in 0..3 {
         let job = BackupJob {
@@ -123,7 +120,7 @@ async fn test_backup_job_listing_with_tenant_filter() {
         };
         manager.create_backup_job(job).await.unwrap();
     }
-    
+
     for i in 0..2 {
         let job = BackupJob {
             id: Uuid::new_v4(),
@@ -161,27 +158,31 @@ async fn test_backup_job_listing_with_tenant_filter() {
         };
         manager.create_backup_job(job).await.unwrap();
     }
-    
+
     // Test listing all jobs
     let all_jobs = manager.list_backup_jobs(None).await;
     assert_eq!(all_jobs.len(), 5);
-    
+
     // Test listing tenant1 jobs
     let tenant1_jobs = manager.list_backup_jobs(Some(tenant1)).await;
     assert_eq!(tenant1_jobs.len(), 3);
-    assert!(tenant1_jobs.iter().all(|job| job.tenant_id == Some(tenant1)));
-    
+    assert!(tenant1_jobs
+        .iter()
+        .all(|job| job.tenant_id == Some(tenant1)));
+
     // Test listing tenant2 jobs
     let tenant2_jobs = manager.list_backup_jobs(Some(tenant2)).await;
     assert_eq!(tenant2_jobs.len(), 2);
-    assert!(tenant2_jobs.iter().all(|job| job.tenant_id == Some(tenant2)));
+    assert!(tenant2_jobs
+        .iter()
+        .all(|job| job.tenant_id == Some(tenant2)));
 }
 
 #[tokio::test]
 async fn test_disaster_recovery_plan_creation() {
     let config = DisasterRecoveryConfig::default();
     let manager = DisasterRecoveryManager::new(config);
-    
+
     let plan = DisasterRecoveryPlan {
         id: Uuid::new_v4(),
         name: "Complete System Failure Recovery".to_string(),
@@ -197,7 +198,8 @@ async fn test_disaster_recovery_plan_creation() {
             RecoveryStep {
                 step_number: 1,
                 title: "Emergency Assessment".to_string(),
-                description: "Assess the extent of system failure and determine recovery approach".to_string(),
+                description: "Assess the extent of system failure and determine recovery approach"
+                    .to_string(),
                 commands: vec![
                     "dls-cli system status --detailed".to_string(),
                     "zpool status -v".to_string(),
@@ -253,9 +255,7 @@ async fn test_disaster_recovery_plan_creation() {
                     "Database Administrator".to_string(),
                     "Storage Specialist".to_string(),
                 ],
-                rollback_commands: vec![
-                    "dls-backup restore --previous".to_string(),
-                ],
+                rollback_commands: vec!["dls-backup restore --previous".to_string()],
                 validation_checks: vec![
                     "Verify data integrity checksums".to_string(),
                     "Test critical system functions".to_string(),
@@ -308,11 +308,11 @@ async fn test_disaster_recovery_plan_creation() {
         approved_by: "CTO and COO".to_string(),
         tenant_id: None,
     };
-    
+
     // Create recovery plan
     let plan_id = manager.create_recovery_plan(plan.clone()).await.unwrap();
     assert_eq!(plan_id, plan.id);
-    
+
     // Retrieve and verify recovery plan
     let retrieved_plan = manager.get_recovery_plan(plan_id).await.unwrap();
     assert_eq!(retrieved_plan.name, "Complete System Failure Recovery");
@@ -328,12 +328,12 @@ async fn test_disaster_recovery_plan_creation() {
 async fn test_system_health_monitoring() {
     let config = DisasterRecoveryConfig::default();
     let manager = DisasterRecoveryManager::new(config);
-    
+
     // Get initial system health
     let health = manager.get_system_health().await;
     assert_eq!(health.overall_health, HealthLevel::Unknown);
     assert_eq!(health.recovery_readiness_score, 0.0);
-    
+
     // Test health calculation with good conditions
     let good_health = SystemHealthStatus {
         overall_health: HealthLevel::Good,
@@ -355,10 +355,10 @@ async fn test_system_health_monitoring() {
         backup_queue_length: 1,
         recovery_readiness_score: 0.95,
     };
-    
+
     let overall_health = DisasterRecoveryManager::calculate_overall_health(&good_health);
     assert_eq!(overall_health, HealthLevel::Excellent);
-    
+
     let readiness_score = DisasterRecoveryManager::calculate_recovery_readiness(&good_health);
     assert!(readiness_score > 0.8);
 }
@@ -372,7 +372,7 @@ async fn test_backup_type_serialization() {
         BackupType::Snapshot,
         BackupType::Continuous,
     ];
-    
+
     for backup_type in backup_types {
         let json = serde_json::to_string(&backup_type).unwrap();
         let deserialized: BackupType = serde_json::from_str(&json).unwrap();
@@ -394,7 +394,7 @@ async fn test_disaster_type_coverage() {
         DisasterType::StorageFailure,
         DisasterType::SystemOverload,
     ];
-    
+
     for disaster_type in disaster_types {
         let json = serde_json::to_string(&disaster_type).unwrap();
         let deserialized: DisasterType = serde_json::from_str(&json).unwrap();
@@ -412,7 +412,7 @@ async fn test_schedule_frequency_variations() {
         ScheduleFrequency::Monthly,
         ScheduleFrequency::Custom("0 2 * * 1-5".to_string()), // Weekdays at 2 AM
     ];
-    
+
     for frequency in frequencies {
         let json = serde_json::to_string(&frequency).unwrap();
         let deserialized: ScheduleFrequency = serde_json::from_str(&json).unwrap();
@@ -430,7 +430,7 @@ async fn test_backup_execution_workflow() {
         completed_at: Some(Utc::now()),
         status: BackupStatus::Completed,
         files_processed: 1250,
-        bytes_processed: 2_500_000_000, // 2.5 GB
+        bytes_processed: 2_500_000_000,  // 2.5 GB
         bytes_compressed: 1_200_000_000, // 1.2 GB
         files_failed: 3,
         error_messages: vec![
@@ -442,16 +442,19 @@ async fn test_backup_execution_workflow() {
         restoration_tested: true,
         verification_status: Some(VerificationStatus::Passed),
     };
-    
+
     // Test serialization
     let json = serde_json::to_string(&execution).unwrap();
     let deserialized: BackupExecution = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(execution.files_processed, deserialized.files_processed);
     assert_eq!(execution.bytes_processed, deserialized.bytes_processed);
     assert_eq!(execution.files_failed, deserialized.files_failed);
     assert_eq!(execution.status, deserialized.status);
-    assert_eq!(execution.verification_status, deserialized.verification_status);
+    assert_eq!(
+        execution.verification_status,
+        deserialized.verification_status
+    );
 }
 
 #[tokio::test]
@@ -464,7 +467,7 @@ async fn test_recovery_objectives() {
         RecoveryPointObjective::Extended,
         RecoveryPointObjective::Daily,
     ];
-    
+
     let rto_variants = vec![
         RecoveryTimeObjective::Instant,
         RecoveryTimeObjective::Critical,
@@ -473,13 +476,13 @@ async fn test_recovery_objectives() {
         RecoveryTimeObjective::Extended,
         RecoveryTimeObjective::Flexible,
     ];
-    
+
     for rpo in rpo_variants {
         let json = serde_json::to_string(&rpo).unwrap();
         let deserialized: RecoveryPointObjective = serde_json::from_str(&json).unwrap();
         assert_eq!(rpo, deserialized);
     }
-    
+
     for rto in rto_variants {
         let json = serde_json::to_string(&rto).unwrap();
         let deserialized: RecoveryTimeObjective = serde_json::from_str(&json).unwrap();
@@ -508,7 +511,8 @@ async fn test_disaster_event_tracking() {
                 completed_at: Some(Utc::now() - Duration::hours(2) - Duration::minutes(45)),
                 status: ExecutionStatus::Completed,
                 executed_by: "emergency.admin@company.com".to_string(),
-                output: "System assessment completed. Data corruption confirmed in /var/lib/data".to_string(),
+                output: "System assessment completed. Data corruption confirmed in /var/lib/data"
+                    .to_string(),
                 errors: vec![],
             },
             RecoveryStepExecution {
@@ -517,7 +521,8 @@ async fn test_disaster_event_tracking() {
                 completed_at: Some(Utc::now() - Duration::hours(1) - Duration::minutes(30)),
                 status: ExecutionStatus::Completed,
                 executed_by: "backup.admin@company.com".to_string(),
-                output: "Data restoration from backup successful. 99.8% data recovery achieved".to_string(),
+                output: "Data restoration from backup successful. 99.8% data recovery achieved"
+                    .to_string(),
                 errors: vec!["Minor checksum mismatch in 3 files".to_string()],
             },
         ],
@@ -541,16 +546,25 @@ async fn test_disaster_event_tracking() {
             "Review and update recovery procedures".to_string(),
         ],
     };
-    
+
     // Test serialization
     let json = serde_json::to_string(&disaster_event).unwrap();
     let deserialized: DisasterEvent = serde_json::from_str(&json).unwrap();
-    
+
     assert_eq!(disaster_event.disaster_type, deserialized.disaster_type);
     assert_eq!(disaster_event.severity, deserialized.severity);
-    assert_eq!(disaster_event.affected_systems.len(), deserialized.affected_systems.len());
-    assert_eq!(disaster_event.recovery_steps_executed.len(), deserialized.recovery_steps_executed.len());
-    assert_eq!(disaster_event.lessons_learned.len(), deserialized.lessons_learned.len());
+    assert_eq!(
+        disaster_event.affected_systems.len(),
+        deserialized.affected_systems.len()
+    );
+    assert_eq!(
+        disaster_event.recovery_steps_executed.len(),
+        deserialized.recovery_steps_executed.len()
+    );
+    assert_eq!(
+        disaster_event.lessons_learned.len(),
+        deserialized.lessons_learned.len()
+    );
 }
 
 #[tokio::test]
@@ -563,17 +577,35 @@ async fn test_retention_policy_validation() {
         max_backup_size_gb: Some(100),
         auto_cleanup_enabled: true,
     };
-    
+
     // Test serialization
     let json = serde_json::to_string(&retention_policy).unwrap();
     let deserialized: RetentionPolicy = serde_json::from_str(&json).unwrap();
-    
-    assert_eq!(retention_policy.daily_retention_days, deserialized.daily_retention_days);
-    assert_eq!(retention_policy.weekly_retention_weeks, deserialized.weekly_retention_weeks);
-    assert_eq!(retention_policy.monthly_retention_months, deserialized.monthly_retention_months);
-    assert_eq!(retention_policy.yearly_retention_years, deserialized.yearly_retention_years);
-    assert_eq!(retention_policy.max_backup_size_gb, deserialized.max_backup_size_gb);
-    assert_eq!(retention_policy.auto_cleanup_enabled, deserialized.auto_cleanup_enabled);
+
+    assert_eq!(
+        retention_policy.daily_retention_days,
+        deserialized.daily_retention_days
+    );
+    assert_eq!(
+        retention_policy.weekly_retention_weeks,
+        deserialized.weekly_retention_weeks
+    );
+    assert_eq!(
+        retention_policy.monthly_retention_months,
+        deserialized.monthly_retention_months
+    );
+    assert_eq!(
+        retention_policy.yearly_retention_years,
+        deserialized.yearly_retention_years
+    );
+    assert_eq!(
+        retention_policy.max_backup_size_gb,
+        deserialized.max_backup_size_gb
+    );
+    assert_eq!(
+        retention_policy.auto_cleanup_enabled,
+        deserialized.auto_cleanup_enabled
+    );
 }
 
 #[tokio::test]
@@ -585,7 +617,7 @@ async fn test_testing_schedule_frequency() {
         TestingFrequency::SemiAnnually,
         TestingFrequency::Annually,
     ];
-    
+
     for frequency in testing_frequencies {
         let json = serde_json::to_string(&frequency).unwrap();
         let deserialized: TestingFrequency = serde_json::from_str(&json).unwrap();
@@ -602,7 +634,7 @@ async fn test_health_level_progression() {
         HealthLevel::Critical,
         HealthLevel::Unknown,
     ];
-    
+
     for health_level in health_levels {
         let json = serde_json::to_string(&health_level).unwrap();
         let deserialized: HealthLevel = serde_json::from_str(&json).unwrap();
@@ -613,7 +645,7 @@ async fn test_health_level_progression() {
 #[tokio::test]
 async fn test_default_disaster_recovery_config() {
     let config = DisasterRecoveryConfig::default();
-    
+
     assert_eq!(config.backup_storage_path, "./backups");
     assert!(!config.offsite_backup_enabled);
     assert!(config.offsite_backup_locations.is_empty());
@@ -654,12 +686,12 @@ async fn test_contact_info_escalation() {
             available_24_7: false,
         },
     ];
-    
+
     // Test that contacts are properly structured for escalation
     assert_eq!(contacts[0].escalation_level, 1);
     assert_eq!(contacts[1].escalation_level, 2);
     assert_eq!(contacts[2].escalation_level, 3);
-    
+
     // Verify 24/7 availability decreases with escalation level
     assert!(contacts[0].available_24_7);
     assert!(contacts[1].available_24_7);
@@ -669,7 +701,7 @@ async fn test_contact_info_escalation() {
 #[tokio::test]
 async fn test_next_run_calculation_logic() {
     let base_time = Utc::now();
-    
+
     // Test daily schedule
     let daily_schedule = BackupSchedule {
         frequency: ScheduleFrequency::Daily,
@@ -679,10 +711,10 @@ async fn test_next_run_calculation_logic() {
         enabled: true,
         max_concurrent_jobs: 1,
     };
-    
+
     let next_daily = DisasterRecoveryManager::calculate_next_run(&daily_schedule);
     assert!(next_daily > base_time);
-    
+
     // Test hourly schedule
     let hourly_schedule = BackupSchedule {
         frequency: ScheduleFrequency::Hourly,
@@ -692,11 +724,11 @@ async fn test_next_run_calculation_logic() {
         enabled: true,
         max_concurrent_jobs: 1,
     };
-    
+
     let next_hourly = DisasterRecoveryManager::calculate_next_run(&hourly_schedule);
     assert!(next_hourly > base_time);
     assert!(next_hourly < base_time + Duration::hours(2));
-    
+
     // Test continuous schedule
     let continuous_schedule = BackupSchedule {
         frequency: ScheduleFrequency::Continuous,
@@ -706,7 +738,7 @@ async fn test_next_run_calculation_logic() {
         enabled: true,
         max_concurrent_jobs: 3,
     };
-    
+
     let next_continuous = DisasterRecoveryManager::calculate_next_run(&continuous_schedule);
     assert!(next_continuous > base_time);
     assert!(next_continuous < base_time + Duration::minutes(2));

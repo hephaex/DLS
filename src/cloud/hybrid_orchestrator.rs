@@ -1,11 +1,11 @@
 // Hybrid Cloud Orchestration for Seamless Multi-Environment Management
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -912,7 +912,13 @@ pub struct EscalationRule {
 impl HybridOrchestrator {
     pub fn new() -> Self {
         Self {
-            orchestrator_id: format!("ho_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            orchestrator_id: format!(
+                "ho_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             environment_manager: Arc::new(EnvironmentManager::new()),
             workload_balancer: Arc::new(WorkloadBalancer::new()),
             connectivity_manager: Arc::new(ConnectivityManager::new()),
@@ -925,13 +931,19 @@ impl HybridOrchestrator {
 
     pub async fn register_environment(&self, environment: CloudEnvironment) -> Result<()> {
         let environment_id = environment.environment_id.clone();
-        self.environment_manager.register_environment(environment).await?;
+        self.environment_manager
+            .register_environment(environment)
+            .await?;
 
         // Initialize connectivity
-        self.connectivity_manager.setup_environment_connectivity(&environment_id).await?;
+        self.connectivity_manager
+            .setup_environment_connectivity(&environment_id)
+            .await?;
 
         // Setup monitoring
-        self.monitoring_aggregator.add_environment_monitoring(&environment_id).await?;
+        self.monitoring_aggregator
+            .add_environment_monitoring(&environment_id)
+            .await?;
 
         Ok(())
     }
@@ -940,7 +952,10 @@ impl HybridOrchestrator {
         let orchestration_id = format!("orch_{}", Uuid::new_v4());
 
         // Balance workload across environments
-        let placement_plan = self.workload_balancer.create_placement_plan(&workload_spec).await?;
+        let placement_plan = self
+            .workload_balancer
+            .create_placement_plan(&workload_spec)
+            .await?;
 
         // Execute placement
         self.execute_placement_plan(&placement_plan).await?;
@@ -957,7 +972,13 @@ impl HybridOrchestrator {
 impl EnvironmentManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("em_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "em_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             environments: Arc::new(DashMap::new()),
             environment_topology: Arc::new(EnvironmentTopology::new()),
             capacity_tracker: Arc::new(CapacityTracker::new()),
@@ -967,16 +988,23 @@ impl EnvironmentManager {
 
     pub async fn register_environment(&self, environment: CloudEnvironment) -> Result<()> {
         let environment_id = environment.environment_id.clone();
-        self.environments.insert(environment_id.clone(), environment);
+        self.environments
+            .insert(environment_id.clone(), environment);
 
         // Update topology
-        self.environment_topology.add_environment(&environment_id).await?;
+        self.environment_topology
+            .add_environment(&environment_id)
+            .await?;
 
         // Initialize capacity tracking
-        self.capacity_tracker.initialize_tracking(&environment_id).await?;
+        self.capacity_tracker
+            .initialize_tracking(&environment_id)
+            .await?;
 
         // Setup health monitoring
-        self.health_monitor.setup_monitoring(&environment_id).await?;
+        self.health_monitor
+            .setup_monitoring(&environment_id)
+            .await?;
 
         Ok(())
     }
@@ -985,7 +1013,13 @@ impl EnvironmentManager {
 impl EnvironmentTopology {
     pub fn new() -> Self {
         Self {
-            topology_id: format!("et_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            topology_id: format!(
+                "et_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             environment_graph: Arc::new(EnvironmentGraph {
                 nodes: Arc::new(DashMap::new()),
                 edges: Arc::new(DashMap::new()),
@@ -1014,7 +1048,9 @@ impl EnvironmentTopology {
             connections: vec![],
         };
 
-        self.environment_graph.nodes.insert(node.node_id.clone(), node);
+        self.environment_graph
+            .nodes
+            .insert(node.node_id.clone(), node);
         Ok(())
     }
 }
@@ -1022,7 +1058,13 @@ impl EnvironmentTopology {
 impl CapacityTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("ct_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "ct_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             capacity_data: AsyncDataStore::new(),
             utilization_trends: Arc::new(UtilizationTrends {
                 trends_data: Arc::new(DashMap::new()),
@@ -1045,7 +1087,9 @@ impl CapacityTracker {
             timestamp: SystemTime::now(),
         };
 
-        self.capacity_data.insert(environment_id.to_string(), capacity_data).await;
+        self.capacity_data
+            .insert(environment_id.to_string(), capacity_data)
+            .await;
         Ok(())
     }
 }
@@ -1053,7 +1097,13 @@ impl CapacityTracker {
 impl EnvironmentHealthMonitor {
     pub fn new() -> Self {
         Self {
-            monitor_id: format!("ehm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            monitor_id: format!(
+                "ehm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             health_checks: Arc::new(DashMap::new()),
             health_status: AsyncDataStore::new(),
             monitoring_policies: vec![],
@@ -1070,7 +1120,9 @@ impl EnvironmentHealthMonitor {
             uptime_percentage: 100.0,
         };
 
-        self.health_status.insert(environment_id.to_string(), health_status).await;
+        self.health_status
+            .insert(environment_id.to_string(), health_status)
+            .await;
         Ok(())
     }
 }
@@ -1164,11 +1216,20 @@ pub struct WorkloadBalancer {
 impl WorkloadBalancer {
     pub fn new() -> Self {
         Self {
-            balancer_id: format!("wb_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            balancer_id: format!(
+                "wb_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
-    pub async fn create_placement_plan(&self, _workload_spec: &HybridWorkloadSpec) -> Result<WorkloadPlacementPlan> {
+    pub async fn create_placement_plan(
+        &self,
+        _workload_spec: &HybridWorkloadSpec,
+    ) -> Result<WorkloadPlacementPlan> {
         Ok(WorkloadPlacementPlan {
             plan_id: format!("plan_{}", Uuid::new_v4()),
             workload_id: "workload_1".to_string(),
@@ -1187,7 +1248,13 @@ pub struct ConnectivityManager {
 impl ConnectivityManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("cm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "cm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 
@@ -1204,7 +1271,13 @@ pub struct DataSynchronizer {
 impl DataSynchronizer {
     pub fn new() -> Self {
         Self {
-            synchronizer_id: format!("ds_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            synchronizer_id: format!(
+                "ds_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1217,7 +1290,13 @@ pub struct SecurityCoordinator {
 impl SecurityCoordinator {
     pub fn new() -> Self {
         Self {
-            coordinator_id: format!("sc_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            coordinator_id: format!(
+                "sc_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1230,7 +1309,13 @@ pub struct PolicyEngine {
 impl PolicyEngine {
     pub fn new() -> Self {
         Self {
-            engine_id: format!("pe_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            engine_id: format!(
+                "pe_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 }
@@ -1243,7 +1328,13 @@ pub struct MonitoringAggregator {
 impl MonitoringAggregator {
     pub fn new() -> Self {
         Self {
-            aggregator_id: format!("ma_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            aggregator_id: format!(
+                "ma_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
         }
     }
 

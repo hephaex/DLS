@@ -1,12 +1,12 @@
 mod common;
 
-use dls_server::tenant::{TenantManager, TenantMetadata, ResourceQuota, TenantStatus};
+use dls_server::tenant::{ResourceQuota, TenantManager, TenantMetadata, TenantStatus};
 use std::collections::HashMap;
 
 #[tokio::test]
 async fn test_tenant_creation_and_retrieval() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Test Organization".to_string(),
@@ -18,7 +18,11 @@ async fn test_tenant_creation_and_retrieval() {
     };
 
     let tenant_id = manager
-        .create_tenant("Test Tenant".to_string(), "test-tenant".to_string(), metadata)
+        .create_tenant(
+            "Test Tenant".to_string(),
+            "test-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -37,7 +41,7 @@ async fn test_tenant_creation_and_retrieval() {
 #[tokio::test]
 async fn test_tenant_activation_and_status() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Active Org".to_string(),
@@ -49,7 +53,11 @@ async fn test_tenant_activation_and_status() {
     };
 
     let tenant_id = manager
-        .create_tenant("Active Tenant".to_string(), "active-tenant".to_string(), metadata)
+        .create_tenant(
+            "Active Tenant".to_string(),
+            "active-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -67,7 +75,10 @@ async fn test_tenant_activation_and_status() {
     assert_eq!(tenant.status, TenantStatus::Active);
 
     // Test suspension
-    manager.suspend_tenant(tenant_id, Some("Testing suspension".to_string())).await.unwrap();
+    manager
+        .suspend_tenant(tenant_id, Some("Testing suspension".to_string()))
+        .await
+        .unwrap();
 
     let tenant = manager.get_tenant(&tenant_id).unwrap();
     assert!(!tenant.is_active());
@@ -77,7 +88,7 @@ async fn test_tenant_activation_and_status() {
 #[tokio::test]
 async fn test_namespace_uniqueness() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata1 = TenantMetadata {
         organization_name: "Org 1".to_string(),
@@ -98,13 +109,21 @@ async fn test_namespace_uniqueness() {
 
     // Create first tenant
     manager
-        .create_tenant("First Tenant".to_string(), "unique-namespace".to_string(), metadata1)
+        .create_tenant(
+            "First Tenant".to_string(),
+            "unique-namespace".to_string(),
+            metadata1,
+        )
         .await
         .unwrap();
 
     // Try to create second tenant with same namespace
     let result = manager
-        .create_tenant("Second Tenant".to_string(), "unique-namespace".to_string(), metadata2)
+        .create_tenant(
+            "Second Tenant".to_string(),
+            "unique-namespace".to_string(),
+            metadata2,
+        )
         .await;
 
     assert!(result.is_err());
@@ -113,9 +132,9 @@ async fn test_namespace_uniqueness() {
 #[tokio::test]
 async fn test_tenant_listing() {
     common::setup();
-    
+
     let manager = TenantManager::new();
-    
+
     // Create multiple tenants
     for i in 1..=3 {
         let metadata = TenantMetadata {
@@ -150,7 +169,7 @@ async fn test_tenant_listing() {
 #[tokio::test]
 async fn test_resource_quota_management() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Quota Test Org".to_string(),
@@ -162,7 +181,11 @@ async fn test_resource_quota_management() {
     };
 
     let tenant_id = manager
-        .create_tenant("Quota Tenant".to_string(), "quota-tenant".to_string(), metadata)
+        .create_tenant(
+            "Quota Tenant".to_string(),
+            "quota-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -182,7 +205,10 @@ async fn test_resource_quota_management() {
         max_boot_images: 20,
     };
 
-    manager.update_tenant_quota(tenant_id, new_quota.clone()).await.unwrap();
+    manager
+        .update_tenant_quota(tenant_id, new_quota.clone())
+        .await
+        .unwrap();
 
     // Verify quota update
     let tenant = manager.get_tenant(&tenant_id).unwrap();
@@ -194,7 +220,7 @@ async fn test_resource_quota_management() {
 #[tokio::test]
 async fn test_client_connection_tracking() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Connection Test Org".to_string(),
@@ -206,7 +232,11 @@ async fn test_client_connection_tracking() {
     };
 
     let tenant_id = manager
-        .create_tenant("Connection Tenant".to_string(), "connection-tenant".to_string(), metadata)
+        .create_tenant(
+            "Connection Tenant".to_string(),
+            "connection-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -216,8 +246,14 @@ async fn test_client_connection_tracking() {
     let client_ip1 = "192.168.1.100".parse().unwrap();
     let client_ip2 = "192.168.1.101".parse().unwrap();
 
-    manager.register_client_connection(client_ip1, tenant_id).await.unwrap();
-    manager.register_client_connection(client_ip2, tenant_id).await.unwrap();
+    manager
+        .register_client_connection(client_ip1, tenant_id)
+        .await
+        .unwrap();
+    manager
+        .register_client_connection(client_ip2, tenant_id)
+        .await
+        .unwrap();
 
     // Verify client-tenant mapping
     assert_eq!(manager.get_tenant_for_client(&client_ip1), Some(tenant_id));
@@ -228,8 +264,11 @@ async fn test_client_connection_tracking() {
     assert_eq!(usage.active_clients, 2);
 
     // Test client disconnection
-    manager.unregister_client_connection(client_ip1).await.unwrap();
-    
+    manager
+        .unregister_client_connection(client_ip1)
+        .await
+        .unwrap();
+
     assert_eq!(manager.get_tenant_for_client(&client_ip1), None);
     assert_eq!(manager.get_tenant_for_client(&client_ip2), Some(tenant_id));
 
@@ -240,7 +279,7 @@ async fn test_client_connection_tracking() {
 #[tokio::test]
 async fn test_resource_usage_and_quota_violations() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Quota Violation Test".to_string(),
@@ -252,7 +291,11 @@ async fn test_resource_usage_and_quota_violations() {
     };
 
     let tenant_id = manager
-        .create_tenant("Violation Tenant".to_string(), "violation-tenant".to_string(), metadata)
+        .create_tenant(
+            "Violation Tenant".to_string(),
+            "violation-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -266,20 +309,26 @@ async fn test_resource_usage_and_quota_violations() {
         max_concurrent_sessions: 10,
         max_boot_images: 5,
     };
-    manager.update_tenant_quota(tenant_id, low_quota).await.unwrap();
+    manager
+        .update_tenant_quota(tenant_id, low_quota)
+        .await
+        .unwrap();
 
     // Update resource usage to exceed quotas
-    manager.update_resource_usage(tenant_id, |usage| {
-        usage.active_clients = 5; // Exceeds max_clients (2)
-        usage.storage_used_gb = 150; // Exceeds max_storage_gb (100)
-        usage.bandwidth_used_mbps = 600; // Exceeds max_bandwidth_mbps (500)
-    }).await.unwrap();
+    manager
+        .update_resource_usage(tenant_id, |usage| {
+            usage.active_clients = 5; // Exceeds max_clients (2)
+            usage.storage_used_gb = 150; // Exceeds max_storage_gb (100)
+            usage.bandwidth_used_mbps = 600; // Exceeds max_bandwidth_mbps (500)
+        })
+        .await
+        .unwrap();
 
     // Check for violations
     let usage = manager.get_resource_usage(&tenant_id).unwrap();
     let tenant = manager.get_tenant(&tenant_id).unwrap();
     let violations = usage.is_quota_exceeded(&tenant.resource_quota);
-    
+
     assert_eq!(violations.len(), 3); // Should have 3 violations
     assert!(violations.iter().any(|v| v.contains("Active clients")));
     assert!(violations.iter().any(|v| v.contains("Storage usage")));
@@ -289,9 +338,9 @@ async fn test_resource_usage_and_quota_violations() {
 #[tokio::test]
 async fn test_hierarchical_tenants() {
     common::setup();
-    
+
     let manager = TenantManager::new();
-    
+
     // Create parent tenant
     let parent_metadata = TenantMetadata {
         organization_name: "Parent Organization".to_string(),
@@ -303,7 +352,11 @@ async fn test_hierarchical_tenants() {
     };
 
     let parent_id = manager
-        .create_tenant("Parent Tenant".to_string(), "parent-tenant".to_string(), parent_metadata)
+        .create_tenant(
+            "Parent Tenant".to_string(),
+            "parent-tenant".to_string(),
+            parent_metadata,
+        )
         .await
         .unwrap();
 
@@ -320,7 +373,12 @@ async fn test_hierarchical_tenants() {
     };
 
     let child_id = manager
-        .create_child_tenant(parent_id, "Child Tenant".to_string(), "child-tenant".to_string(), child_metadata)
+        .create_child_tenant(
+            parent_id,
+            "Child Tenant".to_string(),
+            "child-tenant".to_string(),
+            child_metadata,
+        )
         .await
         .unwrap();
 
@@ -335,7 +393,7 @@ async fn test_hierarchical_tenants() {
 #[tokio::test]
 async fn test_audit_logging() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Audit Test Org".to_string(),
@@ -347,12 +405,19 @@ async fn test_audit_logging() {
     };
 
     let tenant_id = manager
-        .create_tenant("Audit Tenant".to_string(), "audit-tenant".to_string(), metadata)
+        .create_tenant(
+            "Audit Tenant".to_string(),
+            "audit-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
     manager.activate_tenant(tenant_id).await.unwrap();
-    manager.suspend_tenant(tenant_id, Some("Test suspension".to_string())).await.unwrap();
+    manager
+        .suspend_tenant(tenant_id, Some("Test suspension".to_string()))
+        .await
+        .unwrap();
 
     // Check audit logs
     let logs = manager.get_audit_logs(Some(tenant_id), Some(10)).await;
@@ -360,7 +425,7 @@ async fn test_audit_logging() {
 
     // Check that logs are ordered by timestamp (most recent first)
     for i in 1..logs.len() {
-        assert!(logs[i-1].timestamp >= logs[i].timestamp);
+        assert!(logs[i - 1].timestamp >= logs[i].timestamp);
     }
 
     // Test filtering by tenant
@@ -372,14 +437,14 @@ async fn test_audit_logging() {
 #[tokio::test]
 async fn test_ip_range_validation() {
     common::setup();
-    
+
     let manager = TenantManager::new();
-    
+
     // Test CIDR matching
     let client_ip = "192.168.1.100".parse().unwrap();
     assert!(manager.ip_in_range(&client_ip, "192.168.1.0/24").unwrap());
     assert!(!manager.ip_in_range(&client_ip, "10.0.0.0/8").unwrap());
-    
+
     // Test exact IP matching
     assert!(manager.ip_in_range(&client_ip, "192.168.1.100").unwrap());
     assert!(!manager.ip_in_range(&client_ip, "192.168.1.101").unwrap());
@@ -388,7 +453,7 @@ async fn test_ip_range_validation() {
 #[tokio::test]
 async fn test_tenant_deletion_constraints() {
     common::setup();
-    
+
     let manager = TenantManager::new();
     let metadata = TenantMetadata {
         organization_name: "Delete Test Org".to_string(),
@@ -400,7 +465,11 @@ async fn test_tenant_deletion_constraints() {
     };
 
     let tenant_id = manager
-        .create_tenant("Delete Tenant".to_string(), "delete-tenant".to_string(), metadata)
+        .create_tenant(
+            "Delete Tenant".to_string(),
+            "delete-tenant".to_string(),
+            metadata,
+        )
         .await
         .unwrap();
 
@@ -408,14 +477,20 @@ async fn test_tenant_deletion_constraints() {
 
     // Register a client connection
     let client_ip = "192.168.1.200".parse().unwrap();
-    manager.register_client_connection(client_ip, tenant_id).await.unwrap();
+    manager
+        .register_client_connection(client_ip, tenant_id)
+        .await
+        .unwrap();
 
     // Try to delete tenant with active connections - should fail
     let result = manager.delete_tenant(tenant_id).await;
     assert!(result.is_err());
 
     // Unregister client and try again - should succeed
-    manager.unregister_client_connection(client_ip).await.unwrap();
+    manager
+        .unregister_client_connection(client_ip)
+        .await
+        .unwrap();
     let result = manager.delete_tenant(tenant_id).await;
     assert!(result.is_ok());
 

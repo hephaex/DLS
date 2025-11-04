@@ -1,11 +1,11 @@
 // Enterprise Licensing Management System
 use crate::error::Result;
-use crate::optimization::{LightweightStore, AsyncDataStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use dashmap::DashMap;
 use uuid::Uuid;
 
 #[derive(Debug, Clone)]
@@ -814,7 +814,13 @@ pub enum DeviceType {
 impl LicensingManager {
     pub fn new() -> Self {
         Self {
-            manager_id: format!("lm_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            manager_id: format!(
+                "lm_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             license_validator: Arc::new(LicenseValidator::new()),
             usage_tracker: Arc::new(UsageTracker::new()),
             entitlement_manager: Arc::new(EntitlementManager::new()),
@@ -834,23 +840,43 @@ impl LicensingManager {
         self.usage_tracker.record_usage(usage_record).await
     }
 
-    pub async fn check_entitlement(&self, license_id: &str, feature_id: &str) -> Result<EntitlementResult> {
-        self.entitlement_manager.check_entitlement(license_id, feature_id).await
+    pub async fn check_entitlement(
+        &self,
+        license_id: &str,
+        feature_id: &str,
+    ) -> Result<EntitlementResult> {
+        self.entitlement_manager
+            .check_entitlement(license_id, feature_id)
+            .await
     }
 
-    pub async fn activate_license(&self, activation_request: ActivationRequest) -> Result<ActivationResult> {
+    pub async fn activate_license(
+        &self,
+        activation_request: ActivationRequest,
+    ) -> Result<ActivationResult> {
         self.activation_service.activate(activation_request).await
     }
 
-    pub async fn generate_usage_report(&self, report_request: UsageReportRequest) -> Result<UsageReport> {
-        self.reporting_engine.generate_usage_report(report_request).await
+    pub async fn generate_usage_report(
+        &self,
+        report_request: UsageReportRequest,
+    ) -> Result<UsageReport> {
+        self.reporting_engine
+            .generate_usage_report(report_request)
+            .await
     }
 }
 
 impl LicenseValidator {
     pub fn new() -> Self {
         Self {
-            validator_id: format!("lv_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            validator_id: format!(
+                "lv_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             licenses: Arc::new(DashMap::new()),
             validation_cache: LightweightStore::new(Some(10000)),
             digital_certificates: Arc::new(DashMap::new()),
@@ -867,14 +893,16 @@ impl LicenseValidator {
             }
         }
 
-        let license = self.licenses
+        let license = self
+            .licenses
             .iter()
             .find(|entry| entry.value().license_key == license_key)
             .map(|entry| entry.value().clone());
 
         if let Some(license) = license {
             let validation_result = self.perform_validation(&license).await?;
-            self.validation_cache.insert(license_key.to_string(), validation_result.clone());
+            self.validation_cache
+                .insert(license_key.to_string(), validation_result.clone());
             Ok(validation_result)
         } else {
             Ok(ValidationResult {
@@ -907,15 +935,19 @@ impl LicenseValidator {
             }
         }
 
-        let signature_valid = self.cryptographic_service
-            .verify_signature(&license.signature, &license.license_key).await?;
+        let signature_valid = self
+            .cryptographic_service
+            .verify_signature(&license.signature, &license.license_key)
+            .await?;
 
         if !signature_valid {
             errors.push("Invalid license signature".to_string());
         }
 
-        let revoked = self.revocation_checker
-            .check_revocation(&license.license_id).await?;
+        let revoked = self
+            .revocation_checker
+            .check_revocation(&license.license_id)
+            .await?;
 
         if revoked {
             errors.push("License has been revoked".to_string());
@@ -938,7 +970,13 @@ impl LicenseValidator {
 impl UsageTracker {
     pub fn new() -> Self {
         Self {
-            tracker_id: format!("ut_{}", SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+            tracker_id: format!(
+                "ut_{}",
+                SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
+            ),
             usage_records: AsyncDataStore::new(),
             metrics_collector: Arc::new(MetricsCollector::new()),
             aggregation_engine: Arc::new(UsageAggregationEngine::new()),
@@ -954,12 +992,24 @@ impl UsageTracker {
         Ok(())
     }
 
-    pub async fn get_usage_summary(&self, license_id: &str, period: TimePeriod) -> Result<UsageSummary> {
-        self.aggregation_engine.generate_summary(license_id, period).await
+    pub async fn get_usage_summary(
+        &self,
+        license_id: &str,
+        period: TimePeriod,
+    ) -> Result<UsageSummary> {
+        self.aggregation_engine
+            .generate_summary(license_id, period)
+            .await
     }
 
-    pub async fn check_limits(&self, license_id: &str, feature_id: &str) -> Result<LimitCheckResult> {
-        self.real_time_monitor.check_limits(license_id, feature_id).await
+    pub async fn check_limits(
+        &self,
+        license_id: &str,
+        feature_id: &str,
+    ) -> Result<LimitCheckResult> {
+        self.real_time_monitor
+            .check_limits(license_id, feature_id)
+            .await
     }
 }
 
@@ -1269,8 +1319,14 @@ macro_rules! impl_licensing_component {
         impl $name {
             pub fn new() -> Self {
                 Self {
-                    component_id: format!("{}_{}", stringify!($name).to_lowercase(),
-                        SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()),
+                    component_id: format!(
+                        "{}_{}",
+                        stringify!($name).to_lowercase(),
+                        SystemTime::now()
+                            .duration_since(UNIX_EPOCH)
+                            .unwrap()
+                            .as_secs()
+                    ),
                 }
             }
         }
@@ -1292,7 +1348,11 @@ impl_licensing_component!(UsageAnalytics);
 impl_licensing_component!(BillingIntegration);
 
 impl EntitlementManager {
-    pub async fn check_entitlement(&self, _license_id: &str, _feature_id: &str) -> Result<EntitlementResult> {
+    pub async fn check_entitlement(
+        &self,
+        _license_id: &str,
+        _feature_id: &str,
+    ) -> Result<EntitlementResult> {
         Ok(EntitlementResult {
             entitled: true,
             feature_id: "feature_1".to_string(),
@@ -1348,7 +1408,11 @@ impl LicenseReportingEngine {
 }
 
 impl CryptographicService {
-    pub async fn verify_signature(&self, _signature: &LicenseSignature, _data: &str) -> Result<bool> {
+    pub async fn verify_signature(
+        &self,
+        _signature: &LicenseSignature,
+        _data: &str,
+    ) -> Result<bool> {
         Ok(true)
     }
 }
@@ -1360,7 +1424,11 @@ impl RevocationChecker {
 }
 
 impl UsageAggregationEngine {
-    pub async fn generate_summary(&self, _license_id: &str, _period: TimePeriod) -> Result<UsageSummary> {
+    pub async fn generate_summary(
+        &self,
+        _license_id: &str,
+        _period: TimePeriod,
+    ) -> Result<UsageSummary> {
         Ok(UsageSummary {
             license_id: "license_1".to_string(),
             period: TimePeriod {
@@ -1378,7 +1446,11 @@ impl UsageAggregationEngine {
 }
 
 impl RealTimeUsageMonitor {
-    pub async fn check_limits(&self, _license_id: &str, _feature_id: &str) -> Result<LimitCheckResult> {
+    pub async fn check_limits(
+        &self,
+        _license_id: &str,
+        _feature_id: &str,
+    ) -> Result<LimitCheckResult> {
         Ok(LimitCheckResult {
             within_limits: true,
             current_usage: HashMap::new(),

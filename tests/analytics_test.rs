@@ -1,21 +1,22 @@
 mod common;
 
+use chrono::{Duration, Utc};
 use dls_server::analytics::{
-    AnalyticsEngine, AnalyticsConfig, Metric, MetricType, AnalysisRequest, AnalysisType, TimeRange,
-    MLModelType, Dashboard, Widget, WidgetType, Position, Size, WidgetConfiguration, AggregationType,
-    InsightType, InsightSeverity, RecommendationType, RecommendationPriority,
+    AggregationType, AnalysisRequest, AnalysisType, AnalyticsConfig, AnalyticsEngine, Dashboard,
+    InsightSeverity, InsightType, MLModelType, Metric, MetricType, Position,
+    RecommendationPriority, RecommendationType, Size, TimeRange, Widget, WidgetConfiguration,
+    WidgetType,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
-use chrono::{Utc, Duration};
 
 #[tokio::test]
 async fn test_analytics_engine_creation() {
     common::setup();
-    
+
     let config = AnalyticsConfig::default();
     let engine = AnalyticsEngine::new(config.clone());
-    
+
     assert!(engine.config.enabled);
     assert_eq!(engine.config.retention_days, 90);
     assert!(engine.config.anomaly_detection_enabled);
@@ -25,7 +26,7 @@ async fn test_analytics_engine_creation() {
 #[tokio::test]
 async fn test_metric_ingestion_and_retrieval() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
     engine.start().await.unwrap();
 
@@ -60,7 +61,7 @@ async fn test_metric_ingestion_and_retrieval() {
 #[tokio::test]
 async fn test_trend_analysis() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Ingest trending data - increasing trend
@@ -94,16 +95,19 @@ async fn test_trend_analysis() {
     let result = engine.analyze_metrics(request).await.unwrap();
     assert_eq!(result.analysis_type, AnalysisType::Trend);
     assert!(!result.insights.is_empty());
-    
+
     // Check that trend was detected
-    let trend_insight = result.insights.iter().find(|i| i.insight_type == InsightType::Trend);
+    let trend_insight = result
+        .insights
+        .iter()
+        .find(|i| i.insight_type == InsightType::Trend);
     assert!(trend_insight.is_some());
 }
 
 #[tokio::test]
 async fn test_anomaly_detection() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Ingest normal data
@@ -134,9 +138,12 @@ async fn test_anomaly_detection() {
     };
     engine.ingest_metric(anomaly_metric).await.unwrap();
 
-    let anomalies = engine.detect_real_time_anomalies("error_rate").await.unwrap();
+    let anomalies = engine
+        .detect_real_time_anomalies("error_rate")
+        .await
+        .unwrap();
     assert!(!anomalies.is_empty());
-    
+
     let anomaly = &anomalies[0];
     assert_eq!(anomaly.metric_name, "error_rate");
     assert!(anomaly.anomaly_score > 2.0);
@@ -146,7 +153,7 @@ async fn test_anomaly_detection() {
 #[tokio::test]
 async fn test_forecast_generation() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Ingest predictable data with clear pattern
@@ -179,7 +186,7 @@ async fn test_forecast_generation() {
 
     let result = engine.analyze_metrics(request).await.unwrap();
     assert_eq!(result.analysis_type, AnalysisType::Forecast);
-    
+
     // Check that forecast data exists
     if let Some(forecast_data) = result.results.get("disk_usage") {
         assert!(forecast_data.get("forecast").is_some());
@@ -189,13 +196,13 @@ async fn test_forecast_generation() {
 #[tokio::test]
 async fn test_correlation_analysis() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Ingest correlated metrics
     for i in 0..20 {
         let timestamp = Utc::now() - Duration::minutes(20 - i);
-        
+
         let cpu_metric = Metric {
             id: format!("cpu_metric_{}", i),
             name: "cpu_usage".to_string(),
@@ -237,7 +244,7 @@ async fn test_correlation_analysis() {
 
     let result = engine.analyze_metrics(request).await.unwrap();
     assert_eq!(result.analysis_type, AnalysisType::Correlation);
-    
+
     // Check correlation results
     if let Some(correlations) = result.results.as_object() {
         assert!(!correlations.is_empty());
@@ -247,16 +254,16 @@ async fn test_correlation_analysis() {
 #[tokio::test]
 async fn test_ml_model_training_and_prediction() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Generate training data
     for i in 0..100 {
         let timestamp = Utc::now() - Duration::minutes(100 - i);
-        
+
         let feature_value = 50.0 + (i as f64 * 0.5);
         let target_value = 100.0 + (feature_value * 1.5); // Linear relationship
-        
+
         let feature_metric = Metric {
             id: format!("feature_metric_{}", i),
             name: "memory_usage".to_string(),
@@ -283,21 +290,23 @@ async fn test_ml_model_training_and_prediction() {
     }
 
     // Train model
-    let model_id = engine.train_ml_model(
-        MLModelType::LinearRegression,
-        vec!["memory_usage".to_string()],
-        "response_latency".to_string(),
-    ).await.unwrap();
+    let model_id = engine
+        .train_ml_model(
+            MLModelType::LinearRegression,
+            vec!["memory_usage".to_string()],
+            "response_latency".to_string(),
+        )
+        .await
+        .unwrap();
 
     // Make prediction
     let mut input_features = HashMap::new();
     input_features.insert("memory_usage".to_string(), 75.0);
 
-    let prediction = engine.make_prediction(
-        model_id,
-        input_features,
-        Duration::hours(1),
-    ).await.unwrap();
+    let prediction = engine
+        .make_prediction(model_id, input_features, Duration::hours(1))
+        .await
+        .unwrap();
 
     assert_eq!(prediction.model_id, model_id);
     assert!(prediction.predicted_value > 0.0);
@@ -307,7 +316,7 @@ async fn test_ml_model_training_and_prediction() {
 #[tokio::test]
 async fn test_insights_generation() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Generate data that should produce insights
@@ -339,14 +348,16 @@ async fn test_insights_generation() {
     };
 
     let result = engine.analyze_metrics(request).await.unwrap();
-    
+
     // Should generate insights for the strong trend
     assert!(!result.insights.is_empty());
-    
+
     let insights = engine.get_insights(None, Some(5)).await;
     assert!(!insights.is_empty());
-    
-    let trend_insight = insights.iter().find(|i| i.insight_type == InsightType::Trend);
+
+    let trend_insight = insights
+        .iter()
+        .find(|i| i.insight_type == InsightType::Trend);
     assert!(trend_insight.is_some());
     assert!(trend_insight.unwrap().confidence > 0.5);
 }
@@ -354,7 +365,7 @@ async fn test_insights_generation() {
 #[tokio::test]
 async fn test_recommendations_generation() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Generate data that should trigger recommendations
@@ -386,21 +397,23 @@ async fn test_recommendations_generation() {
     };
 
     let result = engine.analyze_metrics(request).await.unwrap();
-    
+
     // Should generate recommendations based on insights
     assert!(!result.recommendations.is_empty());
-    
+
     let recommendations = engine.get_recommendations(None, Some(5)).await;
     assert!(!recommendations.is_empty());
-    
-    let performance_rec = recommendations.iter().find(|r| r.recommendation_type == RecommendationType::Performance);
+
+    let performance_rec = recommendations
+        .iter()
+        .find(|r| r.recommendation_type == RecommendationType::Performance);
     assert!(performance_rec.is_some());
 }
 
 #[tokio::test]
 async fn test_dashboard_creation_and_management() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     let dashboard = Dashboard {
@@ -414,7 +427,10 @@ async fn test_dashboard_creation_and_management() {
                 title: "CPU Usage Over Time".to_string(),
                 widget_type: WidgetType::LineChart,
                 position: Position { x: 0, y: 0 },
-                size: Size { width: 600, height: 400 },
+                size: Size {
+                    width: 600,
+                    height: 400,
+                },
                 configuration: WidgetConfiguration {
                     metrics: vec!["cpu_usage".to_string()],
                     time_range: TimeRange {
@@ -430,7 +446,10 @@ async fn test_dashboard_creation_and_management() {
                 title: "Memory Usage".to_string(),
                 widget_type: WidgetType::Gauge,
                 position: Position { x: 600, y: 0 },
-                size: Size { width: 300, height: 300 },
+                size: Size {
+                    width: 300,
+                    height: 300,
+                },
                 configuration: WidgetConfiguration {
                     metrics: vec!["memory_usage".to_string()],
                     time_range: TimeRange {
@@ -440,7 +459,7 @@ async fn test_dashboard_creation_and_management() {
                     aggregation: AggregationType::Average,
                     display_options: HashMap::new(),
                 },
-            }
+            },
         ],
         refresh_interval_seconds: 30,
         created_at: Utc::now(),
@@ -452,7 +471,7 @@ async fn test_dashboard_creation_and_management() {
 
     let retrieved = engine.get_dashboard(&dashboard_id);
     assert!(retrieved.is_some());
-    
+
     let retrieved_dashboard = retrieved.unwrap();
     assert_eq!(retrieved_dashboard.name, "System Performance Dashboard");
     assert_eq!(retrieved_dashboard.widgets.len(), 2);
@@ -464,7 +483,7 @@ async fn test_dashboard_creation_and_management() {
 #[tokio::test]
 async fn test_metric_aggregation_types() {
     common::setup();
-    
+
     let engine = AnalyticsEngine::default();
 
     // Test different aggregation types
@@ -488,7 +507,7 @@ async fn test_metric_aggregation_types() {
             aggregation,
             display_options: HashMap::new(),
         };
-        
+
         // Test that configuration is valid
         assert!(!widget_config.metrics.is_empty());
     }
@@ -497,10 +516,10 @@ async fn test_metric_aggregation_types() {
 #[tokio::test]
 async fn test_time_series_data_retention() {
     common::setup();
-    
+
     let mut config = AnalyticsConfig::default();
     config.retention_days = 1; // Short retention for testing
-    
+
     let engine = AnalyticsEngine::new(config);
 
     // Ingest old data (beyond retention)
@@ -536,7 +555,7 @@ async fn test_time_series_data_retention() {
 
     let series = engine.get_metric_series("old_data", time_range).await;
     assert!(series.is_some());
-    
+
     // Only recent data should remain due to retention policy
     let series = series.unwrap();
     assert_eq!(series.data_points.len(), 1);
