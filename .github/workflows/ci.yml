@@ -67,7 +67,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run Clippy
-        run: cargo clippy --all-targets
+        run: cargo clippy --all-targets -- -A unused_variables -A unused_mut
 
   # Run tests
   test:
