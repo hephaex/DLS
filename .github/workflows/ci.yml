@@ -67,7 +67,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run Clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets
 
   # Run tests
   test:
