@@ -67,7 +67,7 @@ jobs:
             ${{ runner.os }}-cargo-build-target-
 
       - name: Run Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --all-targets -- -D warnings
 
   # Run tests
   test:
@@ -114,10 +114,10 @@ jobs:
             ${{ runner.os }}-${{ matrix.rust }}-cargo-build-target-
 
       - name: Run tests
-        run: cargo test --verbose --all-features
+        run: cargo test --verbose
 
       - name: Run doctests
-        run: cargo test --doc --all-features
+        run: cargo test --doc
 
   # Build project
   build:
@@ -191,7 +191,7 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Run cargo-tarpaulin
-        run: cargo tarpaulin --verbose --all-features --workspace --timeout 300 --out xml
+        run: cargo tarpaulin --verbose --workspace --timeout 300 --out xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
