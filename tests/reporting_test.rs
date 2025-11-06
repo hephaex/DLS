@@ -487,7 +487,7 @@ async fn test_compliance_framework_variants() {
         ComplianceFramework::GDPR,
         ComplianceFramework::SOC2,
         ComplianceFramework::ISO27001,
-        ComplianceFramework::PCI_DSS,
+        ComplianceFramework::PciDss,
         ComplianceFramework::FISMA,
         ComplianceFramework::NIST,
         ComplianceFramework::CIS,
