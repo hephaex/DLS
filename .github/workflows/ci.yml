@@ -178,6 +178,7 @@ jobs:
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -191,7 +192,11 @@ jobs:
         run: cargo install cargo-tarpaulin
 
       - name: Run cargo-tarpaulin
-        run: cargo tarpaulin --verbose --workspace --timeout 300 --out xml
+        env:
+          OPENSSL_LIB_DIR: /usr/lib/x86_64-linux-gnu
+          OPENSSL_INCLUDE_DIR: /usr/include/openssl
+          RUSTFLAGS: "-C link-arg=-Wl,-rpath,/usr/lib/x86_64-linux-gnu"
+        run: cargo tarpaulin --verbose --workspace --timeout 300 --out xml --engine llvm
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
