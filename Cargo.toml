@@ -26,7 +26,7 @@ serde_yaml = "0.9"
 sqlx = { version = "0.8", features = ["runtime-tokio-native-tls", "postgres", "uuid", "chrono", "json", "macros"], default-features = false }
 
 # Networking
-dhcproto = "0.12"
+dhcproto = "0.14"
 
 # Storage and ZFS - FreeBSD specific
 libzetta = { version = "0.3", optional = true }
@@ -46,7 +46,7 @@ base64 = "0.22"
 # Monitoring and observability
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-prometheus = "0.13"
+prometheus = "0.14"
 metrics = "0.23"
 
 # Configuration
