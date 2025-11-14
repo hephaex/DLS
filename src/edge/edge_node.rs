@@ -482,9 +482,7 @@ impl EdgeNodeManager {
             // Update predictive models
             self.update_predictive_models(node_id, &metrics).await?;
         } else {
-            return Err(DlsError::NotFound(format!(
-                "Edge node {node_id} not found"
-            )));
+            return Err(DlsError::NotFound(format!("Edge node {node_id} not found")));
         }
 
         Ok(())
@@ -794,9 +792,7 @@ impl EdgeNodeManager {
         if let Some(node) = self.nodes.get(node_id) {
             Ok(node.status.clone())
         } else {
-            Err(DlsError::NotFound(format!(
-                "Edge node {node_id} not found"
-            )))
+            Err(DlsError::NotFound(format!("Edge node {node_id} not found")))
         }
     }
 
@@ -831,9 +827,7 @@ impl EdgeNodeManager {
             tracing::info!("Node {} status updated to {:?}", node_id, node.status);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!(
-                "Edge node {node_id} not found"
-            )))
+            Err(DlsError::NotFound(format!("Edge node {node_id} not found")))
         }
     }
 
@@ -850,9 +844,7 @@ impl EdgeNodeManager {
                 ))
             }
         } else {
-            Err(DlsError::NotFound(format!(
-                "Edge node {node_id} not found"
-            )))
+            Err(DlsError::NotFound(format!("Edge node {node_id} not found")))
         }
     }
 
@@ -886,9 +878,7 @@ impl EdgeNodeManager {
             tracing::info!("Workload {} removed from node {}", workload_id, node_id);
             Ok(())
         } else {
-            Err(DlsError::NotFound(format!(
-                "Edge node {node_id} not found"
-            )))
+            Err(DlsError::NotFound(format!("Edge node {node_id} not found")))
         }
     }
 

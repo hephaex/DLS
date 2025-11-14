@@ -42,8 +42,7 @@ impl Default for ResourceQuota {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct NetworkConfig {
     pub vlan_id: Option<u16>,
     pub subnet: Option<String>,
@@ -53,7 +52,6 @@ pub struct NetworkConfig {
     pub dns_servers: Vec<IpAddr>,
     pub gateway: Option<IpAddr>,
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {

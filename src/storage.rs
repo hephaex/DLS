@@ -204,9 +204,9 @@ impl ZfsStorageManager {
         match format {
             ImageFormat::Raw => {
                 debug!("Creating raw image file: {} ({} bytes)", path, size_bytes);
-                let file = fs::File::create(path).await.map_err(|e| {
-                    DlsError::Storage(format!("Failed to create image file: {e}"))
-                })?;
+                let file = fs::File::create(path)
+                    .await
+                    .map_err(|e| DlsError::Storage(format!("Failed to create image file: {e}")))?;
                 file.set_len(size_bytes)
                     .await
                     .map_err(|e| DlsError::Storage(format!("Failed to set file size: {e}")))?;
@@ -374,9 +374,9 @@ impl StorageManager for ZfsStorageManager {
         let metadata = self.images_metadata.read().await;
         if let Some(image) = metadata.get(&id) {
             if Path::new(&image.path).exists() {
-                fs::remove_file(&image.path).await.map_err(|e| {
-                    DlsError::Storage(format!("Failed to remove image file: {e}"))
-                })?;
+                fs::remove_file(&image.path)
+                    .await
+                    .map_err(|e| DlsError::Storage(format!("Failed to remove image file: {e}")))?;
             }
         }
         drop(metadata);
@@ -551,9 +551,9 @@ impl StorageManager for ZfsStorageManager {
             )));
         }
 
-        let file_metadata = fs::metadata(import_path).await.map_err(|e| {
-            DlsError::Storage(format!("Failed to read import file metadata: {e}"))
-        })?;
+        let file_metadata = fs::metadata(import_path)
+            .await
+            .map_err(|e| DlsError::Storage(format!("Failed to read import file metadata: {e}")))?;
 
         let format = if import_path.ends_with(".qcow2") {
             ImageFormat::Qcow2

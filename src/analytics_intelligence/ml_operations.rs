@@ -548,10 +548,7 @@ impl MLModelRegistry {
         let version_id = version.version_id.clone();
 
         // Add version to model's version list
-        let mut versions = self
-            .model_versions
-            .entry(model_id.to_string())
-            .or_default();
+        let mut versions = self.model_versions.entry(model_id.to_string()).or_default();
         versions.push(version);
 
         Ok(version_id)

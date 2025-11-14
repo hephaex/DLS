@@ -6,8 +6,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 /// Optimized data structure management for reducing memory footprint
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub struct OptimizedDataManager {
     // Use smaller, more efficient data structures
     pub cache_pools: HashMap<String, Arc<CachePool>>,
@@ -179,7 +178,7 @@ impl<K, V> Default for AsyncDataStore<K, V>
 where
     K: std::hash::Hash + Eq + Clone + Send + Sync,
     V: Clone + Send + Sync,
- {
+{
     fn default() -> Self {
         Self::new()
     }
@@ -490,7 +489,6 @@ pub struct ResourceSummary {
     pub active_threads: usize,
     pub timestamp: SystemTime,
 }
-
 
 impl Default for PerformanceProfiler {
     fn default() -> Self {
