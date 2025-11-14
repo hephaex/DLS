@@ -37,7 +37,7 @@ async fn test_mock_zfs_dataset_list() {
     for i in 1..=3 {
         let properties = HashMap::new();
         zfs_manager
-            .create_dataset(&format!("dataset-{}", i), properties)
+            .create_dataset(&format!("dataset-{i}"), properties)
             .await
             .unwrap();
     }

@@ -404,7 +404,7 @@ impl ProvisioningManager {
                         Self::add_job_log_static(
                             stored_job,
                             LogLevel::Error,
-                            format!("Job failed: {}", e),
+                            format!("Job failed: {e}"),
                         )
                         .await;
                     }
@@ -522,8 +522,7 @@ impl ProvisioningManager {
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             return Err(crate::error::DlsError::CommandFailed(format!(
-                "dd failed: {}",
-                error_msg
+                "dd failed: {error_msg}"
             )));
         }
 
@@ -532,15 +531,14 @@ impl ProvisioningManager {
             let output = Command::new("qemu-img")
                 .arg("resize")
                 .arg(target)
-                .arg(format!("{}G", size_gb))
+                .arg(format!("{size_gb}G"))
                 .output()
                 .await?;
 
             if !output.status.success() {
                 let error_msg = String::from_utf8_lossy(&output.stderr);
                 return Err(crate::error::DlsError::CommandFailed(format!(
-                    "qemu-img resize failed: {}",
-                    error_msg
+                    "qemu-img resize failed: {error_msg}"
                 )));
             }
         }
@@ -570,8 +568,7 @@ impl ProvisioningManager {
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
                     return Err(crate::error::DlsError::CommandFailed(format!(
-                        "mount failed: {}",
-                        error_msg
+                        "mount failed: {error_msg}"
                     )));
                 }
             }
@@ -589,8 +586,7 @@ impl ProvisioningManager {
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
                     return Err(crate::error::DlsError::CommandFailed(format!(
-                        "guestmount failed: {}",
-                        error_msg
+                        "guestmount failed: {error_msg}"
                     )));
                 }
             }
@@ -616,8 +612,7 @@ impl ProvisioningManager {
         if !output.status.success() {
             let error_msg = String::from_utf8_lossy(&output.stderr);
             return Err(crate::error::DlsError::CommandFailed(format!(
-                "umount failed: {}",
-                error_msg
+                "umount failed: {error_msg}"
             )));
         }
 
@@ -712,8 +707,7 @@ impl ProvisioningManager {
                 if !output.status.success() {
                     let error_msg = String::from_utf8_lossy(&output.stderr);
                     return Err(crate::error::DlsError::CommandFailed(format!(
-                        "Script execution failed: {}",
-                        error_msg
+                        "Script execution failed: {error_msg}"
                     )));
                 }
             }
@@ -779,8 +773,7 @@ impl ProvisioningManager {
                     (parameters.get("interface"), parameters.get("ip"))
                 {
                     let netplan_config = format!(
-                        "network:\n  version: 2\n  ethernets:\n    {}:\n      dhcp4: false\n      addresses:\n        - {}\n",
-                        interface, ip
+                        "network:\n  version: 2\n  ethernets:\n    {interface}:\n      dhcp4: false\n      addresses:\n        - {ip}\n"
                     );
 
                     let config_path = mount_point.join("etc/netplan/00-installer-config.yaml");
@@ -808,7 +801,7 @@ impl ProvisioningManager {
                     fs::write(mount_point.join("etc/hostname"), hostname).await?;
 
                     // Update /etc/hosts
-                    let hosts_content = format!("127.0.0.1 localhost {}\n", hostname);
+                    let hosts_content = format!("127.0.0.1 localhost {hostname}\n");
                     fs::write(mount_point.join("etc/hosts"), hosts_content).await?;
                 }
                 _ => {
@@ -849,7 +842,7 @@ impl ProvisioningManager {
 
                     // Set password if provided
                     if let Some(password) = parameters.get("password") {
-                        let passwd_input = format!("{}:{}", username, password);
+                        let passwd_input = format!("{username}:{password}");
                         Command::new("sudo")
                             .arg("chroot")
                             .arg(mount_point)
@@ -1068,14 +1061,12 @@ mod tests {
 
     #[test]
     fn test_customization_type_variants() {
-        let customizations = vec![
-            CustomizationType::InjectFiles,
+        let customizations = [CustomizationType::InjectFiles,
             CustomizationType::RunScript,
             CustomizationType::InstallPackages,
             CustomizationType::ConfigureNetwork,
             CustomizationType::SetHostname,
-            CustomizationType::CreateUsers,
-        ];
+            CustomizationType::CreateUsers];
 
         assert_eq!(customizations.len(), 6);
     }
@@ -1088,8 +1079,8 @@ mod tests {
         // Create multiple templates
         for i in 0..3 {
             let template = ImageTemplate {
-                id: format!("template-{}", i),
-                name: format!("Template {}", i),
+                id: format!("template-{i}"),
+                name: format!("Template {i}"),
                 ..Default::default()
             };
             manager.create_template(template).await.unwrap();
@@ -1113,7 +1104,7 @@ mod tests {
             manager
                 .create_provisioning_job(
                     template_id.clone(),
-                    format!("image-{}", i),
+                    format!("image-{i}"),
                     10 + i as u64,
                     vec![],
                 )

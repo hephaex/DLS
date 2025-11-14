@@ -138,6 +138,12 @@ pub enum SecurityEventType {
     SystemCompromise,
 }
 
+impl Default for SecurityManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SecurityManager {
     pub fn new() -> Self {
         Self {

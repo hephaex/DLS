@@ -241,7 +241,7 @@ impl NetworkManager {
         let cluster_config = ClusterConfig {
             node_name: format!("{}-cluster", self.config.iscsi_target_name),
             listen_addr: "0.0.0.0:7777".parse().map_err(|e| {
-                crate::error::Error::InvalidConfig(format!("Invalid listen address: {}", e))
+                crate::error::Error::InvalidConfig(format!("Invalid listen address: {e}"))
             })?,
             ..Default::default()
         };
@@ -460,7 +460,7 @@ impl NetworkManager {
                 )
                 .await
                 .map_err(|e| {
-                    crate::error::Error::Internal(format!("Resource provisioning failed: {}", e))
+                    crate::error::Error::Internal(format!("Resource provisioning failed: {e}"))
                 })
         } else {
             Err(crate::error::Error::Internal(
@@ -478,7 +478,7 @@ impl NetworkManager {
                 .create_hybrid_deployment(deployment)
                 .await
                 .map_err(|e| {
-                    crate::error::Error::Internal(format!("Hybrid deployment failed: {}", e))
+                    crate::error::Error::Internal(format!("Hybrid deployment failed: {e}"))
                 })
         } else {
             Err(crate::error::Error::Internal(
@@ -493,7 +493,7 @@ impl NetworkManager {
                 .migrate_resource(resource_id, target_provider)
                 .await
                 .map_err(|e| {
-                    crate::error::Error::Internal(format!("Resource migration failed: {}", e))
+                    crate::error::Error::Internal(format!("Resource migration failed: {e}"))
                 })
         } else {
             Err(crate::error::Error::Internal(
@@ -538,7 +538,7 @@ impl NetworkManager {
     ) -> Result<Vec<crate::cloud::multi_cloud::CostOptimizationRecommendation>> {
         if let Some(cloud_manager) = &self.cloud_manager {
             cloud_manager.optimize_costs().await.map_err(|e| {
-                crate::error::Error::Internal(format!("Cost optimization failed: {}", e))
+                crate::error::Error::Internal(format!("Cost optimization failed: {e}"))
             })
         } else {
             Err(crate::error::Error::Internal(
@@ -740,7 +740,7 @@ impl NetworkManager {
             let dashboard = crate::analytics::Dashboard {
                 id: uuid::Uuid::new_v4(),
                 name: name.to_string(),
-                description: format!("Analytics dashboard for {}", name),
+                description: format!("Analytics dashboard for {name}"),
                 tenant_id,
                 widgets: vec![
                     crate::analytics::Widget {

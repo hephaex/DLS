@@ -1064,6 +1064,12 @@ pub struct DispatchCondition {
 }
 
 // Implementation
+impl Default for WorkflowEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorkflowEngine {
     pub fn new() -> Self {
         Self {
@@ -1156,6 +1162,12 @@ impl WorkflowEngine {
 }
 
 // Implementation stubs for major components
+impl Default for StateManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StateManager {
     pub fn new() -> Self {
         Self {
@@ -1178,6 +1190,12 @@ impl StateManager {
     }
 }
 
+impl Default for StatePersistence {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StatePersistence {
     pub fn new() -> Self {
         Self {
@@ -1195,6 +1213,12 @@ impl StatePersistence {
     }
 }
 
+impl Default for CheckpointManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CheckpointManager {
     pub fn new() -> Self {
         Self {
@@ -1209,6 +1233,12 @@ impl CheckpointManager {
             checkpoint_strategy: CheckpointStrategy::default(),
             cleanup_policy: CheckpointCleanupPolicy::default(),
         }
+    }
+}
+
+impl Default for TaskExecutor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1234,6 +1264,12 @@ impl TaskExecutor {
     }
 }
 
+impl Default for ExecutionPool {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionPool {
     pub fn new() -> Self {
         Self {
@@ -1249,6 +1285,12 @@ impl ExecutionPool {
             execution_queue: AsyncDataStore::new(),
             pool_metrics: Arc::new(PoolMetrics::new()),
         }
+    }
+}
+
+impl Default for PoolMetrics {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1273,6 +1315,12 @@ impl PoolMetrics {
     }
 }
 
+impl Default for TaskRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TaskRegistry {
     pub fn new() -> Self {
         Self {
@@ -1287,6 +1335,12 @@ impl TaskRegistry {
             task_versions: AsyncDataStore::new(),
             task_metrics: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for ResultCollector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1307,6 +1361,12 @@ impl ResultCollector {
     }
 }
 
+impl Default for ResultAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResultAggregator {
     pub fn new() -> Self {
         Self {
@@ -1320,6 +1380,12 @@ impl ResultAggregator {
             aggregation_rules: Arc::new(DashMap::new()),
             aggregated_results: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for ResourceManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1340,6 +1406,12 @@ impl ResourceManager {
     }
 }
 
+impl Default for ResourceMonitoring {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceMonitoring {
     pub fn new() -> Self {
         Self {
@@ -1353,6 +1425,12 @@ impl ResourceMonitoring {
             usage_metrics: AsyncDataStore::new(),
             alerts: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for ConditionEvaluator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1377,6 +1455,12 @@ impl ConditionEvaluator {
     }
 }
 
+impl Default for ExpressionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExpressionEngine {
     pub fn new() -> Self {
         Self {
@@ -1391,6 +1475,12 @@ impl ExpressionEngine {
             compiled_expressions: AsyncDataStore::new(),
             function_registry: Arc::new(FunctionRegistry::new()),
         }
+    }
+}
+
+impl Default for FunctionRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1410,6 +1500,12 @@ impl FunctionRegistry {
     }
 }
 
+impl Default for ContextProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextProvider {
     pub fn new() -> Self {
         Self {
@@ -1423,6 +1519,12 @@ impl ContextProvider {
             context_sources: Arc::new(DashMap::new()),
             context_cache: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for WorkflowScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1447,6 +1549,12 @@ impl WorkflowScheduler {
     }
 }
 
+impl Default for ScheduleEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScheduleEngine {
     pub fn new() -> Self {
         Self {
@@ -1460,6 +1568,12 @@ impl ScheduleEngine {
             schedule_calculator: Arc::new(ScheduleCalculator::new()),
             execution_dispatcher: Arc::new(ExecutionDispatcher::new()),
         }
+    }
+}
+
+impl Default for ScheduleCalculator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1479,6 +1593,12 @@ impl ScheduleCalculator {
     }
 }
 
+impl Default for CronParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CronParser {
     pub fn new() -> Self {
         Self {
@@ -1491,6 +1611,12 @@ impl CronParser {
             ),
             supported_formats: vec![CronFormat::Standard, CronFormat::Quartz],
         }
+    }
+}
+
+impl Default for ExecutionDispatcher {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1510,6 +1636,12 @@ impl ExecutionDispatcher {
     }
 }
 
+impl Default for ExecutionTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExecutionTracker {
     pub fn new() -> Self {
         Self {
@@ -1523,6 +1655,12 @@ impl ExecutionTracker {
             tracked_executions: AsyncDataStore::new(),
             execution_metrics: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for TriggerManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1540,6 +1678,12 @@ impl TriggerManager {
             trigger_handlers: Arc::new(DashMap::new()),
             event_dispatcher: Arc::new(EventDispatcher::new()),
         }
+    }
+}
+
+impl Default for EventDispatcher {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

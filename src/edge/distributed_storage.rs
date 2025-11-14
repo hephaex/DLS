@@ -410,6 +410,12 @@ pub enum MigrationStatus {
     Cancelled,
 }
 
+impl Default for StorageSyncEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StorageSyncEngine {
     pub fn new() -> Self {
         Self {
@@ -433,7 +439,7 @@ impl StorageSyncEngine {
         self.sync_operations
             .get(operation_id)
             .map(|op| op.clone())
-            .ok_or_else(|| DlsError::NotFound(format!("Sync operation {} not found", operation_id)))
+            .ok_or_else(|| DlsError::NotFound(format!("Sync operation {operation_id} not found")))
     }
 
     pub async fn cancel_sync(&self, operation_id: &str) -> Result<()> {
@@ -443,8 +449,7 @@ impl StorageSyncEngine {
             Ok(())
         } else {
             Err(DlsError::NotFound(format!(
-                "Sync operation {} not found",
-                operation_id
+                "Sync operation {operation_id} not found"
             )))
         }
     }
@@ -456,6 +461,12 @@ impl StorageSyncEngine {
             .insert(schedule_id.clone(), schedule);
         tracing::info!("Periodic sync scheduled: {}", schedule_id);
         Ok(())
+    }
+}
+
+impl Default for TieringScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -580,7 +591,7 @@ impl DistributedStorageManager {
         let policy = self
             .storage_policies
             .get(&policy_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Storage policy {} not found", policy_id)))?
+            .ok_or_else(|| DlsError::NotFound(format!("Storage policy {policy_id} not found")))?
             .clone();
 
         // Split object into chunks
@@ -631,7 +642,7 @@ impl DistributedStorageManager {
         let mut chunks = Vec::new();
 
         for (index, chunk_data) in data.chunks(CHUNK_SIZE).enumerate() {
-            let chunk_id = format!("{}-chunk-{}", object_id, index);
+            let chunk_id = format!("{object_id}-chunk-{index}");
             let checksum = self.calculate_checksum(chunk_data);
 
             let chunk = DataChunk {
@@ -700,7 +711,7 @@ impl DistributedStorageManager {
         let object = self
             .distributed_objects
             .get(object_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Object {} not found", object_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Object {object_id} not found")))?;
 
         let mut object_data = Vec::with_capacity(object.total_size_bytes as usize);
 
@@ -743,7 +754,7 @@ impl DistributedStorageManager {
         let object = self
             .distributed_objects
             .remove(object_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Object {} not found", object_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Object {object_id} not found")))?;
 
         // Delete all chunks
         for chunk_id in &object.1.chunks {
@@ -834,7 +845,7 @@ impl DistributedStorageManager {
             .iter()
             .filter(|obj| {
                 // Check if object has sufficient replicas
-                obj.chunks.len() > 0 // Simplified check
+                !obj.chunks.is_empty() // Simplified check
             })
             .count();
 

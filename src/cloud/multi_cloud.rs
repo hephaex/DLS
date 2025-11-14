@@ -1,6 +1,6 @@
 // Multi-Cloud Provider Management & Abstraction Layer
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore, PerformanceProfiler};
+use crate::optimization::{AsyncDataStore, LightweightStore};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1129,6 +1129,12 @@ pub enum MitigationType {
     Compensating,
 }
 
+impl Default for MultiCloudManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MultiCloudManager {
     pub fn new() -> Self {
         Self {
@@ -1286,6 +1292,12 @@ impl MultiCloudManager {
     }
 }
 
+impl Default for ResourceOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceOrchestrator {
     pub fn new() -> Self {
         Self {
@@ -1341,6 +1353,12 @@ impl ResourceOrchestrator {
     }
 }
 
+impl Default for ResourceInventory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceInventory {
     pub fn new() -> Self {
         Self {
@@ -1351,6 +1369,12 @@ impl ResourceInventory {
     }
 }
 
+impl Default for PricingDatabase {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PricingDatabase {
     pub fn new() -> Self {
         Self {
@@ -1358,6 +1382,12 @@ impl PricingDatabase {
             pricing_history: AsyncDataStore::new(),
             cost_calculator: Arc::new(CostCalculator::new()),
         }
+    }
+}
+
+impl Default for CostCalculator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1378,6 +1408,12 @@ impl CostCalculator {
             }),
             cost_models: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for WorkloadScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1407,6 +1443,12 @@ impl WorkloadScheduler {
     }
 }
 
+impl Default for ResourceMatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceMatcher {
     pub fn new() -> Self {
         Self {
@@ -1427,6 +1469,12 @@ impl ResourceMatcher {
     }
 }
 
+impl Default for PerformancePredictor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformancePredictor {
     pub fn new() -> Self {
         Self {
@@ -1440,6 +1488,12 @@ impl PerformancePredictor {
             prediction_models: Arc::new(DashMap::new()),
             historical_data: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for PriorityManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1461,6 +1515,12 @@ impl PriorityManager {
                 enforcement_rules: vec![],
             },
         }
+    }
+}
+
+impl Default for CapacityPlanner {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1493,6 +1553,12 @@ impl CapacityPlanner {
             growth_analyzer: Arc::new(GrowthAnalyzer::new()),
             recommendations: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for GrowthAnalyzer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1532,6 +1598,12 @@ pub struct CostOptimizer {
     pub optimizer_id: String,
 }
 
+impl Default for CostOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CostOptimizer {
     pub fn new() -> Self {
         Self {
@@ -1561,6 +1633,12 @@ pub struct CostOptimizationRecommendation {
 #[derive(Debug, Clone)]
 pub struct ComplianceManager {
     pub manager_id: String,
+}
+
+impl Default for ComplianceManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ComplianceManager {
@@ -1615,6 +1693,12 @@ pub struct CloudPerformanceMonitor {
     pub monitor_id: String,
 }
 
+impl Default for CloudPerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CloudPerformanceMonitor {
     pub fn new() -> Self {
         Self {
@@ -1647,6 +1731,12 @@ pub struct CloudPerformanceReport {
 #[derive(Debug, Clone)]
 pub struct DisasterRecoveryManager {
     pub manager_id: String,
+}
+
+impl Default for DisasterRecoveryManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DisasterRecoveryManager {

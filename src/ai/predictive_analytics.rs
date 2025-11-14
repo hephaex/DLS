@@ -1052,7 +1052,7 @@ impl PredictiveAnalyticsEngine {
             actions.push(PreventiveAction {
                 action_id: "urgent_replacement".to_string(),
                 action_type: ActionType::Replacement,
-                description: format!("Urgent replacement of {} component", component_type),
+                description: format!("Urgent replacement of {component_type} component"),
                 estimated_cost: 5000.0,
                 implementation_time: Duration::hours(4),
                 effectiveness: 0.95,
@@ -1064,7 +1064,7 @@ impl PredictiveAnalyticsEngine {
             actions.push(PreventiveAction {
                 action_id: "scheduled_maintenance".to_string(),
                 action_type: ActionType::Maintenance,
-                description: format!("Scheduled maintenance for {} component", component_type),
+                description: format!("Scheduled maintenance for {component_type} component"),
                 estimated_cost: 500.0,
                 implementation_time: Duration::hours(2),
                 effectiveness: 0.8,

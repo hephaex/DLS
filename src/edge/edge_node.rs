@@ -483,8 +483,7 @@ impl EdgeNodeManager {
             self.update_predictive_models(node_id, &metrics).await?;
         } else {
             return Err(DlsError::NotFound(format!(
-                "Edge node {} not found",
-                node_id
+                "Edge node {node_id} not found"
             )));
         }
 
@@ -675,7 +674,7 @@ impl EdgeNodeManager {
                         alert_id: Uuid::new_v4().to_string(),
                         severity: AlertSeverity::Warning,
                         component: "anomaly_detection".to_string(),
-                        message: format!("Anomaly detected: {} = {}", metric_name, value),
+                        message: format!("Anomaly detected: {metric_name} = {value}"),
                         threshold_exceeded: Some(*value),
                         recommended_action: "Investigate unusual system behavior".to_string(),
                         triggered_at: Utc::now(),
@@ -796,8 +795,7 @@ impl EdgeNodeManager {
             Ok(node.status.clone())
         } else {
             Err(DlsError::NotFound(format!(
-                "Edge node {} not found",
-                node_id
+                "Edge node {node_id} not found"
             )))
         }
     }
@@ -807,8 +805,7 @@ impl EdgeNodeManager {
             Ok(health.clone())
         } else {
             Err(DlsError::NotFound(format!(
-                "Health data for node {} not found",
-                node_id
+                "Health data for node {node_id} not found"
             )))
         }
     }
@@ -835,8 +832,7 @@ impl EdgeNodeManager {
             Ok(())
         } else {
             Err(DlsError::NotFound(format!(
-                "Edge node {} not found",
-                node_id
+                "Edge node {node_id} not found"
             )))
         }
     }
@@ -855,8 +851,7 @@ impl EdgeNodeManager {
             }
         } else {
             Err(DlsError::NotFound(format!(
-                "Edge node {} not found",
-                node_id
+                "Edge node {node_id} not found"
             )))
         }
     }
@@ -892,8 +887,7 @@ impl EdgeNodeManager {
             Ok(())
         } else {
             Err(DlsError::NotFound(format!(
-                "Edge node {} not found",
-                node_id
+                "Edge node {node_id} not found"
             )))
         }
     }
@@ -932,8 +926,7 @@ impl EdgeNodeManager {
 
         if nodes.is_empty() {
             return Err(DlsError::NotFound(format!(
-                "No nodes found in cluster {}",
-                cluster_id
+                "No nodes found in cluster {cluster_id}"
             )));
         }
 

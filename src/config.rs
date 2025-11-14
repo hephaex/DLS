@@ -67,7 +67,7 @@ impl Settings {
 
         let s = Config::builder()
             .add_source(File::with_name("config/default"))
-            .add_source(File::with_name(&format!("config/{}", run_mode)).required(false))
+            .add_source(File::with_name(&format!("config/{run_mode}")).required(false))
             .add_source(File::with_name("config/local").required(false))
             .add_source(Environment::with_prefix("DLS"))
             .build()?;

@@ -1,10 +1,11 @@
+#![allow(unused_variables)]
+#![allow(clippy::field_reassign_with_default)]
+
 mod common;
 
 use chrono::{Duration, Utc};
 use dls_server::analytics::{
-    AggregationType, AnalysisRequest, AnalysisType, AnalyticsConfig, AnalyticsEngine, Dashboard,
-    InsightSeverity, InsightType, MLModelType, Metric, MetricType, Position,
-    RecommendationPriority, RecommendationType, Size, TimeRange, Widget, WidgetConfiguration,
+    AggregationType, AnalysisRequest, AnalysisType, AnalyticsConfig, AnalyticsEngine, Dashboard, InsightType, MLModelType, Metric, MetricType, Position, RecommendationType, Size, TimeRange, Widget, WidgetConfiguration,
     WidgetType,
 };
 use std::collections::HashMap;
@@ -33,7 +34,7 @@ async fn test_metric_ingestion_and_retrieval() {
     // Ingest multiple metrics
     for i in 0..10 {
         let metric = Metric {
-            id: format!("metric_{}", i),
+            id: format!("metric_{i}"),
             name: "cpu_usage".to_string(),
             metric_type: MetricType::Gauge,
             value: 50.0 + (i as f64 * 2.0),
@@ -67,7 +68,7 @@ async fn test_trend_analysis() {
     // Ingest trending data - increasing trend
     for i in 0..20 {
         let metric = Metric {
-            id: format!("trend_metric_{}", i),
+            id: format!("trend_metric_{i}"),
             name: "response_time".to_string(),
             metric_type: MetricType::Gauge,
             value: 100.0 + (i as f64 * 5.0), // Clear increasing trend
@@ -113,7 +114,7 @@ async fn test_anomaly_detection() {
     // Ingest normal data
     for i in 0..30 {
         let metric = Metric {
-            id: format!("normal_metric_{}", i),
+            id: format!("normal_metric_{i}"),
             name: "error_rate".to_string(),
             metric_type: MetricType::Gauge,
             value: 1.0 + (rand::random::<f64>() * 2.0), // Normal range: 1-3
@@ -159,7 +160,7 @@ async fn test_forecast_generation() {
     // Ingest predictable data with clear pattern
     for i in 0..50 {
         let metric = Metric {
-            id: format!("forecast_metric_{}", i),
+            id: format!("forecast_metric_{i}"),
             name: "disk_usage".to_string(),
             metric_type: MetricType::Gauge,
             value: 20.0 + (i as f64 * 0.5), // Linear growth
@@ -204,7 +205,7 @@ async fn test_correlation_analysis() {
         let timestamp = Utc::now() - Duration::minutes(20 - i);
 
         let cpu_metric = Metric {
-            id: format!("cpu_metric_{}", i),
+            id: format!("cpu_metric_{i}"),
             name: "cpu_usage".to_string(),
             metric_type: MetricType::Gauge,
             value: 30.0 + (i as f64 * 2.0),
@@ -217,7 +218,7 @@ async fn test_correlation_analysis() {
 
         // Response time correlated with CPU
         let response_metric = Metric {
-            id: format!("response_metric_{}", i),
+            id: format!("response_metric_{i}"),
             name: "response_time".to_string(),
             metric_type: MetricType::Gauge,
             value: 100.0 + (i as f64 * 3.0), // Correlated with CPU
@@ -265,7 +266,7 @@ async fn test_ml_model_training_and_prediction() {
         let target_value = 100.0 + (feature_value * 1.5); // Linear relationship
 
         let feature_metric = Metric {
-            id: format!("feature_metric_{}", i),
+            id: format!("feature_metric_{i}"),
             name: "memory_usage".to_string(),
             metric_type: MetricType::Gauge,
             value: feature_value,
@@ -277,7 +278,7 @@ async fn test_ml_model_training_and_prediction() {
         engine.ingest_metric(feature_metric).await.unwrap();
 
         let target_metric = Metric {
-            id: format!("target_metric_{}", i),
+            id: format!("target_metric_{i}"),
             name: "response_latency".to_string(),
             metric_type: MetricType::Gauge,
             value: target_value,
@@ -322,7 +323,7 @@ async fn test_insights_generation() {
     // Generate data that should produce insights
     for i in 0..30 {
         let metric = Metric {
-            id: format!("insight_metric_{}", i),
+            id: format!("insight_metric_{i}"),
             name: "api_calls_per_minute".to_string(),
             metric_type: MetricType::Counter,
             value: 1000.0 + (i as f64 * 50.0), // Strong upward trend
@@ -371,7 +372,7 @@ async fn test_recommendations_generation() {
     // Generate data that should trigger recommendations
     for i in 0..20 {
         let metric = Metric {
-            id: format!("rec_metric_{}", i),
+            id: format!("rec_metric_{i}"),
             name: "database_connections".to_string(),
             metric_type: MetricType::Gauge,
             value: 80.0 + (i as f64 * 1.0), // Approaching limit

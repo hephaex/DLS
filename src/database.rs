@@ -121,7 +121,7 @@ impl std::str::FromStr for BootMode {
             "pxe" => Ok(BootMode::PXE),
             "uefi" => Ok(BootMode::UEFI),
             "legacy" => Ok(BootMode::Legacy),
-            _ => Err(DlsError::Database(format!("Invalid boot mode: {}", s))),
+            _ => Err(DlsError::Database(format!("Invalid boot mode: {s}"))),
         }
     }
 }
@@ -181,7 +181,7 @@ impl std::str::FromStr for SessionStatus {
             "running" => Ok(SessionStatus::Running),
             "shutdown" => Ok(SessionStatus::Shutdown),
             "error" => Ok(SessionStatus::Error),
-            _ => Err(DlsError::Database(format!("Invalid session status: {}", s))),
+            _ => Err(DlsError::Database(format!("Invalid session status: {s}"))),
         }
     }
 }
@@ -217,7 +217,7 @@ impl DatabaseManager {
     pub async fn new(database_url: &str) -> Result<Self> {
         info!(
             "Connecting to database: {}",
-            database_url.split('@').last().unwrap_or("****")
+            database_url.split('@').next_back().unwrap_or("****")
         );
 
         let pool = PgPoolOptions::new()
@@ -225,7 +225,7 @@ impl DatabaseManager {
             .min_connections(2)
             .connect(database_url)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to connect to database: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to connect to database: {e}")))?;
 
         let db = Self { pool };
         db.run_migrations().await?;
@@ -241,7 +241,7 @@ impl DatabaseManager {
         sqlx::query("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"")
             .execute(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to enable UUID extension: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to enable UUID extension: {e}")))?;
 
         // Create users table
         sqlx::query(r#"
@@ -262,7 +262,7 @@ impl DatabaseManager {
         "#)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create users table: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create users table: {e}")))?;
 
         // Create images table
         sqlx::query(
@@ -288,7 +288,7 @@ impl DatabaseManager {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create images table: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create images table: {e}")))?;
 
         // Create clients table
         sqlx::query(r#"
@@ -312,7 +312,7 @@ impl DatabaseManager {
         "#)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create clients table: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create clients table: {e}")))?;
 
         // Create boot_sessions table
         sqlx::query(r#"
@@ -331,7 +331,7 @@ impl DatabaseManager {
         "#)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create boot_sessions table: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create boot_sessions table: {e}")))?;
 
         // Create image_snapshots table
         sqlx::query(
@@ -352,7 +352,7 @@ impl DatabaseManager {
         .execute(&self.pool)
         .await
         .map_err(|e| {
-            DlsError::Database(format!("Failed to create image_snapshots table: {}", e))
+            DlsError::Database(format!("Failed to create image_snapshots table: {e}"))
         })?;
 
         // Create network_ranges table
@@ -375,7 +375,7 @@ impl DatabaseManager {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create network_ranges table: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create network_ranges table: {e}")))?;
 
         // Create indexes for performance
         let indexes = vec![
@@ -399,7 +399,7 @@ impl DatabaseManager {
             sqlx::query(index_sql)
                 .execute(&self.pool)
                 .await
-                .map_err(|e| DlsError::Database(format!("Failed to create index: {}", e)))?;
+                .map_err(|e| DlsError::Database(format!("Failed to create index: {e}")))?;
         }
 
         // Create triggers for updated_at columns
@@ -426,7 +426,7 @@ impl DatabaseManager {
                 .execute(&self.pool)
                 .await
                 .map_err(|e| {
-                    DlsError::Database(format!("Failed to create trigger function: {}", e))
+                    DlsError::Database(format!("Failed to create trigger function: {e}"))
                 })?;
         }
 
@@ -443,7 +443,7 @@ impl DatabaseManager {
             sqlx::query(trigger_sql)
                 .execute(&self.pool)
                 .await
-                .map_err(|e| DlsError::Database(format!("Failed to create trigger: {}", e)))?;
+                .map_err(|e| DlsError::Database(format!("Failed to create trigger: {e}")))?;
         }
 
         info!("Database migrations completed successfully");
@@ -472,14 +472,14 @@ impl DatabaseManager {
         .bind(&image.description)
         .bind(&image.os_type)
         .bind(image.size_bytes as i64)
-        .bind(&format!("{:?}", image.format).to_lowercase())
+        .bind(format!("{:?}", image.format).to_lowercase())
         .bind(&image.path)
         .bind(format!("images/{}", image.id))
         .bind(image.created_at)
         .bind(image.updated_at)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to save image metadata: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to save image metadata: {e}")))?;
 
         debug!("Successfully saved image metadata for: {}", image.id);
         Ok(())
@@ -492,7 +492,7 @@ impl DatabaseManager {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to get image metadata: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to get image metadata: {e}")))?;
 
         Ok(result)
     }
@@ -518,7 +518,7 @@ impl DatabaseManager {
         .bind(offset.unwrap_or(0))
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to list images: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to list images: {e}")))?;
 
         debug!("Retrieved {} images", images.len());
         Ok(images)
@@ -531,10 +531,10 @@ impl DatabaseManager {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to delete image metadata: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to delete image metadata: {e}")))?;
 
         if result.rows_affected() == 0 {
-            return Err(DlsError::Database(format!("Image not found: {}", id)));
+            return Err(DlsError::Database(format!("Image not found: {id}")));
         }
 
         debug!("Successfully deleted image metadata for: {}", id);
@@ -588,7 +588,7 @@ impl DatabaseManager {
         .bind(enabled)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to save client configuration: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to save client configuration: {e}")))?;
 
         debug!(
             "Successfully saved client configuration for: {}",
@@ -609,7 +609,7 @@ impl DatabaseManager {
         .bind(mac_address)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to get client configuration: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to get client configuration: {e}")))?;
 
         Ok(client)
     }
@@ -626,7 +626,7 @@ impl DatabaseManager {
         let clients = sqlx::query_as::<_, ClientConfiguration>(query)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to list clients: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to list clients: {e}")))?;
 
         debug!("Retrieved {} clients", clients.len());
         Ok(clients)
@@ -660,7 +660,7 @@ impl DatabaseManager {
         .bind(&boot_server_ip)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create boot session: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create boot session: {e}")))?;
 
         // Update client boot count and last boot time
         sqlx::query(
@@ -673,7 +673,7 @@ impl DatabaseManager {
         .bind(client_id)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to update client boot stats: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to update client boot stats: {e}")))?;
 
         debug!("Successfully created boot session: {}", session_id);
         Ok(session_id)
@@ -691,7 +691,7 @@ impl DatabaseManager {
         );
 
         let ended_at =
-            matches!(status, SessionStatus::Shutdown | SessionStatus::Error).then(|| Utc::now());
+            matches!(status, SessionStatus::Shutdown | SessionStatus::Error).then(Utc::now);
 
         sqlx::query(
             r#"
@@ -706,7 +706,7 @@ impl DatabaseManager {
         .bind(ended_at)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to update boot session status: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to update boot session status: {e}")))?;
 
         debug!("Successfully updated boot session status");
         Ok(())
@@ -724,7 +724,7 @@ impl DatabaseManager {
         )
         .fetch_all(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to get active sessions: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to get active sessions: {e}")))?;
 
         debug!("Retrieved {} active sessions", sessions.len());
         Ok(sessions)
@@ -757,7 +757,7 @@ impl DatabaseManager {
         .bind(created_by)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to create user: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to create user: {e}")))?;
 
         debug!(
             "Successfully created user: {} with ID: {}",
@@ -775,7 +775,7 @@ impl DatabaseManager {
         .bind(username)
         .fetch_optional(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to get user by username: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to get user by username: {e}")))?;
 
         Ok(user)
     }
@@ -787,7 +787,7 @@ impl DatabaseManager {
             .bind(user_id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to get user by ID: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to get user by ID: {e}")))?;
 
         Ok(user)
     }
@@ -804,7 +804,7 @@ impl DatabaseManager {
         let users = sqlx::query_as::<_, UserRecord>(query)
             .fetch_all(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Failed to list users: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Failed to list users: {e}")))?;
 
         debug!("Retrieved {} users", users.len());
         Ok(users)
@@ -824,10 +824,10 @@ impl DatabaseManager {
         .bind(password_hash)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to update user password: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to update user password: {e}")))?;
 
         if result.rows_affected() == 0 {
-            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+            return Err(DlsError::Database(format!("User not found: {user_id}")));
         }
 
         debug!("Successfully updated password for user: {}", user_id);
@@ -848,10 +848,10 @@ impl DatabaseManager {
         .bind(role.to_string())
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to update user role: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to update user role: {e}")))?;
 
         if result.rows_affected() == 0 {
-            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+            return Err(DlsError::Database(format!("User not found: {user_id}")));
         }
 
         debug!("Successfully updated role for user: {}", user_id);
@@ -871,7 +871,7 @@ impl DatabaseManager {
         .bind(user_id)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to update user last login: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to update user last login: {e}")))?;
 
         debug!("Successfully updated last login for user: {}", user_id);
         Ok(())
@@ -890,10 +890,10 @@ impl DatabaseManager {
         .bind(user_id)
         .execute(&self.pool)
         .await
-        .map_err(|e| DlsError::Database(format!("Failed to deactivate user: {}", e)))?;
+        .map_err(|e| DlsError::Database(format!("Failed to deactivate user: {e}")))?;
 
         if result.rows_affected() == 0 {
-            return Err(DlsError::Database(format!("User not found: {}", user_id)));
+            return Err(DlsError::Database(format!("User not found: {user_id}")));
         }
 
         debug!("Successfully deactivated user: {}", user_id);
@@ -908,7 +908,7 @@ impl DatabaseManager {
             sqlx::query_as("SELECT COUNT(*) FROM users WHERE role = 'admin' AND active = true")
                 .fetch_one(&self.pool)
                 .await
-                .map_err(|e| DlsError::Database(format!("Failed to check admin users: {}", e)))?;
+                .map_err(|e| DlsError::Database(format!("Failed to check admin users: {e}")))?;
 
         if admin_count.0 > 0 {
             return Err(DlsError::Database("Admin user already exists".to_string()));
@@ -924,7 +924,7 @@ impl DatabaseManager {
         sqlx::query("SELECT 1")
             .fetch_one(&self.pool)
             .await
-            .map_err(|e| DlsError::Database(format!("Database health check failed: {}", e)))?;
+            .map_err(|e| DlsError::Database(format!("Database health check failed: {e}")))?;
 
         debug!("Database health check passed");
         Ok(())

@@ -1,6 +1,6 @@
 // Enterprise Audit Management System
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1117,6 +1117,12 @@ pub struct QualityMetric {
     pub reporting_frequency: String,
 }
 
+impl Default for AuditManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuditManager {
     pub fn new() -> Self {
         Self {
@@ -1169,6 +1175,12 @@ impl AuditManager {
         report_request: AuditReportRequest,
     ) -> Result<AuditReport> {
         self.reporting_engine.generate_report(report_request).await
+    }
+}
+
+impl Default for SecurityAuditEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1252,6 +1264,12 @@ impl SecurityAuditEngine {
             .insert(assessment.assessment_id.clone(), assessment.clone())
             .await;
         Ok(assessment)
+    }
+}
+
+impl Default for ComplianceAuditor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1736,6 +1754,12 @@ macro_rules! impl_audit_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

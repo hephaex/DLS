@@ -125,7 +125,7 @@ impl ZfsStorageManager {
         {
             tokio::fs::create_dir_all(&self.base_path)
                 .await
-                .map_err(|e| DlsError::Storage(format!("Failed to create directory: {}", e)))?;
+                .map_err(|e| DlsError::Storage(format!("Failed to create directory: {e}")))?;
         }
 
         Ok(())
@@ -141,7 +141,7 @@ impl ZfsStorageManager {
     }
 
     fn dataset_name_for_image(&self, id: Uuid) -> String {
-        format!("images/{}", id)
+        format!("images/{id}")
     }
 
     async fn load_image_metadata(&self) -> Result<()> {
@@ -161,7 +161,7 @@ impl ZfsStorageManager {
                     if let Ok(file_metadata) = tokio::fs::metadata(&image_path).await {
                         let disk_image = DiskImage {
                             id,
-                            name: format!("disk-image-{}", id),
+                            name: format!("disk-image-{id}"),
                             size_bytes: file_metadata.len(),
                             format: ImageFormat::Raw,
                             path: image_path,
@@ -205,19 +205,19 @@ impl ZfsStorageManager {
             ImageFormat::Raw => {
                 debug!("Creating raw image file: {} ({} bytes)", path, size_bytes);
                 let file = fs::File::create(path).await.map_err(|e| {
-                    DlsError::Storage(format!("Failed to create image file: {}", e))
+                    DlsError::Storage(format!("Failed to create image file: {e}"))
                 })?;
                 file.set_len(size_bytes)
                     .await
-                    .map_err(|e| DlsError::Storage(format!("Failed to set file size: {}", e)))?;
+                    .map_err(|e| DlsError::Storage(format!("Failed to set file size: {e}")))?;
             }
             ImageFormat::Qcow2 => {
                 debug!("Creating qcow2 image file: {} ({} bytes)", path, size_bytes);
                 let output = Command::new("qemu-img")
-                    .args(&["create", "-f", "qcow2", path, &format!("{}B", size_bytes)])
+                    .args(["create", "-f", "qcow2", path, &format!("{size_bytes}B")])
                     .output()
                     .await
-                    .map_err(|e| DlsError::Storage(format!("Failed to execute qemu-img: {}", e)))?;
+                    .map_err(|e| DlsError::Storage(format!("Failed to execute qemu-img: {e}")))?;
 
                 if !output.status.success() {
                     return Err(DlsError::Storage(format!(
@@ -229,10 +229,10 @@ impl ZfsStorageManager {
             ImageFormat::Vhdx => {
                 debug!("Creating VHDX image file: {} ({} bytes)", path, size_bytes);
                 let output = Command::new("qemu-img")
-                    .args(&["create", "-f", "vhdx", path, &format!("{}B", size_bytes)])
+                    .args(["create", "-f", "vhdx", path, &format!("{size_bytes}B")])
                     .output()
                     .await
-                    .map_err(|e| DlsError::Storage(format!("Failed to execute qemu-img: {}", e)))?;
+                    .map_err(|e| DlsError::Storage(format!("Failed to execute qemu-img: {e}")))?;
 
                 if !output.status.success() {
                     return Err(DlsError::Storage(format!(
@@ -269,7 +269,7 @@ impl ZfsStorageManager {
         {
             use crate::storage::zfs::MockZfsManager;
             let zfs_manager = MockZfsManager::new(self.pool_name.clone());
-            let dataset_name = format!("images/{}", image_id);
+            let dataset_name = format!("images/{image_id}");
 
             let mut properties = std::collections::HashMap::new();
             properties.insert("compression".to_string(), "lz4".to_string());
@@ -296,7 +296,7 @@ impl ZfsStorageManager {
         {
             use crate::storage::zfs::MockZfsManager;
             let zfs_manager = MockZfsManager::new(self.pool_name.clone());
-            let dataset_name = format!("images/{}", image_id);
+            let dataset_name = format!("images/{image_id}");
             zfs_manager
                 .create_snapshot(&dataset_name, snapshot_name)
                 .await
@@ -375,7 +375,7 @@ impl StorageManager for ZfsStorageManager {
         if let Some(image) = metadata.get(&id) {
             if Path::new(&image.path).exists() {
                 fs::remove_file(&image.path).await.map_err(|e| {
-                    DlsError::Storage(format!("Failed to remove image file: {}", e))
+                    DlsError::Storage(format!("Failed to remove image file: {e}"))
                 })?;
             }
         }
@@ -412,20 +412,20 @@ impl StorageManager for ZfsStorageManager {
                         .open(&image.path)
                         .await
                         .map_err(|e| {
-                            DlsError::Storage(format!("Failed to open image file: {}", e))
+                            DlsError::Storage(format!("Failed to open image file: {e}"))
                         })?;
 
                     file.set_len(new_size_bytes).await.map_err(|e| {
-                        DlsError::Storage(format!("Failed to resize image file: {}", e))
+                        DlsError::Storage(format!("Failed to resize image file: {e}"))
                     })?;
                 }
                 _ => {
                     let output = Command::new("qemu-img")
-                        .args(&["resize", &image.path, &format!("{}B", new_size_bytes)])
+                        .args(["resize", &image.path, &format!("{new_size_bytes}B")])
                         .output()
                         .await
                         .map_err(|e| {
-                            DlsError::Storage(format!("Failed to execute qemu-img resize: {}", e))
+                            DlsError::Storage(format!("Failed to execute qemu-img resize: {e}"))
                         })?;
 
                     if !output.status.success() {
@@ -442,7 +442,7 @@ impl StorageManager for ZfsStorageManager {
             info!("Successfully resized image: {}", id);
             Ok(())
         } else {
-            Err(DlsError::Storage(format!("Image not found: {}", id)))
+            Err(DlsError::Storage(format!("Image not found: {id}")))
         }
     }
 
@@ -452,7 +452,7 @@ impl StorageManager for ZfsStorageManager {
         let metadata = self.images_metadata.read().await;
         let source_image = metadata
             .get(&id)
-            .ok_or_else(|| DlsError::Storage(format!("Source image not found: {}", id)))?
+            .ok_or_else(|| DlsError::Storage(format!("Source image not found: {id}")))?
             .clone();
         drop(metadata);
 
@@ -532,11 +532,11 @@ impl StorageManager for ZfsStorageManager {
         let metadata = self.images_metadata.read().await;
         let image = metadata
             .get(&id)
-            .ok_or_else(|| DlsError::Storage(format!("Image not found: {}", id)))?;
+            .ok_or_else(|| DlsError::Storage(format!("Image not found: {id}")))?;
 
         fs::copy(&image.path, export_path)
             .await
-            .map_err(|e| DlsError::Storage(format!("Failed to export image: {}", e)))?;
+            .map_err(|e| DlsError::Storage(format!("Failed to export image: {e}")))?;
 
         info!("Successfully exported image {} to {}", id, export_path);
         Ok(())
@@ -547,13 +547,12 @@ impl StorageManager for ZfsStorageManager {
 
         if !Path::new(import_path).exists() {
             return Err(DlsError::Storage(format!(
-                "Import file not found: {}",
-                import_path
+                "Import file not found: {import_path}"
             )));
         }
 
         let file_metadata = fs::metadata(import_path).await.map_err(|e| {
-            DlsError::Storage(format!("Failed to read import file metadata: {}", e))
+            DlsError::Storage(format!("Failed to read import file metadata: {e}"))
         })?;
 
         let format = if import_path.ends_with(".qcow2") {
@@ -584,7 +583,7 @@ impl StorageManager for ZfsStorageManager {
 
         fs::copy(import_path, &image_path)
             .await
-            .map_err(|e| DlsError::Storage(format!("Failed to copy import file: {}", e)))?;
+            .map_err(|e| DlsError::Storage(format!("Failed to copy import file: {e}")))?;
 
         let now = chrono::Utc::now();
         let image = DiskImage {
@@ -595,7 +594,7 @@ impl StorageManager for ZfsStorageManager {
             path: image_path,
             created_at: now,
             updated_at: now,
-            description: Some(format!("Imported from {}", import_path)),
+            description: Some(format!("Imported from {import_path}")),
             os_type: None,
         };
 

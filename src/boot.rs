@@ -486,7 +486,7 @@ impl PxeOrchestrator {
             session.boot_stage = stage;
             session.last_activity = chrono::Utc::now().timestamp() as u64;
 
-            info!("Boot session {} updated to stage: {:?}", session_id, stage);
+            info!("Boot session {session_id} updated to stage: {stage:?}");
 
             // Update status based on stage
             match stage {
@@ -511,8 +511,7 @@ impl PxeOrchestrator {
             Ok(session.assigned_profile.boot_files.clone())
         } else {
             Err(DlsError::NotFound(format!(
-                "Boot session not found: {}",
-                session_id
+                "Boot session not found: {session_id}"
             )))
         }
     }
@@ -533,12 +532,11 @@ impl PxeOrchestrator {
         let mut profiles = self.profiles.write().await;
 
         if profiles.remove(profile_id).is_some() {
-            info!("Removed boot profile: {}", profile_id);
+            info!("Removed boot profile: {profile_id}");
             Ok(())
         } else {
             Err(DlsError::NotFound(format!(
-                "Boot profile not found: {}",
-                profile_id
+                "Boot profile not found: {profile_id}"
             )))
         }
     }
@@ -627,7 +625,7 @@ impl PxeOrchestrator {
 
                 let cleaned = initial_count - sessions_guard.len();
                 if cleaned > 0 {
-                    info!("Cleaned up {} expired boot sessions", cleaned);
+                    info!("Cleaned up {cleaned} expired boot sessions");
                 }
             }
         });

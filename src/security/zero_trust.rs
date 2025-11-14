@@ -522,7 +522,7 @@ impl ZeroTrustManager {
             device_id: Some(session.device_id),
             user_id: session.user_id,
             source_ip: "0.0.0.0".parse().unwrap(), // TODO: Get actual IP
-            description: format!("Access denied to {} for operation {}", resource, operation),
+            description: format!("Access denied to {resource} for operation {operation}"),
             metadata: HashMap::new(),
             timestamp: Utc::now(),
             resolved: false,

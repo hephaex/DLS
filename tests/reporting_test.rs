@@ -1,5 +1,6 @@
+#![allow(clippy::await_holding_lock)]
+
 use chrono::{Duration, Utc};
-use dls_server::error::Result;
 use dls_server::reporting::*;
 use std::collections::HashMap;
 use uuid::Uuid;
@@ -249,15 +250,15 @@ async fn test_audit_trail_recording() {
                 1 => AuditEventType::DataAccess,
                 _ => AuditEventType::SecurityEvent,
             },
-            user_id: Some(format!("user_{}", i)),
+            user_id: Some(format!("user_{i}")),
             tenant_id: Some(Uuid::new_v4()),
-            resource_id: Some(format!("resource_{}", i)),
-            action: format!("action_{}", i),
+            resource_id: Some(format!("resource_{i}")),
+            action: format!("action_{i}"),
             details: serde_json::json!({"test": true, "index": i}),
             timestamp: Utc::now() - Duration::minutes(i as i64),
             source_ip: Some("192.168.1.100".to_string()),
             user_agent: Some("TestAgent/1.0".to_string()),
-            session_id: Some(format!("session_{}", i)),
+            session_id: Some(format!("session_{i}")),
             outcome: if i % 2 == 0 {
                 AuditOutcome::Success
             } else {
@@ -506,7 +507,7 @@ async fn test_compliance_framework_variants() {
 #[tokio::test]
 async fn test_risk_level_ordering() {
     // Test risk level ordering for proper priority handling
-    let mut risk_levels = vec![
+    let risk_levels = vec![
         RiskLevel::Critical,
         RiskLevel::Low,
         RiskLevel::High,

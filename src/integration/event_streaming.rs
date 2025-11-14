@@ -788,6 +788,12 @@ impl EventStreamingPlatform {
     }
 }
 
+impl Default for EventProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EventProcessor {
     pub fn new() -> Self {
         Self {
@@ -815,6 +821,12 @@ impl EventProcessor {
     }
 }
 
+impl Default for DeadLetterQueue {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeadLetterQueue {
     pub fn new() -> Self {
         Self {
@@ -829,6 +841,12 @@ impl DeadLetterQueue {
             retry_scheduler: Arc::new(RetryScheduler::new()),
             analysis_engine: Arc::new(FailureAnalysisEngine::new()),
         }
+    }
+}
+
+impl Default for RetryScheduler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -848,6 +866,12 @@ impl RetryScheduler {
     }
 }
 
+impl Default for FailureAnalysisEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FailureAnalysisEngine {
     pub fn new() -> Self {
         Self {
@@ -861,6 +885,12 @@ impl FailureAnalysisEngine {
             failure_patterns: Arc::new(DashMap::new()),
             analysis_results: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for StreamAnalytics {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -886,6 +916,12 @@ impl StreamAnalytics {
     }
 }
 
+impl Default for WindowingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WindowingEngine {
     pub fn new() -> Self {
         Self {
@@ -899,6 +935,12 @@ impl WindowingEngine {
             window_definitions: Arc::new(DashMap::new()),
             active_windows: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for AggregationEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -918,6 +960,12 @@ impl AggregationEngine {
     }
 }
 
+impl Default for PatternDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternDetector {
     pub fn new() -> Self {
         Self {
@@ -931,6 +979,12 @@ impl PatternDetector {
             pattern_definitions: Arc::new(DashMap::new()),
             detected_patterns: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for TopicManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -960,6 +1014,12 @@ impl TopicManager {
     }
 }
 
+impl Default for PartitionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PartitionManager {
     pub fn new() -> Self {
         Self {
@@ -973,6 +1033,12 @@ impl PartitionManager {
             partitions: Arc::new(DashMap::new()),
             partition_assignment: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for ConsumerManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -997,6 +1063,12 @@ impl ConsumerManager {
     }
 }
 
+impl Default for OffsetManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OffsetManager {
     pub fn new() -> Self {
         Self {
@@ -1010,6 +1082,12 @@ impl OffsetManager {
             committed_offsets: AsyncDataStore::new(),
             offset_storage: OffsetStorage::default(),
         }
+    }
+}
+
+impl Default for ProducerManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

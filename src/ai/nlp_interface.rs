@@ -977,11 +977,11 @@ impl NaturalLanguageProcessor {
                         "How is the system performing?".to_string(),
                         "Show me system health".to_string(),
                     ],
-                    keywords: vec!["status", "health", "system", "performance"]
+                    keywords: ["status", "health", "system", "performance"]
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
-                    patterns: vec![".*status.*", ".*health.*", "how.*system.*"]
+                    patterns: [".*status.*", ".*health.*", "how.*system.*"]
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
@@ -994,11 +994,11 @@ impl NaturalLanguageProcessor {
                         "What are the memory usage stats?".to_string(),
                         "Display network performance".to_string(),
                     ],
-                    keywords: vec!["metrics", "stats", "usage", "performance", "cpu", "memory"]
+                    keywords: ["metrics", "stats", "usage", "performance", "cpu", "memory"]
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
-                    patterns: vec![".*metrics.*", ".*usage.*", "show.*performance.*"]
+                    patterns: [".*metrics.*", ".*usage.*", "show.*performance.*"]
                         .iter()
                         .map(|s| s.to_string())
                         .collect(),
@@ -1024,7 +1024,7 @@ impl NaturalLanguageProcessor {
                 pattern: r"(?i)(cpu|processor|memory|ram|disk|storage|network)".to_string(),
                 pattern_type: PatternType::Regex,
                 confidence: 0.9,
-                examples: vec!["CPU", "memory", "disk", "network"]
+                examples: ["CPU", "memory", "disk", "network"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect(),
@@ -1045,7 +1045,7 @@ impl NaturalLanguageProcessor {
             title: "System Monitoring Guide".to_string(),
             content: "This guide explains how to monitor system performance...".to_string(),
             document_type: DocumentType::UserGuide,
-            tags: vec!["monitoring", "performance", "system"]
+            tags: ["monitoring", "performance", "system"]
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
@@ -1063,7 +1063,7 @@ impl NaturalLanguageProcessor {
             concept_id: "cpu_monitoring".to_string(),
             name: "CPU Monitoring".to_string(),
             definition: "The process of tracking CPU usage and performance metrics".to_string(),
-            aliases: vec!["processor monitoring", "CPU tracking"]
+            aliases: ["processor monitoring", "CPU tracking"]
                 .iter()
                 .map(|s| s.to_string())
                 .collect(),
@@ -1341,7 +1341,7 @@ impl NaturalLanguageProcessor {
             x_axis_label: "Time".to_string(),
             y_axis_label: "Usage %".to_string(),
             data_series: vec![DataSeries {
-                name: format!("{} Usage", component),
+                name: format!("{component} Usage"),
                 data_points: vec![
                     DataPoint {
                         x: 0.0,

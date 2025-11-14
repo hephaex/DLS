@@ -94,11 +94,11 @@ impl FreeBsdZfsManager {
             .args(args)
             .output()
             .await
-            .map_err(|e| DlsError::Storage(format!("Failed to execute ZFS command: {}", e)))?;
+            .map_err(|e| DlsError::Storage(format!("Failed to execute ZFS command: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(DlsError::Storage(format!("ZFS command failed: {}", stderr)));
+            return Err(DlsError::Storage(format!("ZFS command failed: {stderr}")));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -116,13 +116,12 @@ impl FreeBsdZfsManager {
             .args(args)
             .output()
             .await
-            .map_err(|e| DlsError::Storage(format!("Failed to execute ZPool command: {}", e)))?;
+            .map_err(|e| DlsError::Storage(format!("Failed to execute ZPool command: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(DlsError::Storage(format!(
-                "ZPool command failed: {}",
-                stderr
+                "ZPool command failed: {stderr}"
             )));
         }
 
@@ -198,7 +197,7 @@ impl ZfsManager for FreeBsdZfsManager {
         let mut args = vec!["create"];
         let property_strings: Vec<String> = properties
             .iter()
-            .map(|(key, value)| format!("{}={}", key, value))
+            .map(|(key, value)| format!("{key}={value}"))
             .collect();
 
         for property_string in &property_strings {
@@ -285,7 +284,7 @@ impl ZfsManager for FreeBsdZfsManager {
 
     async fn set_property(&self, dataset: &str, property: &str, value: &str) -> Result<()> {
         let full_name = self.build_dataset_name(dataset);
-        let prop_value = format!("{}={}", property, value);
+        let prop_value = format!("{property}={value}");
 
         let args = ["set", &prop_value, &full_name];
         self.run_zfs_command(&args).await?;
@@ -314,7 +313,7 @@ impl ZfsManager for FreeBsdZfsManager {
 
     async fn create_snapshot(&self, dataset: &str, snapshot_name: &str) -> Result<ZfsSnapshot> {
         let full_name = self.build_dataset_name(dataset);
-        let snap_name = format!("{}@{}", full_name, snapshot_name);
+        let snap_name = format!("{full_name}@{snapshot_name}");
 
         let args = ["snapshot", &snap_name];
         self.run_zfs_command(&args).await?;
@@ -332,7 +331,7 @@ impl ZfsManager for FreeBsdZfsManager {
 
     async fn destroy_snapshot(&self, dataset: &str, snapshot_name: &str) -> Result<()> {
         let full_name = self.build_dataset_name(dataset);
-        let snap_name = format!("{}@{}", full_name, snapshot_name);
+        let snap_name = format!("{full_name}@{snapshot_name}");
 
         let args = ["destroy", &snap_name];
         self.run_zfs_command(&args).await?;
@@ -389,7 +388,7 @@ impl ZfsManager for FreeBsdZfsManager {
 
     async fn rollback_snapshot(&self, dataset: &str, snapshot_name: &str) -> Result<()> {
         let full_name = self.build_dataset_name(dataset);
-        let snap_name = format!("{}@{}", full_name, snapshot_name);
+        let snap_name = format!("{full_name}@{snapshot_name}");
 
         let args = ["rollback", &snap_name];
         self.run_zfs_command(&args).await?;
@@ -469,7 +468,7 @@ impl ZfsManager for MockZfsManager {
 
         let dataset = ZfsDataset {
             name: full_name.clone(),
-            mountpoint: Some(PathBuf::from(format!("/{}", full_name))),
+            mountpoint: Some(PathBuf::from(format!("/{full_name}"))),
             used: 0,
             available: 1024 * 1024 * 1024, // 1GB
             compression: CompressionType::Lz4,
@@ -531,7 +530,7 @@ impl ZfsManager for MockZfsManager {
 
     async fn create_snapshot(&self, dataset: &str, snapshot_name: &str) -> Result<ZfsSnapshot> {
         let full_name = format!("{}/{}", self.pool_name, dataset);
-        let snap_name = format!("{}@{}", full_name, snapshot_name);
+        let snap_name = format!("{full_name}@{snapshot_name}");
 
         let snapshot = ZfsSnapshot {
             name: snap_name.clone(),
@@ -550,7 +549,7 @@ impl ZfsManager for MockZfsManager {
 
     async fn destroy_snapshot(&self, dataset: &str, snapshot_name: &str) -> Result<()> {
         let full_name = format!("{}/{}", self.pool_name, dataset);
-        let snap_name = format!("{}@{}", full_name, snapshot_name);
+        let snap_name = format!("{full_name}@{snapshot_name}");
 
         let mut snapshots = self.snapshots.write().await;
         snapshots.remove(&snap_name);

@@ -1,12 +1,11 @@
 // Real-Time Analytics Engine for Live Data Processing
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct RealTimeAnalyticsEngine {
@@ -346,6 +345,12 @@ pub struct EvictionConfiguration {
     pub evict_after: bool,
 }
 
+impl Default for RealTimeAnalyticsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RealTimeAnalyticsEngine {
     pub fn new() -> Self {
         Self {
@@ -379,6 +384,12 @@ impl RealTimeAnalyticsEngine {
 
     pub async fn get_stream_metrics(&self, stream_id: &str) -> Result<StreamMetrics> {
         self.stream_processor.get_metrics(stream_id).await
+    }
+}
+
+impl Default for StreamAnalyticsProcessor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -418,6 +429,12 @@ impl StreamAnalyticsProcessor {
             checkpoint_duration: Duration::from_millis(100),
             state_size: 1024 * 1024,
         })
+    }
+}
+
+impl Default for WindowManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -498,6 +515,12 @@ pub struct CheckpointManager {
     pub manager_id: String,
 }
 
+impl Default for CheckpointManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CheckpointManager {
     pub fn new() -> Self {
         Self {
@@ -515,6 +538,12 @@ impl CheckpointManager {
 #[derive(Debug, Clone)]
 pub struct BackpressureController {
     pub controller_id: String,
+}
+
+impl Default for BackpressureController {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BackpressureController {
@@ -536,6 +565,12 @@ pub struct TriggerManager {
     pub manager_id: String,
 }
 
+impl Default for TriggerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TriggerManager {
     pub fn new() -> Self {
         Self {
@@ -553,6 +588,12 @@ impl TriggerManager {
 #[derive(Debug, Clone)]
 pub struct EvictorManager {
     pub manager_id: String,
+}
+
+impl Default for EvictorManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EvictorManager {
@@ -574,6 +615,12 @@ pub struct AggregationEngine {
     pub engine_id: String,
 }
 
+impl Default for AggregationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AggregationEngine {
     pub fn new() -> Self {
         Self {
@@ -591,6 +638,12 @@ impl AggregationEngine {
 #[derive(Debug, Clone)]
 pub struct PatternDetector {
     pub detector_id: String,
+}
+
+impl Default for PatternDetector {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PatternDetector {
@@ -612,6 +665,12 @@ pub struct RealTimeAnomalyDetector {
     pub detector_id: String,
 }
 
+impl Default for RealTimeAnomalyDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RealTimeAnomalyDetector {
     pub fn new() -> Self {
         Self {
@@ -629,6 +688,12 @@ impl RealTimeAnomalyDetector {
 #[derive(Debug, Clone)]
 pub struct EventCorrelator {
     pub correlator_id: String,
+}
+
+impl Default for EventCorrelator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl EventCorrelator {
@@ -650,6 +715,12 @@ pub struct DashboardEngine {
     pub engine_id: String,
 }
 
+impl Default for DashboardEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DashboardEngine {
     pub fn new() -> Self {
         Self {
@@ -667,6 +738,12 @@ impl DashboardEngine {
 #[derive(Debug, Clone)]
 pub struct RealTimeAlertManager {
     pub manager_id: String,
+}
+
+impl Default for RealTimeAlertManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RealTimeAlertManager {

@@ -258,7 +258,7 @@ async fn get_dashboard_stats(
             timestamp,
         }),
         Err(e) => {
-            error!("Failed to get dashboard stats: {}", e);
+            error!("Failed to get dashboard stats: {e}");
             Json(ApiResponse {
                 success: false,
                 data: None,

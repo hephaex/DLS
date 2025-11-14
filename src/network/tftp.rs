@@ -35,7 +35,7 @@ impl TryFrom<u16> for TftpOpcode {
             4 => Ok(TftpOpcode::Ack),
             5 => Ok(TftpOpcode::Error),
             6 => Ok(TftpOpcode::OptionAck),
-            _ => Err(DlsError::Network(format!("Invalid TFTP opcode: {}", value))),
+            _ => Err(DlsError::Network(format!("Invalid TFTP opcode: {value}"))),
         }
     }
 }
@@ -69,7 +69,7 @@ impl TftpMode {
             "netascii" => Ok(TftpMode::Netascii),
             "octet" | "binary" => Ok(TftpMode::Octet),
             "mail" => Ok(TftpMode::Mail),
-            _ => Err(DlsError::Network(format!("Invalid TFTP mode: {}", s))),
+            _ => Err(DlsError::Network(format!("Invalid TFTP mode: {s}"))),
         }
     }
 }
@@ -363,7 +363,7 @@ impl TftpServer {
     ) -> Result<()> {
         let socket = UdpSocket::bind(config.bind_addr)
             .await
-            .map_err(|e| DlsError::Network(format!("Failed to bind TFTP socket: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to bind TFTP socket: {e}")))?;
 
         let socket = Arc::new(socket);
         info!("TFTP server listening on {}", config.bind_addr);
@@ -574,7 +574,7 @@ impl TftpServer {
 
         if let Some(timeout) = options.get("timeout") {
             if let Ok(secs) = timeout.parse::<u64>() {
-                if secs >= 1 && secs <= 60 {
+                if (1..=60).contains(&secs) {
                     session.timeout = Duration::from_secs(secs);
                     response_options.insert("timeout".to_string(), secs.to_string());
                 }

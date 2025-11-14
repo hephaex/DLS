@@ -1,6 +1,6 @@
 // Cloud Federation for Cross-Provider Service Integration
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -868,6 +868,12 @@ pub struct ServicePerformanceMetrics {
     pub memory_utilization: f64,
 }
 
+impl Default for CloudFederationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CloudFederationManager {
     pub fn new() -> Self {
         Self {
@@ -929,6 +935,12 @@ impl CloudFederationManager {
     }
 }
 
+impl Default for FederatedServiceRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedServiceRegistry {
     pub fn new() -> Self {
         Self {
@@ -963,6 +975,12 @@ pub struct ServiceDiscoveryEngine {
     pub engine_id: String,
 }
 
+impl Default for ServiceDiscoveryEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServiceDiscoveryEngine {
     pub fn new() -> Self {
         Self {
@@ -980,6 +998,12 @@ impl ServiceDiscoveryEngine {
 #[derive(Debug, Clone)]
 pub struct FederatedServiceMesh {
     pub mesh_id: String,
+}
+
+impl Default for FederatedServiceMesh {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FederatedServiceMesh {
@@ -1001,6 +1025,12 @@ pub struct FederatedLoadBalancer {
     pub balancer_id: String,
 }
 
+impl Default for FederatedLoadBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedLoadBalancer {
     pub fn new() -> Self {
         Self {
@@ -1020,6 +1050,12 @@ pub struct FederatedIdentityBroker {
     pub broker_id: String,
 }
 
+impl Default for FederatedIdentityBroker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedIdentityBroker {
     pub fn new() -> Self {
         Self {
@@ -1037,6 +1073,12 @@ impl FederatedIdentityBroker {
 #[derive(Debug, Clone)]
 pub struct FederatedNetworkFabric {
     pub fabric_id: String,
+}
+
+impl Default for FederatedNetworkFabric {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FederatedNetworkFabric {
@@ -1062,6 +1104,12 @@ pub struct FederationGovernanceEngine {
     pub engine_id: String,
 }
 
+impl Default for FederationGovernanceEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederationGovernanceEngine {
     pub fn new() -> Self {
         Self {
@@ -1079,6 +1127,12 @@ impl FederationGovernanceEngine {
 #[derive(Debug, Clone)]
 pub struct FederationTrustManager {
     pub manager_id: String,
+}
+
+impl Default for FederationTrustManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FederationTrustManager {
@@ -1110,6 +1164,12 @@ impl FederationTrustManager {
 #[derive(Debug, Clone)]
 pub struct FederatedResourceBroker {
     pub broker_id: String,
+}
+
+impl Default for FederatedResourceBroker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl FederatedResourceBroker {

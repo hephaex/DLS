@@ -1,6 +1,6 @@
 // Enterprise Marketplace & Extensions System
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1072,6 +1072,12 @@ pub struct PerformanceRequirements {
     pub concurrent_execution_limit: Option<u32>,
 }
 
+impl Default for MarketplaceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MarketplaceManager {
     pub fn new() -> Self {
         Self {
@@ -1120,6 +1126,12 @@ impl MarketplaceManager {
 
     pub async fn validate_security(&self, plugin_id: &str) -> Result<SecurityScanResult> {
         self.security_scanner.scan_plugin(plugin_id).await
+    }
+}
+
+impl Default for PluginRegistry {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1235,6 +1247,12 @@ impl PluginRegistry {
 
     fn matches_filter(&self, _plugin: &Plugin, _filter: &PluginFilter) -> bool {
         true
+    }
+}
+
+impl Default for ExtensionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1409,6 +1427,12 @@ macro_rules! impl_marketplace_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

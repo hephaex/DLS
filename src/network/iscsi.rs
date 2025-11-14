@@ -69,8 +69,7 @@ impl TryFrom<u8> for IscsiOpcode {
             0x32 => Ok(IscsiOpcode::AsyncMessage),
             0x3f => Ok(IscsiOpcode::Reject),
             _ => Err(DlsError::Network(format!(
-                "Invalid iSCSI opcode: {:#04x}",
-                value
+                "Invalid iSCSI opcode: {value:#04x}"
             ))),
         }
     }
@@ -210,7 +209,7 @@ pub struct IscsiLun {
 impl IscsiLun {
     pub fn new(lun_id: u32, target_name: String, image_path: PathBuf) -> Result<Self> {
         let metadata = std::fs::metadata(&image_path)
-            .map_err(|e| DlsError::Storage(format!("Cannot access image file: {}", e)))?;
+            .map_err(|e| DlsError::Storage(format!("Cannot access image file: {e}")))?;
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -429,7 +428,7 @@ impl IscsiTarget {
             info!("Removed LUN {}: {}", lun_id, lun.image_path.display());
             Ok(())
         } else {
-            Err(DlsError::Storage(format!("LUN {} not found", lun_id)))
+            Err(DlsError::Storage(format!("LUN {lun_id} not found")))
         }
     }
 
@@ -449,7 +448,7 @@ impl IscsiTarget {
     ) -> Result<()> {
         let listener = TcpListener::bind(config.bind_addr)
             .await
-            .map_err(|e| DlsError::Network(format!("Failed to bind iSCSI socket: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to bind iSCSI socket: {e}")))?;
 
         info!("iSCSI target listening on {}", config.bind_addr);
 

@@ -305,7 +305,7 @@ impl PerformanceMonitor {
                     }
                     Err(e) => {
                         test.status = LoadTestStatus::Failed;
-                        test.error_log.push(format!("Test execution failed: {}", e));
+                        test.error_log.push(format!("Test execution failed: {e}"));
                     }
                 }
             }
@@ -450,7 +450,7 @@ impl PerformanceMonitor {
                 }
                 Err(e) => {
                     failed_requests += 1;
-                    let error_type = format!("{:?}", e);
+                    let error_type = format!("{e:?}");
                     *errors_by_type.entry(error_type).or_insert(0) += 1;
                 }
             }
@@ -711,13 +711,11 @@ mod tests {
 
     #[test]
     fn test_load_test_target_variants() {
-        let targets = vec![
-            LoadTestTarget::DhcpServer,
+        let targets = [LoadTestTarget::DhcpServer,
             LoadTestTarget::TftpServer,
             LoadTestTarget::IscsiTarget,
             LoadTestTarget::ProvisioningSystem,
-            LoadTestTarget::FullBootSequence,
-        ];
+            LoadTestTarget::FullBootSequence];
 
         assert_eq!(targets.len(), 5);
     }

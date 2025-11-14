@@ -1095,7 +1095,7 @@ impl DistributedMLPipeline {
 
                 let deployed_model = DeployedModel {
                     model_id: model_id.to_string(),
-                    model_name: format!("Model {}", model_id),
+                    model_name: format!("Model {model_id}"),
                     model_version: "1.0.0".to_string(),
                     model_type: ModelType::AnomalyDetection,
                     framework: AIFramework::ONNX,
@@ -1121,7 +1121,7 @@ impl DistributedMLPipeline {
 
                 engine.deployed_models.push(deployed_model);
 
-                let deployment_id = format!("{}-{}", model_id, node_id);
+                let deployment_id = format!("{model_id}-{node_id}");
                 deployment_ids.push(deployment_id);
 
                 tracing::info!("Model {} deployed to edge node {}", model_id, node_id);
@@ -1208,6 +1208,12 @@ pub struct PipelineMetrics {
     pub last_updated: DateTime<Utc>,
 }
 
+impl Default for FederatedLearningManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FederatedLearningManager {
     pub fn new() -> Self {
         Self {
@@ -1242,6 +1248,12 @@ impl FederatedLearningManager {
     }
 }
 
+impl Default for PrivacyManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PrivacyManager {
     pub fn new() -> Self {
         Self {
@@ -1256,6 +1268,12 @@ impl PrivacyManager {
     }
 }
 
+impl Default for ModelRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelRegistry {
     pub fn new() -> Self {
         Self {
@@ -1263,6 +1281,12 @@ impl ModelRegistry {
             model_lineage: Arc::new(DashMap::new()),
             model_store: Arc::new(ModelStore::new()),
         }
+    }
+}
+
+impl Default for ModelStore {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1280,6 +1304,12 @@ pub struct LocalStorageBackend {
     base_path: std::path::PathBuf,
 }
 
+impl Default for LocalStorageBackend {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LocalStorageBackend {
     pub fn new() -> Self {
         Self {
@@ -1291,7 +1321,7 @@ impl LocalStorageBackend {
 impl StorageBackend for LocalStorageBackend {
     fn store_model(&self, model_id: &str, _model_data: &[u8]) -> Result<String> {
         // Simplified implementation
-        let model_path = self.base_path.join(format!("{}.model", model_id));
+        let model_path = self.base_path.join(format!("{model_id}.model"));
         Ok(model_path.to_string_lossy().to_string())
     }
 
@@ -1311,6 +1341,12 @@ impl StorageBackend for LocalStorageBackend {
     }
 }
 
+impl Default for InferenceRouter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InferenceRouter {
     pub fn new() -> Self {
         Self {
@@ -1326,12 +1362,24 @@ impl InferenceRouter {
     }
 }
 
+impl Default for LoadBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LoadBalancer {
     pub fn new() -> Self {
         Self {
             balancing_algorithm: Arc::new(RwLock::new(BalancingAlgorithm::RoundRobin)),
             health_checker: Arc::new(HealthChecker::new()),
         }
+    }
+}
+
+impl Default for HealthChecker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1345,12 +1393,24 @@ impl HealthChecker {
     }
 }
 
+impl Default for FailoverManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FailoverManager {
     pub fn new() -> Self {
         Self {
             failover_policies: Arc::new(RwLock::new(Vec::new())),
             circuit_breakers: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for AIPerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1376,6 +1436,12 @@ impl AIPerformanceMonitor {
     }
 }
 
+impl Default for MetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetricsCollector {
     pub fn new() -> Self {
         Self {
@@ -1383,6 +1449,12 @@ impl MetricsCollector {
             retention_period: Duration::days(30),
             aggregation_rules: Vec::new(),
         }
+    }
+}
+
+impl Default for AlertManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1396,6 +1468,12 @@ impl AlertManager {
     }
 }
 
+impl Default for AIAutoScaler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AIAutoScaler {
     pub fn new() -> Self {
         Self {
@@ -1403,6 +1481,12 @@ impl AIAutoScaler {
             scaling_history: Arc::new(RwLock::new(Vec::new())),
             resource_predictor: Arc::new(ResourcePredictor::new()),
         }
+    }
+}
+
+impl Default for ResourcePredictor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

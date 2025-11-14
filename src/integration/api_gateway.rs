@@ -673,6 +673,7 @@ pub enum IdentityProviderType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct IdentityProviderConfig {
     pub endpoint: Option<String>,
     pub client_id: Option<String>,
@@ -1508,6 +1509,12 @@ pub struct RequestContext {
 }
 
 // Implementation stubs for major components
+impl Default for RouteManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RouteManager {
     pub fn new() -> Self {
         Self {
@@ -1536,6 +1543,12 @@ impl RouteManager {
     }
 }
 
+impl Default for GatewayLoadBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GatewayLoadBalancer {
     pub fn new() -> Self {
         Self {
@@ -1550,6 +1563,12 @@ impl GatewayLoadBalancer {
             sticky_sessions: Arc::new(StickySessionManager::new()),
             health_checker: Arc::new(UpstreamHealthChecker::new()),
         }
+    }
+}
+
+impl Default for StickySessionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1569,6 +1588,12 @@ impl StickySessionManager {
     }
 }
 
+impl Default for UpstreamHealthChecker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl UpstreamHealthChecker {
     pub fn new() -> Self {
         Self {
@@ -1582,6 +1607,12 @@ impl UpstreamHealthChecker {
             health_checks: Arc::new(DashMap::new()),
             health_results: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for RateLimiter {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1607,6 +1638,12 @@ impl RateLimiter {
     }
 }
 
+impl Default for DistributedRateCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DistributedRateCache {
     pub fn new() -> Self {
         Self {
@@ -1620,6 +1657,12 @@ impl DistributedRateCache {
             local_cache: AsyncDataStore::new(),
             cluster_sync: Arc::new(ClusterSyncManager::new()),
         }
+    }
+}
+
+impl Default for ClusterSyncManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1640,6 +1683,12 @@ impl ClusterSyncManager {
     }
 }
 
+impl Default for QuotaManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl QuotaManager {
     pub fn new() -> Self {
         Self {
@@ -1653,6 +1702,12 @@ impl QuotaManager {
             quota_policies: Arc::new(DashMap::new()),
             quota_usage: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for AuthenticationProvider {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1678,6 +1733,12 @@ impl AuthenticationProvider {
     }
 }
 
+impl Default for TokenValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TokenValidator {
     pub fn new() -> Self {
         Self {
@@ -1692,6 +1753,12 @@ impl TokenValidator {
             api_key_store: AsyncDataStore::new(),
             token_cache: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1712,6 +1779,12 @@ impl SessionManager {
     }
 }
 
+impl Default for SessionStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionStore {
     pub fn new() -> Self {
         Self {
@@ -1725,6 +1798,12 @@ impl SessionStore {
             store_type: SessionStoreType::Memory,
             connection_pool: Arc::new(ConnectionPool::new()),
         }
+    }
+}
+
+impl Default for ConnectionPool {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1746,6 +1825,12 @@ impl ConnectionPool {
     }
 }
 
+impl Default for IdentityProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IdentityProvider {
     pub fn new() -> Self {
         Self {
@@ -1760,6 +1845,12 @@ impl IdentityProvider {
             configuration: IdentityProviderConfig::default(),
             user_store: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for RequestProcessor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1796,6 +1887,12 @@ impl RequestProcessor {
     }
 }
 
+impl Default for RequestTransformer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RequestTransformer {
     pub fn new() -> Self {
         Self {
@@ -1809,6 +1906,12 @@ impl RequestTransformer {
             transformation_rules: Arc::new(DashMap::new()),
             template_engine: Arc::new(TemplateEngine::new()),
         }
+    }
+}
+
+impl Default for TemplateEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1828,6 +1931,12 @@ impl TemplateEngine {
     }
 }
 
+impl Default for ContentValidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContentValidator {
     pub fn new() -> Self {
         Self {
@@ -1841,6 +1950,12 @@ impl ContentValidator {
             validation_schemas: Arc::new(DashMap::new()),
             custom_validators: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for RequestLogger {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1858,6 +1973,12 @@ impl RequestLogger {
             log_processor: BatchProcessor::new(100, Duration::from_secs(10)),
             log_storage: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for ResponseProcessor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1882,6 +2003,12 @@ impl ResponseProcessor {
     }
 }
 
+impl Default for ResponseTransformer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResponseTransformer {
     pub fn new() -> Self {
         Self {
@@ -1894,6 +2021,12 @@ impl ResponseTransformer {
             ),
             transformation_rules: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for ResponseCacheManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1914,6 +2047,12 @@ impl ResponseCacheManager {
     }
 }
 
+impl Default for CacheInvalidator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CacheInvalidator {
     pub fn new() -> Self {
         Self {
@@ -1930,6 +2069,12 @@ impl CacheInvalidator {
     }
 }
 
+impl Default for CompressionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CompressionEngine {
     pub fn new() -> Self {
         Self {
@@ -1943,6 +2088,12 @@ impl CompressionEngine {
             compression_algorithms: Arc::new(DashMap::new()),
             compression_policies: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for ApiAnalyticsEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1968,6 +2119,12 @@ impl ApiAnalyticsEngine {
     }
 }
 
+impl Default for ApiMetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApiMetricsCollector {
     pub fn new() -> Self {
         Self {
@@ -1982,6 +2139,12 @@ impl ApiMetricsCollector {
             endpoint_metrics: Arc::new(DashMap::new()),
             error_metrics: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for UsageTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2002,6 +2165,12 @@ impl UsageTracker {
     }
 }
 
+impl Default for PerformanceMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PerformanceMonitor {
     pub fn new() -> Self {
         Self {
@@ -2016,6 +2185,12 @@ impl PerformanceMonitor {
             bottleneck_detector: Arc::new(BottleneckDetector::new()),
             sla_monitor: Arc::new(SlaMonitor::new()),
         }
+    }
+}
+
+impl Default for BottleneckDetector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2035,6 +2210,12 @@ impl BottleneckDetector {
     }
 }
 
+impl Default for SlaMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SlaMonitor {
     pub fn new() -> Self {
         Self {
@@ -2048,6 +2229,12 @@ impl SlaMonitor {
             sla_definitions: Arc::new(DashMap::new()),
             sla_violations: AsyncDataStore::new(),
         }
+    }
+}
+
+impl Default for BusinessMetricsCollector {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2157,17 +2344,6 @@ impl Default for SessionConfig {
     }
 }
 
-impl Default for IdentityProviderConfig {
-    fn default() -> Self {
-        Self {
-            endpoint: None,
-            client_id: None,
-            client_secret: None,
-            scopes: vec![],
-            additional_parameters: HashMap::new(),
-        }
-    }
-}
 
 impl Default for LoggingConfig {
     fn default() -> Self {
