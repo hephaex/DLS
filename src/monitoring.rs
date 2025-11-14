@@ -71,9 +71,7 @@ impl Metrics {
             })?;
 
         let disk_images_total = Gauge::new("disk_images_total", "Total number of disk images")
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to create disk images gauge: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to create disk images gauge: {e}")))?;
 
         let storage_used_bytes = Gauge::new("storage_used_bytes", "Storage space used in bytes")
             .map_err(|e| DlsError::Internal(format!("Failed to create storage gauge: {e}")))?;
@@ -149,9 +147,7 @@ impl Metrics {
             .map_err(|e| DlsError::Internal(format!("Failed to create CPU usage gauge: {e}")))?;
 
         let memory_usage_bytes = Gauge::new("memory_usage_bytes", "Memory usage in bytes")
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to create memory usage gauge: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to create memory usage gauge: {e}")))?;
 
         let memory_available_bytes =
             Gauge::new("memory_available_bytes", "Available memory in bytes").map_err(|e| {
@@ -172,9 +168,7 @@ impl Metrics {
             "Number of active database connections",
         )
         .map_err(|e| {
-            DlsError::Internal(format!(
-                "Failed to create database connections gauge: {e}"
-            ))
+            DlsError::Internal(format!("Failed to create database connections gauge: {e}"))
         })?;
 
         let database_queries = Counter::new("database_queries_total", "Total database queries")
@@ -195,9 +189,7 @@ impl Metrics {
             .buckets(vec![0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1.0, 2.0]),
         )
         .map_err(|e| {
-            DlsError::Internal(format!(
-                "Failed to create database duration histogram: {e}"
-            ))
+            DlsError::Internal(format!("Failed to create database duration histogram: {e}"))
         })?;
 
         let uptime_seconds = Gauge::new("uptime_seconds", "System uptime in seconds")
@@ -309,9 +301,7 @@ impl Metrics {
 
         registry
             .register(Box::new(self.image_operations.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register image operations: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register image operations: {e}")))?;
 
         registry
             .register(Box::new(self.auth_requests.clone()))
@@ -323,15 +313,11 @@ impl Metrics {
 
         registry
             .register(Box::new(self.active_sessions.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register active sessions: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register active sessions: {e}")))?;
 
         registry
             .register(Box::new(self.token_refreshes.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register token refreshes: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register token refreshes: {e}")))?;
 
         registry
             .register(Box::new(self.cpu_usage_percent.clone()))
@@ -343,9 +329,7 @@ impl Metrics {
 
         registry
             .register(Box::new(self.memory_available_bytes.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register memory available: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register memory available: {e}")))?;
 
         registry
             .register(Box::new(self.network_throughput_bytes.clone()))
@@ -365,15 +349,11 @@ impl Metrics {
 
         registry
             .register(Box::new(self.database_queries.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register database queries: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register database queries: {e}")))?;
 
         registry
             .register(Box::new(self.database_errors.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register database errors: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register database errors: {e}")))?;
 
         registry
             .register(Box::new(self.database_query_duration.clone()))
@@ -391,9 +371,7 @@ impl Metrics {
 
         registry
             .register(Box::new(self.service_restarts.clone()))
-            .map_err(|e| {
-                DlsError::Internal(format!("Failed to register service restarts: {e}"))
-            })?;
+            .map_err(|e| DlsError::Internal(format!("Failed to register service restarts: {e}")))?;
 
         Ok(())
     }

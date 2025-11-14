@@ -684,12 +684,8 @@ impl ReportingEngine {
 
                 let result = match report.report_type {
                     ReportType::ComplianceAudit => {
-                        Self::generate_compliance_report(
-                            &report,
-                            &config,
-                            &compliance_requirements,
-                        )
-                        .await
+                        Self::generate_compliance_report(&report, &config, &compliance_requirements)
+                            .await
                     }
                     ReportType::SecurityAssessment => {
                         Self::generate_security_report(&report, &config, &audit_trails).await

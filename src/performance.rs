@@ -711,11 +711,13 @@ mod tests {
 
     #[test]
     fn test_load_test_target_variants() {
-        let targets = [LoadTestTarget::DhcpServer,
+        let targets = [
+            LoadTestTarget::DhcpServer,
             LoadTestTarget::TftpServer,
             LoadTestTarget::IscsiTarget,
             LoadTestTarget::ProvisioningSystem,
-            LoadTestTarget::FullBootSequence];
+            LoadTestTarget::FullBootSequence,
+        ];
 
         assert_eq!(targets.len(), 5);
     }

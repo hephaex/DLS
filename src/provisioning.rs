@@ -1061,12 +1061,14 @@ mod tests {
 
     #[test]
     fn test_customization_type_variants() {
-        let customizations = [CustomizationType::InjectFiles,
+        let customizations = [
+            CustomizationType::InjectFiles,
             CustomizationType::RunScript,
             CustomizationType::InstallPackages,
             CustomizationType::ConfigureNetwork,
             CustomizationType::SetHostname,
-            CustomizationType::CreateUsers];
+            CustomizationType::CreateUsers,
+        ];
 
         assert_eq!(customizations.len(), 6);
     }

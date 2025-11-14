@@ -672,8 +672,7 @@ pub enum IdentityProviderType {
     Custom,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct IdentityProviderConfig {
     pub endpoint: Option<String>,
     pub client_id: Option<String>,
@@ -2343,7 +2342,6 @@ impl Default for SessionConfig {
         }
     }
 }
-
 
 impl Default for LoggingConfig {
     fn default() -> Self {

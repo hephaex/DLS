@@ -608,9 +608,7 @@ impl EdgeOrchestrator {
                     cluster_id,
                     Some(target_node_id.clone()),
                     Some(workload.workload_id.clone()),
-                    format!(
-                        "Workload migrated from {source_node_id} to {target_node_id}"
-                    ),
+                    format!("Workload migrated from {source_node_id} to {target_node_id}"),
                 )
                 .await;
             }

@@ -773,8 +773,10 @@ impl DisasterRecoveryManager {
     }
 
     pub fn calculate_overall_health(health: &SystemHealthStatus) -> HealthLevel {
-        let health_scores = [&health.storage_health.backup_storage_health,
-            &health.network_health.connectivity_status];
+        let health_scores = [
+            &health.storage_health.backup_storage_health,
+            &health.network_health.connectivity_status,
+        ];
 
         if health_scores.contains(&(&HealthLevel::Critical)) {
             HealthLevel::Critical

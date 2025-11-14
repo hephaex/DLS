@@ -120,9 +120,7 @@ impl FreeBsdZfsManager {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(DlsError::Storage(format!(
-                "ZPool command failed: {stderr}"
-            )));
+            return Err(DlsError::Storage(format!("ZPool command failed: {stderr}")));
         }
 
         let stdout = String::from_utf8_lossy(&output.stdout);

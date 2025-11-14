@@ -999,7 +999,6 @@ impl AnalyticsEngine {
         let xy_sum: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let x_squared_sum: f64 = (0..values.len()).map(|i| (i as f64).powi(2)).sum();
 
-        
         (n * xy_sum - x_sum * y_sum) / (n * x_squared_sum - x_sum * x_sum)
     }
 

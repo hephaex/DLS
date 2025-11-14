@@ -351,9 +351,7 @@ impl DatabaseManager {
         )
         .execute(&self.pool)
         .await
-        .map_err(|e| {
-            DlsError::Database(format!("Failed to create image_snapshots table: {e}"))
-        })?;
+        .map_err(|e| DlsError::Database(format!("Failed to create image_snapshots table: {e}")))?;
 
         // Create network_ranges table
         sqlx::query(

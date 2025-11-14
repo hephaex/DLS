@@ -386,9 +386,7 @@ impl ClientManager {
 
             metric.errors.push(boot_error);
 
-            warn!(
-                "Boot error in session {session_id}: {error_code} - {error_message}"
-            );
+            warn!("Boot error in session {session_id}: {error_code} - {error_message}");
         }
 
         Ok(())
@@ -446,10 +444,9 @@ impl ClientManager {
                     }
                 }
 
-                if f.failed_only
-                    && client.failed_boots == 0 {
-                        continue;
-                    }
+                if f.failed_only && client.failed_boots == 0 {
+                    continue;
+                }
 
                 if let Some(recent_hours) = f.recent_hours {
                     let recent_threshold = current_time - (recent_hours as u64 * 3600);
