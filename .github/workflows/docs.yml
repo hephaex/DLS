@@ -49,7 +49,7 @@ jobs:
             ${{ runner.os }}-cargo-git-
 
       - name: Build documentation
-        run: cargo doc --no-deps --all-features --document-private-items
+        run: cargo doc --no-deps --document-private-items
 
       - name: Add index.html redirect
         run: echo '<meta http-equiv="refresh" content="0; url=dls_server/index.html">' > target/doc/index.html
