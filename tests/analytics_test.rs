@@ -5,8 +5,9 @@ mod common;
 
 use chrono::{Duration, Utc};
 use dls_server::analytics::{
-    AggregationType, AnalysisRequest, AnalysisType, AnalyticsConfig, AnalyticsEngine, Dashboard, InsightType, MLModelType, Metric, MetricType, Position, RecommendationType, Size, TimeRange, Widget, WidgetConfiguration,
-    WidgetType,
+    AggregationType, AnalysisRequest, AnalysisType, AnalyticsConfig, AnalyticsEngine, Dashboard,
+    InsightType, MLModelType, Metric, MetricType, Position, RecommendationType, Size, TimeRange,
+    Widget, WidgetConfiguration, WidgetType,
 };
 use std::collections::HashMap;
 use uuid::Uuid;
