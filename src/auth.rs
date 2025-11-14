@@ -153,8 +153,7 @@ impl std::str::FromStr for UserRole {
             "guest" => Ok(UserRole::Guest),
             "service_account" | "serviceaccount" => Ok(UserRole::ServiceAccount),
             _ => Err(crate::error::DlsError::Auth(format!(
-                "Invalid user role: {}",
-                s
+                "Invalid user role: {s}"
             ))),
         }
     }
@@ -247,11 +246,11 @@ impl LdapAuthenticator {
         };
 
         let mut ldap = LdapConn::new(&ldap_url)
-            .map_err(|e| DlsError::Auth(format!("Failed to create LDAP connection: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Failed to create LDAP connection: {e}")))?;
 
         // Bind with service account
         let bind_result = ldap.simple_bind(&self.config.bind_dn, &self.config.bind_password);
-        bind_result.map_err(|e| DlsError::Auth(format!("Failed to bind to LDAP: {}", e)))?;
+        bind_result.map_err(|e| DlsError::Auth(format!("Failed to bind to LDAP: {e}")))?;
 
         Ok(ldap)
     }
@@ -289,7 +288,7 @@ impl LdapAuthenticator {
         };
 
         let mut auth_ldap = LdapConn::new(&ldap_url)
-            .map_err(|e| DlsError::Auth(format!("Failed to create auth LDAP connection: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Failed to create auth LDAP connection: {e}")))?;
 
         // Try to bind with user credentials
         let bind_result = auth_ldap.simple_bind(&user_dn, password);
@@ -316,7 +315,7 @@ impl LdapAuthenticator {
                 &filter,
                 vec!["dn"],
             )
-            .map_err(|e| DlsError::Auth(format!("LDAP search failed: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("LDAP search failed: {e}")))?;
 
         let entries = search_result.0;
         self.return_connection(ldap).await;
@@ -343,7 +342,7 @@ impl LdapAuthenticator {
                     &self.config.user_email_attribute,
                 ],
             )
-            .map_err(|e| DlsError::Auth(format!("Failed to get user info: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Failed to get user info: {e}")))?;
 
         let entries = search_result.0;
         self.return_connection(ldap).await;
@@ -383,7 +382,7 @@ impl LdapAuthenticator {
                 &filter,
                 vec!["dn", "cn"],
             )
-            .map_err(|e| DlsError::Auth(format!("Failed to get user groups: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Failed to get user groups: {e}")))?;
 
         let entries = search_result.0;
         self.return_connection(ldap).await;
@@ -491,7 +490,7 @@ impl AuthManager {
 
             Some(
                 Regex::new(&pattern)
-                    .map_err(|e| DlsError::Auth(format!("Invalid password regex: {}", e)))?,
+                    .map_err(|e| DlsError::Auth(format!("Invalid password regex: {e}")))?,
             )
         } else {
             None
@@ -715,7 +714,7 @@ impl AuthManager {
 
         self.jwt_key
             .authenticate(jwt_claims)
-            .map_err(|e| DlsError::Auth(format!("Failed to create token: {}", e)))
+            .map_err(|e| DlsError::Auth(format!("Failed to create token: {e}")))
     }
 
     fn get_permissions_for_role(&self, role: &UserRole) -> Vec<String> {
@@ -749,7 +748,7 @@ impl AuthManager {
         let jwt_claims = self
             .jwt_key
             .verify_token::<Claims>(token, None)
-            .map_err(|e| DlsError::Auth(format!("Invalid token: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Invalid token: {e}")))?;
 
         let claims = jwt_claims.custom;
 
@@ -826,14 +825,14 @@ impl AuthManager {
 
         let password_hash = argon2
             .hash_password(password.as_bytes(), &salt)
-            .map_err(|e| DlsError::Auth(format!("Failed to hash password: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Failed to hash password: {e}")))?;
 
         Ok(password_hash.to_string())
     }
 
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
         let parsed_hash = PasswordHash::new(hash)
-            .map_err(|e| DlsError::Auth(format!("Invalid password hash: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Invalid password hash: {e}")))?;
 
         let argon2 = Argon2::default();
         match argon2.verify_password(password.as_bytes(), &parsed_hash) {
@@ -869,7 +868,7 @@ impl AuthManager {
 
         self.jwt_key
             .authenticate(jwt_claims)
-            .map_err(|e| DlsError::Auth(format!("Failed to create token: {}", e)))
+            .map_err(|e| DlsError::Auth(format!("Failed to create token: {e}")))
     }
 
     // Legacy verify_token method for backward compatibility
@@ -877,7 +876,7 @@ impl AuthManager {
         let jwt_claims = self
             .jwt_key
             .verify_token::<Claims>(token, None)
-            .map_err(|e| DlsError::Auth(format!("Invalid token: {}", e)))?;
+            .map_err(|e| DlsError::Auth(format!("Invalid token: {e}")))?;
 
         Ok(jwt_claims.custom)
     }
@@ -964,8 +963,7 @@ impl AuthMiddleware {
             Ok(())
         } else {
             Err(DlsError::Auth(format!(
-                "Missing required permission: {}",
-                required_permission
+                "Missing required permission: {required_permission}"
             )))
         }
     }
@@ -979,8 +977,7 @@ impl AuthMiddleware {
             Ok(())
         } else {
             Err(DlsError::Auth(format!(
-                "Missing required group membership: {}",
-                required_group
+                "Missing required group membership: {required_group}"
             )))
         }
     }
@@ -1464,7 +1461,7 @@ impl EnterpriseAuthService {
                 }
                 Err(e) => Ok(LdapTestResult {
                     success: false,
-                    message: format!("LDAP connection failed: {}", e),
+                    message: format!("LDAP connection failed: {e}"),
                     connection_time_ms: start_time.elapsed().as_millis() as u64,
                     user_count: None,
                     group_count: None,
@@ -1472,7 +1469,7 @@ impl EnterpriseAuthService {
             },
             Err(e) => Ok(LdapTestResult {
                 success: false,
-                message: format!("Failed to create LDAP authenticator: {}", e),
+                message: format!("Failed to create LDAP authenticator: {e}"),
                 connection_time_ms: start_time.elapsed().as_millis() as u64,
                 user_count: None,
                 group_count: None,

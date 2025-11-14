@@ -685,34 +685,34 @@ impl ReportingEngine {
                 let result = match report.report_type {
                     ReportType::ComplianceAudit => {
                         Self::generate_compliance_report(
-                            &*report,
+                            &report,
                             &config,
                             &compliance_requirements,
                         )
                         .await
                     }
                     ReportType::SecurityAssessment => {
-                        Self::generate_security_report(&*report, &config, &audit_trails).await
+                        Self::generate_security_report(&report, &config, &audit_trails).await
                     }
                     ReportType::PerformanceAnalysis => {
-                        Self::generate_performance_report(&*report, &config).await
+                        Self::generate_performance_report(&report, &config).await
                     }
                     ReportType::UsageStatistics => {
-                        Self::generate_usage_report(&*report, &config, &audit_trails).await
+                        Self::generate_usage_report(&report, &config, &audit_trails).await
                     }
                     ReportType::IncidentReport => {
-                        Self::generate_incident_report(&*report, &config, &audit_trails).await
+                        Self::generate_incident_report(&report, &config, &audit_trails).await
                     }
                     ReportType::SystemHealth => {
-                        Self::generate_health_report(&*report, &config).await
+                        Self::generate_health_report(&report, &config).await
                     }
                     ReportType::AccessControl => {
-                        Self::generate_access_report(&*report, &config, &audit_trails).await
+                        Self::generate_access_report(&report, &config, &audit_trails).await
                     }
                     ReportType::DataRetention => {
-                        Self::generate_retention_report(&*report, &config).await
+                        Self::generate_retention_report(&report, &config).await
                     }
-                    ReportType::Custom(_) => Self::generate_custom_report(&*report, &config).await,
+                    ReportType::Custom(_) => Self::generate_custom_report(&report, &config).await,
                 };
 
                 match result {
@@ -788,8 +788,7 @@ impl ReportingEngine {
             findings: Vec::new(), // Would be populated with actual findings
             recommendations: Vec::new(), // Would be populated with recommendations
             executive_summary: format!(
-                "Compliance assessment for {:?} framework shows {:.1}% overall compliance with {} total controls assessed.",
-                framework, overall_score, total_controls
+                "Compliance assessment for {framework:?} framework shows {overall_score:.1}% overall compliance with {total_controls} total controls assessed."
             ),
             next_assessment_date: Utc::now() + Duration::days(90),
         };
@@ -798,7 +797,7 @@ impl ReportingEngine {
         let file_path = format!(
             "{}/compliance_{}_{}.{}",
             config.storage_path,
-            format!("{:?}", framework).to_lowercase(),
+            format!("{framework:?}").to_lowercase(),
             report.id,
             match report.format {
                 ReportFormat::PDF => "pdf",
@@ -940,7 +939,7 @@ impl ReportingEngine {
 
     pub fn generate_text_compliance_report(report: &ComplianceReport) -> Result<String> {
         let mut content = String::new();
-        content.push_str(&format!("COMPLIANCE ASSESSMENT REPORT\n"));
+        content.push_str("COMPLIANCE ASSESSMENT REPORT\n");
         content.push_str(&format!("Framework: {:?}\n", report.framework));
         content.push_str(&format!(
             "Assessment Date: {}\n",
@@ -948,7 +947,7 @@ impl ReportingEngine {
         ));
         content.push_str(&format!("Overall Score: {:.1}%\n\n", report.overall_score));
 
-        content.push_str(&format!("SUMMARY\n"));
+        content.push_str("SUMMARY\n");
         content.push_str(&format!("Total Controls: {}\n", report.total_controls));
         content.push_str(&format!("Compliant: {}\n", report.compliant_controls));
         content.push_str(&format!(
@@ -965,7 +964,7 @@ impl ReportingEngine {
             report.executive_summary
         ));
 
-        content.push_str(&format!("REQUIREMENTS\n"));
+        content.push_str("REQUIREMENTS\n");
         for req in &report.requirements {
             content.push_str(&format!("- {} - {}\n", req.control_id, req.title));
             content.push_str(&format!("  Status: {:?}\n", req.implementation_status));
@@ -1180,8 +1179,7 @@ impl ReportingEngine {
             findings: Vec::new(),
             recommendations: Vec::new(),
             executive_summary: format!(
-                "Current compliance status shows {:.1}% overall compliance with {} controls assessed.",
-                overall_score, total_controls
+                "Current compliance status shows {overall_score:.1}% overall compliance with {total_controls} controls assessed."
             ),
             next_assessment_date: Utc::now() + Duration::days(90),
         }

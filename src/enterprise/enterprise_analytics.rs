@@ -1,6 +1,5 @@
 // Enterprise Analytics & Business Intelligence Engine
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -1051,6 +1050,12 @@ pub enum TimeGranularity {
     Year,
 }
 
+impl Default for EnterpriseAnalyticsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnterpriseAnalyticsEngine {
     pub fn new() -> Self {
         Self {
@@ -1102,6 +1107,12 @@ impl EnterpriseAnalyticsEngine {
         self.predictive_analytics
             .run_prediction(model_request)
             .await
+    }
+}
+
+impl Default for BusinessIntelligence {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -2069,6 +2080,12 @@ macro_rules! impl_analytics_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

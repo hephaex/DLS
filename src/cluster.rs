@@ -392,7 +392,7 @@ impl ClusterManager {
         Ok(())
     }
 
-    async fn handle_cluster_connection(&self, mut stream: TcpStream) -> Result<()> {
+    async fn handle_cluster_connection(&self, stream: TcpStream) -> Result<()> {
         let mut buffer = vec![0; 4096];
 
         loop {
@@ -462,7 +462,7 @@ impl ClusterManager {
             // New node discovered
             let new_node = ClusterNode {
                 node_id: from_node.clone(),
-                node_name: format!("node-{}", from_node),
+                node_name: format!("node-{from_node}"),
                 addr: "0.0.0.0:0".parse().unwrap(), // Will be updated
                 role: NodeRole::Follower,
                 status: data.node_status,

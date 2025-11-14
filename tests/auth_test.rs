@@ -220,7 +220,7 @@ async fn test_auth_middleware_header_parsing() {
     let token = auth_middleware.auth_manager.create_token(&user).unwrap();
 
     // Valid Bearer token
-    let auth_header = format!("Bearer {}", token);
+    let auth_header = format!("Bearer {token}");
     let claims = auth_middleware.verify_request(Some(&auth_header)).unwrap();
     assert_eq!(claims.username, user.username);
 
@@ -232,7 +232,7 @@ async fn test_auth_middleware_header_parsing() {
 
     // Invalid header format (wrong prefix)
     assert!(auth_middleware
-        .verify_request(Some(&format!("Basic {}", token)))
+        .verify_request(Some(&format!("Basic {token}")))
         .is_err());
 }
 

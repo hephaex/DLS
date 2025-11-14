@@ -1,6 +1,6 @@
 // MLOps Platform for Model Lifecycle Management
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -453,6 +453,12 @@ pub enum ApprovalStatus {
     AutoApproved,
 }
 
+impl Default for MLOperationsPlatform {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLOperationsPlatform {
     pub fn new() -> Self {
         Self {
@@ -508,6 +514,12 @@ impl MLOperationsPlatform {
     }
 }
 
+impl Default for MLModelRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLModelRegistry {
     pub fn new() -> Self {
         Self {
@@ -539,7 +551,7 @@ impl MLModelRegistry {
         let mut versions = self
             .model_versions
             .entry(model_id.to_string())
-            .or_insert_with(Vec::new);
+            .or_default();
         versions.push(version);
 
         Ok(version_id)
@@ -615,6 +627,12 @@ pub struct ModelTrainingEngine {
     pub engine_id: String,
 }
 
+impl Default for ModelTrainingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ModelTrainingEngine {
     pub fn new() -> Self {
         Self {
@@ -636,6 +654,12 @@ impl ModelTrainingEngine {
 #[derive(Debug, Clone)]
 pub struct ModelDeploymentEngine {
     pub engine_id: String,
+}
+
+impl Default for ModelDeploymentEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ModelDeploymentEngine {
@@ -664,6 +688,12 @@ impl ModelDeploymentEngine {
 #[derive(Debug, Clone)]
 pub struct ModelMonitoringEngine {
     pub engine_id: String,
+}
+
+impl Default for ModelMonitoringEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ModelMonitoringEngine {
@@ -716,6 +746,12 @@ pub struct FeatureStore {
     pub store_id: String,
 }
 
+impl Default for FeatureStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FeatureStore {
     pub fn new() -> Self {
         Self {
@@ -733,6 +769,12 @@ impl FeatureStore {
 #[derive(Debug, Clone)]
 pub struct ExperimentManager {
     pub manager_id: String,
+}
+
+impl Default for ExperimentManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExperimentManager {
@@ -754,6 +796,12 @@ pub struct MLPipelineOrchestrator {
     pub orchestrator_id: String,
 }
 
+impl Default for MLPipelineOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MLPipelineOrchestrator {
     pub fn new() -> Self {
         Self {
@@ -771,6 +819,12 @@ impl MLPipelineOrchestrator {
 #[derive(Debug, Clone)]
 pub struct AutoMLEngine {
     pub engine_id: String,
+}
+
+impl Default for AutoMLEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AutoMLEngine {
@@ -792,6 +846,12 @@ pub struct ArtifactStore {
     pub store_id: String,
 }
 
+impl Default for ArtifactStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ArtifactStore {
     pub fn new() -> Self {
         Self {
@@ -811,6 +871,12 @@ pub struct MetadataStore {
     pub store_id: String,
 }
 
+impl Default for MetadataStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetadataStore {
     pub fn new() -> Self {
         Self {
@@ -828,6 +894,12 @@ impl MetadataStore {
 #[derive(Debug, Clone)]
 pub struct ModelLineageTracker {
     pub tracker_id: String,
+}
+
+impl Default for ModelLineageTracker {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ModelLineageTracker {

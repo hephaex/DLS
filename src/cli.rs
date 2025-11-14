@@ -36,20 +36,20 @@ fn main() -> Result<()> {
 
     match &cli.command {
         Commands::Server { bind } => {
-            println!("Starting server on {}", bind);
+            println!("Starting server on {bind}");
         }
         Commands::Client { server } => {
-            println!("Connecting to server at {}", server);
+            println!("Connecting to server at {server}");
         }
         Commands::Image { action } => match action {
             ImageCommands::List => {
                 println!("Listing images...");
             }
             ImageCommands::Create { name, size } => {
-                println!("Creating image {} with size {}", name, size);
+                println!("Creating image {name} with size {size}");
             }
             ImageCommands::Delete { name } => {
-                println!("Deleting image {}", name);
+                println!("Deleting image {name}");
             }
         },
     }

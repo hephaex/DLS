@@ -1,7 +1,7 @@
 // Enterprise Governance Framework
 use crate::enterprise::compliance::MonitoringRequirement;
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -682,6 +682,12 @@ pub struct EffectivenessMetric {
     pub reporting_frequency: String,
 }
 
+impl Default for GovernanceFramework {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GovernanceFramework {
     pub fn new() -> Self {
         Self {
@@ -718,6 +724,12 @@ impl GovernanceFramework {
         report_type: GovernanceReportType,
     ) -> Result<GovernanceReport> {
         self.governance_dashboard.generate_report(report_type).await
+    }
+}
+
+impl Default for PolicyManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -785,6 +797,12 @@ impl PolicyManager {
 
     fn matches_filter(&self, _policy: &GovernancePolicy, _filter: &PolicyFilter) -> bool {
         true
+    }
+}
+
+impl Default for ComplianceEngine {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1459,6 +1477,12 @@ macro_rules! impl_governance_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

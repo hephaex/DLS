@@ -927,6 +927,12 @@ impl ServiceMesh {
     }
 }
 
+impl Default for ServiceDiscovery {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ServiceDiscovery {
     pub fn new() -> Self {
         Self {
@@ -981,7 +987,7 @@ impl ServiceDiscovery {
         // Get from cache first
         let service_count = self.registered_services.len();
         for i in 0..service_count {
-            let service_id = format!("service_{}", i);
+            let service_id = format!("service_{i}");
             if let Some(service) = self.registered_services.get(&service_id) {
                 if service.service_name == service_name {
                     endpoints.extend(service.endpoints.clone());
@@ -990,6 +996,12 @@ impl ServiceDiscovery {
         }
 
         Ok(endpoints)
+    }
+}
+
+impl Default for ServiceHealthChecker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1133,6 +1145,12 @@ impl ServiceHealthChecker {
     }
 }
 
+impl Default for DnsResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DnsResolver {
     pub fn new() -> Self {
         Self {
@@ -1196,6 +1214,12 @@ impl DnsResolver {
     }
 }
 
+impl Default for TrafficManagement {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrafficManagement {
     pub fn new() -> Self {
         Self {
@@ -1245,6 +1269,12 @@ impl TrafficManagement {
     }
 }
 
+impl Default for CircuitBreakerManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitBreakerManager {
     pub fn new() -> Self {
         Self {
@@ -1272,6 +1302,12 @@ impl CircuitBreakerManager {
     }
 }
 
+impl Default for CircuitBreakerMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CircuitBreakerMetrics {
     pub fn new() -> Self {
         Self {
@@ -1284,6 +1320,12 @@ impl CircuitBreakerMetrics {
             ),
             breaker_stats: Arc::new(DashMap::new()),
         }
+    }
+}
+
+impl Default for LoadBalancer {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1304,6 +1346,12 @@ impl LoadBalancer {
     }
 }
 
+impl Default for StickySessionManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StickySessionManager {
     pub fn new() -> Self {
         Self {
@@ -1317,6 +1365,12 @@ impl StickySessionManager {
             session_mappings: AsyncDataStore::new(),
             session_config: StickySessionConfig::default(),
         }
+    }
+}
+
+impl Default for MeshObservability {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1360,6 +1414,12 @@ impl MeshObservability {
     }
 }
 
+impl Default for MeshMetricsCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MeshMetricsCollector {
     pub fn new() -> Self {
         Self {
@@ -1400,6 +1460,12 @@ impl MeshMetricsCollector {
     }
 }
 
+impl Default for DistributedTracing {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DistributedTracing {
     pub fn new() -> Self {
         Self {
@@ -1422,6 +1488,12 @@ impl DistributedTracing {
     }
 }
 
+impl Default for TraceCollector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TraceCollector {
     pub fn new() -> Self {
         Self {
@@ -1438,6 +1510,12 @@ impl TraceCollector {
     }
 }
 
+impl Default for SpanProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpanProcessor {
     pub fn new() -> Self {
         Self {
@@ -1450,6 +1528,12 @@ impl SpanProcessor {
             ),
             processing_pipeline: vec![],
         }
+    }
+}
+
+impl Default for LoggingAggregator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1475,6 +1559,12 @@ impl LoggingAggregator {
     }
 }
 
+impl Default for MeshAlertingManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MeshAlertingManager {
     pub fn new() -> Self {
         Self {
@@ -1494,6 +1584,12 @@ impl MeshAlertingManager {
     pub async fn start_alerting(&self) -> Result<()> {
         // Start mesh alerting
         Ok(())
+    }
+}
+
+impl Default for FaultInjectionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

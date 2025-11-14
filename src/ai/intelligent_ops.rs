@@ -1024,7 +1024,7 @@ impl IntelligentOpsEngine {
             SafetyCheckType::BusinessHours => {
                 // Check if current time is within business hours
                 let hour = Utc::now().hour();
-                Ok(hour >= 9 && hour <= 17) // 9 AM to 5 PM UTC
+                Ok((9..=17).contains(&hour)) // 9 AM to 5 PM UTC
             }
             _ => Ok(true),
         }

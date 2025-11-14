@@ -773,14 +773,12 @@ impl DisasterRecoveryManager {
     }
 
     pub fn calculate_overall_health(health: &SystemHealthStatus) -> HealthLevel {
-        let health_scores = vec![
-            &health.storage_health.backup_storage_health,
-            &health.network_health.connectivity_status,
-        ];
+        let health_scores = [&health.storage_health.backup_storage_health,
+            &health.network_health.connectivity_status];
 
-        if health_scores.iter().any(|&h| h == &HealthLevel::Critical) {
+        if health_scores.contains(&(&HealthLevel::Critical)) {
             HealthLevel::Critical
-        } else if health_scores.iter().any(|&h| h == &HealthLevel::Warning) {
+        } else if health_scores.contains(&(&HealthLevel::Warning)) {
             HealthLevel::Warning
         } else if health_scores.iter().all(|&h| h == &HealthLevel::Excellent) {
             HealthLevel::Excellent
@@ -940,7 +938,7 @@ impl DisasterRecoveryManager {
             // Execute backup command (simplified)
             let mut cmd = Command::new("tar");
             cmd.arg("-czf")
-                .arg(format!("{}/backup.tar.gz", backup_path))
+                .arg(format!("{backup_path}/backup.tar.gz"))
                 .arg(source_path);
 
             if job.encryption_enabled {
@@ -1071,7 +1069,7 @@ impl DisasterRecoveryManager {
                         && plan.testing_schedule.next_test_date <= now
                     {
                         // Execute automated test
-                        let _test_result = Self::execute_recovery_test(&plan).await;
+                        let _test_result = Self::execute_recovery_test(plan).await;
 
                         // Update next test date
                         // This would be implemented with proper plan updates
@@ -1116,8 +1114,7 @@ impl DisasterRecoveryManager {
             Ok(())
         } else {
             Err(crate::error::DlsError::NotFound(format!(
-                "Backup job {}",
-                job_id
+                "Backup job {job_id}"
             )))
         }
     }
@@ -1172,8 +1169,7 @@ impl DisasterRecoveryManager {
             Ok(event_id)
         } else {
             Err(crate::error::DlsError::NotFound(format!(
-                "Recovery plan {}",
-                plan_id
+                "Recovery plan {plan_id}"
             )))
         }
     }

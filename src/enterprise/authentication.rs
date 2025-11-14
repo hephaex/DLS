@@ -1,6 +1,6 @@
 // Enterprise Authentication Management System
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use crate::optimization::{AsyncDataStore, LightweightStore};
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -397,6 +397,12 @@ pub enum ChallengeStatus {
     Cancelled,
 }
 
+impl Default for EnterpriseAuthenticationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnterpriseAuthenticationManager {
     pub fn new() -> Self {
         Self {
@@ -506,6 +512,12 @@ impl EnterpriseAuthenticationManager {
     }
 }
 
+impl Default for SSOManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SSOManager {
     pub fn new() -> Self {
         Self {
@@ -557,6 +569,12 @@ impl SSOManager {
             redirect_url: request.return_url,
             error_message: None,
         })
+    }
+}
+
+impl Default for SessionManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -642,6 +660,12 @@ impl SessionManager {
         self.active_sessions.remove(session_id);
         self.session_store.remove(&session_id.to_string()).await;
         Ok(())
+    }
+}
+
+impl Default for MFAManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -809,6 +833,12 @@ pub struct IdentityFederation {
     pub federation_id: String,
 }
 
+impl Default for IdentityFederation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IdentityFederation {
     pub fn new() -> Self {
         Self {
@@ -826,6 +856,12 @@ impl IdentityFederation {
 #[derive(Debug, Clone)]
 pub struct TokenManager {
     pub manager_id: String,
+}
+
+impl Default for TokenManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TokenManager {
@@ -847,6 +883,12 @@ pub struct DirectoryConnector {
     pub connector_id: String,
 }
 
+impl Default for DirectoryConnector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DirectoryConnector {
     pub fn new() -> Self {
         Self {
@@ -864,6 +906,12 @@ impl DirectoryConnector {
 #[derive(Debug, Clone)]
 pub struct AuthenticationRiskEngine {
     pub engine_id: String,
+}
+
+impl Default for AuthenticationRiskEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AuthenticationRiskEngine {
@@ -897,6 +945,12 @@ pub struct AssertionProcessor {
     pub processor_id: String,
 }
 
+impl Default for AssertionProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AssertionProcessor {
     pub fn new() -> Self {
         Self {
@@ -928,6 +982,12 @@ pub struct MetadataManager {
     pub manager_id: String,
 }
 
+impl Default for MetadataManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetadataManager {
     pub fn new() -> Self {
         Self {
@@ -945,6 +1005,12 @@ impl MetadataManager {
 #[derive(Debug, Clone)]
 pub struct CertificateManager {
     pub manager_id: String,
+}
+
+impl Default for CertificateManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl CertificateManager {
@@ -966,6 +1032,12 @@ pub struct SessionCleanupScheduler {
     pub scheduler_id: String,
 }
 
+impl Default for SessionCleanupScheduler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SessionCleanupScheduler {
     pub fn new() -> Self {
         Self {
@@ -983,6 +1055,12 @@ impl SessionCleanupScheduler {
 #[derive(Debug, Clone)]
 pub struct BackupCodesManager {
     pub manager_id: String,
+}
+
+impl Default for BackupCodesManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BackupCodesManager {

@@ -7,6 +7,7 @@ use std::time::{Duration, SystemTime};
 
 /// Optimized data structure management for reducing memory footprint
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct OptimizedDataManager {
     // Use smaller, more efficient data structures
     pub cache_pools: HashMap<String, Arc<CachePool>>,
@@ -172,6 +173,16 @@ pub struct StoreMetrics {
     pub hits: u64,
     pub misses: u64,
     pub evictions: u64,
+}
+
+impl<K, V> Default for AsyncDataStore<K, V>
+where
+    K: std::hash::Hash + Eq + Clone + Send + Sync,
+    V: Clone + Send + Sync,
+ {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl<K, V> AsyncDataStore<K, V>
@@ -480,15 +491,6 @@ pub struct ResourceSummary {
     pub timestamp: SystemTime,
 }
 
-impl Default for OptimizedDataManager {
-    fn default() -> Self {
-        Self {
-            cache_pools: HashMap::new(),
-            memory_pools: HashMap::new(),
-            connection_pools: HashMap::new(),
-        }
-    }
-}
 
 impl Default for PerformanceProfiler {
     fn default() -> Self {

@@ -896,7 +896,7 @@ impl AnomalyDetectionEngine {
 
             // Run anomaly detection with the specific detector
             if let Some(anomaly) = self
-                .run_detector(&detector, metric_name, value, timestamp)
+                .run_detector(detector, metric_name, value, timestamp)
                 .await?
             {
                 anomalies.push(anomaly);

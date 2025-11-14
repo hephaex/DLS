@@ -138,8 +138,8 @@ async fn test_tenant_listing() {
     // Create multiple tenants
     for i in 1..=3 {
         let metadata = TenantMetadata {
-            organization_name: format!("Organization {}", i),
-            contact_email: format!("admin{}@org.com", i),
+            organization_name: format!("Organization {i}"),
+            contact_email: format!("admin{i}@org.com"),
             contact_phone: None,
             description: None,
             tags: Vec::new(),
@@ -147,7 +147,7 @@ async fn test_tenant_listing() {
         };
 
         let tenant_id = manager
-            .create_tenant(format!("Tenant {}", i), format!("tenant-{}", i), metadata)
+            .create_tenant(format!("Tenant {i}"), format!("tenant-{i}"), metadata)
             .await
             .unwrap();
 

@@ -1,6 +1,6 @@
 // Enterprise Compliance Management System
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -934,6 +934,12 @@ pub enum PolicyStatus {
     Deprecated,
 }
 
+impl Default for ComplianceManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ComplianceManager {
     pub fn new() -> Self {
         Self {
@@ -982,6 +988,12 @@ impl ComplianceManager {
     }
 }
 
+impl Default for RegulatoryFramework {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RegulatoryFramework {
     pub fn new() -> Self {
         Self {
@@ -1022,6 +1034,12 @@ impl RegulatoryFramework {
 
     fn is_applicable(&self, _regulation: &Regulation, _context: &ComplianceContext) -> bool {
         true
+    }
+}
+
+impl Default for AuditTrailManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1363,6 +1381,12 @@ macro_rules! impl_compliance_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

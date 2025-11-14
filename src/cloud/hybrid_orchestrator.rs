@@ -1,6 +1,6 @@
 // Hybrid Cloud Orchestration for Seamless Multi-Environment Management
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -909,6 +909,12 @@ pub struct EscalationRule {
     pub contacts: Vec<String>,
 }
 
+impl Default for HybridOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HybridOrchestrator {
     pub fn new() -> Self {
         Self {
@@ -969,6 +975,12 @@ impl HybridOrchestrator {
     }
 }
 
+impl Default for EnvironmentManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnvironmentManager {
     pub fn new() -> Self {
         Self {
@@ -1010,6 +1022,12 @@ impl EnvironmentManager {
     }
 }
 
+impl Default for EnvironmentTopology {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl EnvironmentTopology {
     pub fn new() -> Self {
         Self {
@@ -1041,7 +1059,7 @@ impl EnvironmentTopology {
     pub async fn add_environment(&self, environment_id: &str) -> Result<()> {
         // Add environment node to topology graph
         let node = EnvironmentNode {
-            node_id: format!("node_{}", environment_id),
+            node_id: format!("node_{environment_id}"),
             environment_id: environment_id.to_string(),
             node_type: NodeType::Compute,
             capabilities: vec![],
@@ -1052,6 +1070,12 @@ impl EnvironmentTopology {
             .nodes
             .insert(node.node_id.clone(), node);
         Ok(())
+    }
+}
+
+impl Default for CapacityTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1091,6 +1115,12 @@ impl CapacityTracker {
             .insert(environment_id.to_string(), capacity_data)
             .await;
         Ok(())
+    }
+}
+
+impl Default for EnvironmentHealthMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1213,6 +1243,12 @@ pub struct WorkloadBalancer {
     pub balancer_id: String,
 }
 
+impl Default for WorkloadBalancer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl WorkloadBalancer {
     pub fn new() -> Self {
         Self {
@@ -1245,6 +1281,12 @@ pub struct ConnectivityManager {
     pub manager_id: String,
 }
 
+impl Default for ConnectivityManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectivityManager {
     pub fn new() -> Self {
         Self {
@@ -1268,6 +1310,12 @@ pub struct DataSynchronizer {
     pub synchronizer_id: String,
 }
 
+impl Default for DataSynchronizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataSynchronizer {
     pub fn new() -> Self {
         Self {
@@ -1285,6 +1333,12 @@ impl DataSynchronizer {
 #[derive(Debug, Clone)]
 pub struct SecurityCoordinator {
     pub coordinator_id: String,
+}
+
+impl Default for SecurityCoordinator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SecurityCoordinator {
@@ -1306,6 +1360,12 @@ pub struct PolicyEngine {
     pub engine_id: String,
 }
 
+impl Default for PolicyEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PolicyEngine {
     pub fn new() -> Self {
         Self {
@@ -1323,6 +1383,12 @@ impl PolicyEngine {
 #[derive(Debug, Clone)]
 pub struct MonitoringAggregator {
     pub aggregator_id: String,
+}
+
+impl Default for MonitoringAggregator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl MonitoringAggregator {

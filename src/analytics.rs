@@ -509,7 +509,7 @@ impl AnalyticsEngine {
 
         let ml_model = MLModel {
             id: model_id,
-            name: format!("{:?}_{}", model_type, target_metric),
+            name: format!("{model_type:?}_{target_metric}"),
             model_type,
             version: "1.0.0".to_string(),
             training_data_size: training_data.len(),
@@ -532,7 +532,7 @@ impl AnalyticsEngine {
         horizon: Duration,
     ) -> Result<Prediction> {
         let model = self.ml_models.get(&model_id).ok_or_else(|| {
-            crate::error::Error::NotFound(format!("ML model {} not found", model_id))
+            crate::error::Error::NotFound(format!("ML model {model_id} not found"))
         })?;
 
         // Simple prediction logic - in production, use actual ML framework
@@ -560,10 +560,10 @@ impl AnalyticsEngine {
         &self,
         metric_name: &str,
     ) -> Result<Vec<AnomalyDetection>> {
-        let series_key = format!("{}:default", metric_name);
+        let series_key = format!("{metric_name}:default");
 
         let series = self.metrics.get(&series_key).ok_or_else(|| {
-            crate::error::Error::NotFound(format!("Metric series {} not found", metric_name))
+            crate::error::Error::NotFound(format!("Metric series {metric_name} not found"))
         })?;
 
         if series.data_points.len() < 10 {
@@ -637,7 +637,7 @@ impl AnalyticsEngine {
         metric_name: &str,
         time_range: TimeRange,
     ) -> Option<MetricSeries> {
-        let series_key = format!("{}:default", metric_name);
+        let series_key = format!("{metric_name}:default");
 
         self.metrics.get(&series_key).map(|series| {
             let mut filtered_series = series.clone();
@@ -798,7 +798,7 @@ impl AnalyticsEngine {
                     let correlation = self
                         .calculate_correlation(metric_a, metric_b, &request.time_range)
                         .await?;
-                    let key = format!("{}_{}", metric_a, metric_b);
+                    let key = format!("{metric_a}_{metric_b}");
                     correlation_matrix.insert(key, correlation);
                 }
             }
@@ -822,10 +822,9 @@ impl AnalyticsEngine {
                         if direction != "stable" {
                             let insight = Insight {
                                 id: Uuid::new_v4(),
-                                title: format!("{} Trend Detected", metric),
+                                title: format!("{metric} Trend Detected"),
                                 description: format!(
-                                    "Metric {} is showing a {} trend",
-                                    metric, direction
+                                    "Metric {metric} is showing a {direction} trend"
                                 ),
                                 insight_type: InsightType::Trend,
                                 severity: InsightSeverity::Medium,
@@ -853,36 +852,33 @@ impl AnalyticsEngine {
         let mut recommendations = Vec::new();
 
         for insight in insights {
-            match insight.insight_type {
-                InsightType::Trend => {
-                    let recommendation = Recommendation {
-                        id: Uuid::new_v4(),
-                        title: "Monitor Trending Metric".to_string(),
-                        description: format!(
-                            "Consider monitoring {} more closely due to detected trend",
-                            insight.metrics.join(", ")
-                        ),
-                        recommendation_type: RecommendationType::Performance,
-                        priority: RecommendationPriority::Medium,
-                        estimated_impact: EstimatedImpact {
-                            cost_savings_per_month: 0.0,
-                            performance_improvement_percent: 10.0,
-                            risk_reduction_percent: 15.0,
-                            implementation_effort: ImplementationEffort::Low,
-                        },
-                        actions: vec![RecommendedAction {
-                            action_type: "monitor".to_string(),
-                            description: "Increase monitoring frequency".to_string(),
-                            parameters: HashMap::new(),
-                            estimated_time_minutes: 30,
-                            requires_approval: false,
-                        }],
-                        applicable_resources: insight.metrics.clone(),
-                        confidence: insight.confidence,
-                    };
-                    recommendations.push(recommendation);
-                }
-                _ => {}
+            if insight.insight_type == InsightType::Trend {
+                let recommendation = Recommendation {
+                    id: Uuid::new_v4(),
+                    title: "Monitor Trending Metric".to_string(),
+                    description: format!(
+                        "Consider monitoring {} more closely due to detected trend",
+                        insight.metrics.join(", ")
+                    ),
+                    recommendation_type: RecommendationType::Performance,
+                    priority: RecommendationPriority::Medium,
+                    estimated_impact: EstimatedImpact {
+                        cost_savings_per_month: 0.0,
+                        performance_improvement_percent: 10.0,
+                        risk_reduction_percent: 15.0,
+                        implementation_effort: ImplementationEffort::Low,
+                    },
+                    actions: vec![RecommendedAction {
+                        action_type: "monitor".to_string(),
+                        description: "Increase monitoring frequency".to_string(),
+                        parameters: HashMap::new(),
+                        estimated_time_minutes: 30,
+                        requires_approval: false,
+                    }],
+                    applicable_resources: insight.metrics.clone(),
+                    confidence: insight.confidence,
+                };
+                recommendations.push(recommendation);
             }
         }
 
@@ -938,7 +934,7 @@ impl AnalyticsEngine {
         let mut training_data = Vec::new();
 
         // Collect data for features and target
-        if let Some(target_series) = self.metrics.get(&format!("{}:default", target_metric)) {
+        if let Some(target_series) = self.metrics.get(&format!("{target_metric}:default")) {
             let target_values: Vec<f64> = target_series
                 .data_points
                 .iter()
@@ -950,7 +946,7 @@ impl AnalyticsEngine {
 
                 for feature_name in features {
                     if let Some(feature_series) =
-                        self.metrics.get(&format!("{}:default", feature_name))
+                        self.metrics.get(&format!("{feature_name}:default"))
                     {
                         if let Some(data_point) = feature_series.data_points.get(i) {
                             feature_values.push(data_point.value);
@@ -1003,8 +999,8 @@ impl AnalyticsEngine {
         let xy_sum: f64 = values.iter().enumerate().map(|(i, &y)| i as f64 * y).sum();
         let x_squared_sum: f64 = (0..values.len()).map(|i| (i as f64).powi(2)).sum();
 
-        let slope = (n * xy_sum - x_sum * y_sum) / (n * x_squared_sum - x_sum * x_sum);
-        slope
+        
+        (n * xy_sum - x_sum * y_sum) / (n * x_squared_sum - x_sum * x_sum)
     }
 
     fn simple_forecast(&self, values: &[f64], periods: usize) -> Vec<f64> {
@@ -1158,7 +1154,7 @@ mod tests {
         // Ingest normal values
         for i in 0..20 {
             let metric = Metric {
-                id: format!("metric_{}", i),
+                id: format!("metric_{i}"),
                 name: "response_time".to_string(),
                 metric_type: MetricType::Gauge,
                 value: 100.0 + (i as f64 * 2.0), // Normal increasing trend
@@ -1198,7 +1194,7 @@ mod tests {
         // Ingest trending data
         for i in 0..10 {
             let metric = Metric {
-                id: format!("trend_metric_{}", i),
+                id: format!("trend_metric_{i}"),
                 name: "memory_usage".to_string(),
                 metric_type: MetricType::Gauge,
                 value: 50.0 + (i as f64 * 5.0), // Increasing trend
@@ -1235,7 +1231,7 @@ mod tests {
         // Ingest training data
         for i in 0..20 {
             let feature_metric = Metric {
-                id: format!("feature_metric_{}", i),
+                id: format!("feature_metric_{i}"),
                 name: "cpu_usage".to_string(),
                 metric_type: MetricType::Gauge,
                 value: 50.0 + (i as f64 * 2.0),
@@ -1247,7 +1243,7 @@ mod tests {
             engine.ingest_metric(feature_metric).await.unwrap();
 
             let target_metric = Metric {
-                id: format!("target_metric_{}", i),
+                id: format!("target_metric_{i}"),
                 name: "response_time".to_string(),
                 metric_type: MetricType::Gauge,
                 value: 100.0 + (i as f64 * 3.0), // Correlated with CPU

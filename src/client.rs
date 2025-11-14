@@ -237,7 +237,7 @@ impl ClientManager {
                     .unwrap()
                     .as_secs();
 
-                debug!("Updated client {} IP address to {}", client_id, ip_address);
+                debug!("Updated client {client_id} IP address to {ip_address}");
             }
         }
         Ok(())
@@ -354,8 +354,7 @@ impl ClientManager {
             }
 
             debug!(
-                "Updated boot session {} to stage {:?} ({}ms from start)",
-                session_id, stage, duration_from_start
+                "Updated boot session {session_id} to stage {stage:?} ({duration_from_start}ms from start)"
             );
         }
 
@@ -388,8 +387,7 @@ impl ClientManager {
             metric.errors.push(boot_error);
 
             warn!(
-                "Boot error in session {}: {} - {}",
-                session_id, error_code, error_message
+                "Boot error in session {session_id}: {error_code} - {error_message}"
             );
         }
 
@@ -448,11 +446,10 @@ impl ClientManager {
                     }
                 }
 
-                if f.failed_only {
-                    if client.failed_boots == 0 {
+                if f.failed_only
+                    && client.failed_boots == 0 {
                         continue;
                     }
-                }
 
                 if let Some(recent_hours) = f.recent_hours {
                     let recent_threshold = current_time - (recent_hours as u64 * 3600);
@@ -635,7 +632,7 @@ impl ClientManager {
                 // This could be made configurable
 
                 if cleaned_metrics > 0 {
-                    info!("Cleaned up {} old boot metrics", cleaned_metrics);
+                    info!("Cleaned up {cleaned_metrics} old boot metrics");
                 }
             }
         });

@@ -850,6 +850,12 @@ pub enum AutoApprovalConditionType {
     ChangeType,
 }
 
+impl Default for CrossPlatformDeploymentEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CrossPlatformDeploymentEngine {
     pub fn new() -> Self {
         Self {
@@ -944,6 +950,12 @@ impl CrossPlatformDeploymentEngine {
     }
 }
 
+impl Default for DeploymentOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeploymentOrchestrator {
     pub fn new() -> Self {
         Self {
@@ -981,6 +993,12 @@ pub struct DependencyResolver {
     pub resolver_id: String,
 }
 
+impl Default for DependencyResolver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DependencyResolver {
     pub fn new() -> Self {
         Self {
@@ -1000,6 +1018,12 @@ pub struct ResourceAllocator {
     pub allocator_id: String,
 }
 
+impl Default for ResourceAllocator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ResourceAllocator {
     pub fn new() -> Self {
         Self {
@@ -1017,6 +1041,12 @@ impl ResourceAllocator {
 #[derive(Debug, Clone)]
 pub struct RollbackManager {
     pub manager_id: String,
+}
+
+impl Default for RollbackManager {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RollbackManager {
@@ -1046,6 +1076,12 @@ pub struct DeploymentTemplateManager {
     pub manager_id: String,
 }
 
+impl Default for DeploymentTemplateManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeploymentTemplateManager {
     pub fn new() -> Self {
         Self {
@@ -1063,6 +1099,12 @@ impl DeploymentTemplateManager {
 #[derive(Debug, Clone)]
 pub struct ArtifactRegistry {
     pub registry_id: String,
+}
+
+impl Default for ArtifactRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ArtifactRegistry {
@@ -1084,6 +1126,12 @@ pub struct ConfigurationManager {
     pub manager_id: String,
 }
 
+impl Default for ConfigurationManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfigurationManager {
     pub fn new() -> Self {
         Self {
@@ -1101,6 +1149,12 @@ impl ConfigurationManager {
 #[derive(Debug, Clone)]
 pub struct RolloutController {
     pub controller_id: String,
+}
+
+impl Default for RolloutController {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RolloutController {
@@ -1122,6 +1176,12 @@ pub struct DeploymentMonitoringIntegration {
     pub integration_id: String,
 }
 
+impl Default for DeploymentMonitoringIntegration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DeploymentMonitoringIntegration {
     pub fn new() -> Self {
         Self {
@@ -1139,6 +1199,12 @@ impl DeploymentMonitoringIntegration {
 #[derive(Debug, Clone)]
 pub struct DeploymentComplianceValidator {
     pub validator_id: String,
+}
+
+impl Default for DeploymentComplianceValidator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DeploymentComplianceValidator {

@@ -1,12 +1,11 @@
 // Enterprise Authorization & Access Control System
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
-use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct AuthorizationEngine {
@@ -515,6 +514,12 @@ pub enum ValidationType {
     Custom(String),
 }
 
+impl Default for AuthorizationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AuthorizationEngine {
     pub fn new() -> Self {
         Self {
@@ -629,6 +634,12 @@ impl AuthorizationEngine {
     }
 }
 
+impl Default for PolicyEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PolicyEngine {
     pub fn new() -> Self {
         Self {
@@ -687,6 +698,12 @@ impl PolicyEngine {
     }
 }
 
+impl Default for AccessControlManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AccessControlManager {
     pub fn new() -> Self {
         Self {
@@ -721,6 +738,12 @@ impl AccessControlManager {
         _request: &AuthorizationRequest,
     ) -> Result<bool> {
         Ok(true)
+    }
+}
+
+impl Default for RBACManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -816,6 +839,12 @@ impl RBACManager {
 
     async fn role_has_permission(&self, role: &Role, _permission: &str) -> Result<bool> {
         Ok(!role.permissions.is_empty())
+    }
+}
+
+impl Default for ABACManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1039,6 +1068,12 @@ macro_rules! impl_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

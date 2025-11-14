@@ -152,14 +152,14 @@ impl DhcpServer {
         let bind_addr: SocketAddr = "0.0.0.0:67".parse().unwrap();
 
         let socket = UdpSocket::bind(bind_addr)
-            .map_err(|e| DlsError::Network(format!("Failed to bind DHCP socket: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to bind DHCP socket: {e}")))?;
 
         socket
             .set_broadcast(true)
-            .map_err(|e| DlsError::Network(format!("Failed to set broadcast: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to set broadcast: {e}")))?;
 
         let socket = tokio::net::UdpSocket::from_std(socket)
-            .map_err(|e| DlsError::Network(format!("Failed to convert socket: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to convert socket: {e}")))?;
 
         self.running = true;
 
@@ -343,7 +343,7 @@ impl DhcpServer {
         socket
             .send_to(&offer, broadcast_addr)
             .await
-            .map_err(|e| DlsError::Network(format!("Failed to send DHCP OFFER: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to send DHCP OFFER: {e}")))?;
 
         info!(
             "Sent DHCP OFFER: {} to {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
@@ -385,7 +385,7 @@ impl DhcpServer {
             socket
                 .send_to(&nak, broadcast_addr)
                 .await
-                .map_err(|e| DlsError::Network(format!("Failed to send DHCP NAK: {}", e)))?;
+                .map_err(|e| DlsError::Network(format!("Failed to send DHCP NAK: {e}")))?;
 
             warn!(
                 "Sent DHCP NAK to {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x} for IP {}",
@@ -428,7 +428,7 @@ impl DhcpServer {
         socket
             .send_to(&ack, broadcast_addr)
             .await
-            .map_err(|e| DlsError::Network(format!("Failed to send DHCP ACK: {}", e)))?;
+            .map_err(|e| DlsError::Network(format!("Failed to send DHCP ACK: {e}")))?;
 
         info!(
             "Sent DHCP ACK: {} to {:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x} (lease: {} seconds)",
@@ -1087,7 +1087,7 @@ mod tests {
 
     #[test]
     fn test_requested_ip_parsing() {
-        let mut options = vec![
+        let options = vec![
             50, 4, 192, 168, 1, 100, // Requested IP Address option
             255, // End option
         ];

@@ -1,6 +1,6 @@
 // Advanced Data Pipeline for Multi-Source Analytics Processing
 use crate::error::Result;
-use crate::optimization::{AsyncDataStore, CircularEventBuffer, LightweightStore};
+use crate::optimization::AsyncDataStore;
 use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -716,6 +716,12 @@ pub enum PipelineStatus {
     Completed,
 }
 
+impl Default for AdvancedDataPipeline {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AdvancedDataPipeline {
     pub fn new() -> Self {
         Self {
@@ -819,6 +825,12 @@ impl AdvancedDataPipeline {
     }
 }
 
+impl Default for DataIngestionEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataIngestionEngine {
     pub fn new() -> Self {
         Self {
@@ -870,6 +882,12 @@ pub struct StreamProcessor {
     pub processor_id: String,
 }
 
+impl Default for StreamProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StreamProcessor {
     pub fn new() -> Self {
         Self {
@@ -887,6 +905,12 @@ impl StreamProcessor {
 #[derive(Debug, Clone)]
 pub struct BatchProcessor {
     pub processor_id: String,
+}
+
+impl Default for BatchProcessor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl BatchProcessor {
@@ -908,6 +932,12 @@ pub struct DataTransformationEngine {
     pub engine_id: String,
 }
 
+impl Default for DataTransformationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataTransformationEngine {
     pub fn new() -> Self {
         Self {
@@ -925,6 +955,12 @@ impl DataTransformationEngine {
 #[derive(Debug, Clone)]
 pub struct DataQualityEngine {
     pub engine_id: String,
+}
+
+impl Default for DataQualityEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DataQualityEngine {
@@ -946,6 +982,12 @@ pub struct DataLineageTracker {
     pub tracker_id: String,
 }
 
+impl Default for DataLineageTracker {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataLineageTracker {
     pub fn new() -> Self {
         Self {
@@ -965,6 +1007,12 @@ pub struct MetadataManager {
     pub manager_id: String,
 }
 
+impl Default for MetadataManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl MetadataManager {
     pub fn new() -> Self {
         Self {
@@ -982,6 +1030,12 @@ impl MetadataManager {
 #[derive(Debug, Clone)]
 pub struct PipelineOrchestrator {
     pub orchestrator_id: String,
+}
+
+impl Default for PipelineOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PipelineOrchestrator {
@@ -1026,6 +1080,12 @@ pub struct ConnectorRegistry {
     pub registry_id: String,
 }
 
+impl Default for ConnectorRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConnectorRegistry {
     pub fn new() -> Self {
         Self {
@@ -1047,6 +1107,12 @@ impl ConnectorRegistry {
 #[derive(Debug, Clone)]
 pub struct SchemaRegistry {
     pub registry_id: String,
+}
+
+impl Default for SchemaRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SchemaRegistry {
@@ -1072,6 +1138,12 @@ pub struct DataValidation {
     pub validation_id: String,
 }
 
+impl Default for DataValidation {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DataValidation {
     pub fn new() -> Self {
         Self {
@@ -1093,6 +1165,12 @@ impl DataValidation {
 #[derive(Debug, Clone)]
 pub struct IngestionMonitor {
     pub monitor_id: String,
+}
+
+impl Default for IngestionMonitor {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl IngestionMonitor {

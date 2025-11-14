@@ -1,3 +1,5 @@
+#![allow(unused_variables)]
+
 mod common;
 
 use dls_server::storage::{ImageFormat, StorageManager, ZfsStorageManager};

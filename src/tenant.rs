@@ -43,6 +43,7 @@ impl Default for ResourceQuota {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct NetworkConfig {
     pub vlan_id: Option<u16>,
     pub subnet: Option<String>,
@@ -53,19 +54,6 @@ pub struct NetworkConfig {
     pub gateway: Option<IpAddr>,
 }
 
-impl Default for NetworkConfig {
-    fn default() -> Self {
-        Self {
-            vlan_id: None,
-            subnet: None,
-            allowed_ip_ranges: Vec::new(),
-            dhcp_pool_start: None,
-            dhcp_pool_end: None,
-            dns_servers: Vec::new(),
-            gateway: None,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageConfig {
@@ -405,8 +393,7 @@ impl TenantManager {
         // Validate namespace uniqueness
         if self.tenant_by_namespace.contains_key(&namespace) {
             return Err(crate::error::DlsError::Validation(format!(
-                "Namespace '{}' already exists",
-                namespace
+                "Namespace '{namespace}' already exists"
             )));
         }
 
@@ -438,8 +425,7 @@ impl TenantManager {
             Ok(())
         } else {
             Err(crate::error::Error::NotFound(format!(
-                "Tenant {} not found",
-                tenant_id
+                "Tenant {tenant_id} not found"
             )))
         }
     }
@@ -454,8 +440,7 @@ impl TenantManager {
             Ok(())
         } else {
             Err(crate::error::Error::NotFound(format!(
-                "Tenant {} not found",
-                tenant_id
+                "Tenant {tenant_id} not found"
             )))
         }
     }
@@ -506,8 +491,7 @@ impl TenantManager {
             Ok(())
         } else {
             Err(crate::error::Error::NotFound(format!(
-                "Tenant {} not found",
-                tenant_id
+                "Tenant {tenant_id} not found"
             )))
         }
     }
@@ -519,21 +503,19 @@ impl TenantManager {
     ) -> Result<()> {
         // Verify tenant exists and is active
         let tenant = self.get_tenant(&tenant_id).ok_or_else(|| {
-            crate::error::Error::NotFound(format!("Tenant {} not found", tenant_id))
+            crate::error::Error::NotFound(format!("Tenant {tenant_id} not found"))
         })?;
 
         if !tenant.is_active() {
             return Err(crate::error::DlsError::Validation(format!(
-                "Tenant {} is not active",
-                tenant_id
+                "Tenant {tenant_id} is not active"
             )));
         }
 
         // Check if client IP is allowed
         if !self.is_client_ip_allowed(&client_ip, &tenant).await? {
             return Err(crate::error::Error::AccessDenied(format!(
-                "Client IP {} not allowed for tenant {}",
-                client_ip, tenant_id
+                "Client IP {client_ip} not allowed for tenant {tenant_id}"
             )));
         }
 
@@ -631,13 +613,12 @@ impl TenantManager {
     ) -> Result<Uuid> {
         // Verify parent exists and is active
         let parent = self.get_tenant(&parent_id).ok_or_else(|| {
-            crate::error::Error::NotFound(format!("Parent tenant {} not found", parent_id))
+            crate::error::Error::NotFound(format!("Parent tenant {parent_id} not found"))
         })?;
 
         if !parent.is_active() {
             return Err(crate::error::DlsError::Validation(format!(
-                "Parent tenant {} is not active",
-                parent_id
+                "Parent tenant {parent_id} is not active"
             )));
         }
 
@@ -665,8 +646,7 @@ impl TenantManager {
 
         if has_connections {
             return Err(crate::error::DlsError::Validation(format!(
-                "Cannot delete tenant {} with active connections",
-                tenant_id
+                "Cannot delete tenant {tenant_id} with active connections"
             )));
         }
 
@@ -774,7 +754,7 @@ impl TenantManager {
         } else {
             // Exact IP match
             let allowed_ip: IpAddr = range.parse().map_err(|_| {
-                crate::error::DlsError::Validation(format!("Invalid IP address: {}", range))
+                crate::error::DlsError::Validation(format!("Invalid IP address: {range}"))
             })?;
             Ok(*ip == allowed_ip)
         }

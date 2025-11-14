@@ -571,6 +571,12 @@ pub enum RulePriority {
     Critical,
 }
 
+impl Default for IntelligentInsightsEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl IntelligentInsightsEngine {
     pub fn new() -> Self {
         Self {
@@ -627,6 +633,12 @@ impl IntelligentInsightsEngine {
         self.forecasting_engine
             .generate_forecast(data_reference, forecast_config)
             .await
+    }
+}
+
+impl Default for InsightGenerator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -865,6 +877,12 @@ pub struct PatternAnalyzer {
     pub analyzer_id: String,
 }
 
+impl Default for PatternAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PatternAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -886,6 +904,12 @@ impl PatternAnalyzer {
 #[derive(Debug, Clone)]
 pub struct RecommendationEngine {
     pub engine_id: String,
+}
+
+impl Default for RecommendationEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl RecommendationEngine {
@@ -912,6 +936,12 @@ impl RecommendationEngine {
 #[derive(Debug, Clone)]
 pub struct ForecastingEngine {
     pub engine_id: String,
+}
+
+impl Default for ForecastingEngine {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ForecastingEngine {
@@ -955,6 +985,12 @@ pub struct CausalInferenceEngine {
     pub engine_id: String,
 }
 
+impl Default for CausalInferenceEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CausalInferenceEngine {
     pub fn new() -> Self {
         Self {
@@ -972,6 +1008,12 @@ impl CausalInferenceEngine {
 #[derive(Debug, Clone)]
 pub struct NarrativeGenerator {
     pub generator_id: String,
+}
+
+impl Default for NarrativeGenerator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl NarrativeGenerator {
@@ -997,6 +1039,12 @@ pub struct DecisionSupportSystem {
     pub system_id: String,
 }
 
+impl Default for DecisionSupportSystem {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DecisionSupportSystem {
     pub fn new() -> Self {
         Self {
@@ -1014,6 +1062,12 @@ impl DecisionSupportSystem {
 #[derive(Debug, Clone)]
 pub struct InsightOrchestrator {
     pub orchestrator_id: String,
+}
+
+impl Default for InsightOrchestrator {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl InsightOrchestrator {
@@ -1035,6 +1089,12 @@ pub struct StatisticalAnalyzer {
     pub analyzer_id: String,
 }
 
+impl Default for StatisticalAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl StatisticalAnalyzer {
     pub fn new() -> Self {
         Self {
@@ -1054,6 +1114,12 @@ pub struct TrendDetector {
     pub detector_id: String,
 }
 
+impl Default for TrendDetector {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TrendDetector {
     pub fn new() -> Self {
         Self {
@@ -1071,6 +1137,12 @@ impl TrendDetector {
 #[derive(Debug, Clone)]
 pub struct AnomalyAnalyzer {
     pub analyzer_id: String,
+}
+
+impl Default for AnomalyAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AnomalyAnalyzer {

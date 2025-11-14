@@ -811,6 +811,12 @@ pub enum DeviceType {
     Container,
 }
 
+impl Default for LicensingManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LicensingManager {
     pub fn new() -> Self {
         Self {
@@ -864,6 +870,12 @@ impl LicensingManager {
         self.reporting_engine
             .generate_usage_report(report_request)
             .await
+    }
+}
+
+impl Default for LicenseValidator {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -927,7 +939,7 @@ impl LicenseValidator {
 
     async fn perform_validation(&self, license: &License) -> Result<ValidationResult> {
         let mut errors = Vec::new();
-        let mut warnings = Vec::new();
+        let warnings = Vec::new();
 
         if let Some(end_date) = license.validity_period.end_date {
             if end_date < SystemTime::now() {
@@ -964,6 +976,12 @@ impl LicenseValidator {
             usage_limits: Some(license.usage_limits.clone()),
             restrictions: license.restrictions.clone(),
         })
+    }
+}
+
+impl Default for UsageTracker {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -1314,6 +1332,12 @@ macro_rules! impl_licensing_component {
         #[derive(Debug, Clone)]
         pub struct $name {
             pub component_id: String,
+        }
+
+        impl Default for $name {
+            fn default() -> Self {
+                Self::new()
+            }
         }
 
         impl $name {

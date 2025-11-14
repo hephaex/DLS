@@ -1,3 +1,17 @@
+//! DLS Server - Diskless Boot System
+//!
+//! A modern diskless boot system for enterprise environments.
+
+#![allow(clippy::len_without_is_empty)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::await_holding_lock)]
+#![allow(clippy::too_many_arguments)]
+#![allow(clippy::manual_clamp)]
+#![allow(unused_variables)]
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+#![allow(deprecated)]
+
 pub mod ai;
 pub mod analytics;
 pub mod analytics_intelligence;

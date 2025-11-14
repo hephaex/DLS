@@ -307,6 +307,12 @@ pub struct RoundRobinPlacement {
     counter: std::sync::atomic::AtomicUsize,
 }
 
+impl Default for RoundRobinPlacement {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl RoundRobinPlacement {
     pub fn new() -> Self {
         Self {
@@ -493,8 +499,7 @@ impl EdgeOrchestrator {
         let node_status = self.node_manager.get_node_status(node_id).await?;
         if node_status != crate::edge::edge_node::EdgeNodeStatus::Active {
             return Err(DlsError::InvalidState(format!(
-                "Node {} is not active",
-                node_id
+                "Node {node_id} is not active"
             )));
         }
 
@@ -506,8 +511,7 @@ impl EdgeOrchestrator {
             }
         } else {
             return Err(DlsError::NotFound(format!(
-                "Cluster {} not found",
-                cluster_id
+                "Cluster {cluster_id} not found"
             )));
         }
 
@@ -517,7 +521,7 @@ impl EdgeOrchestrator {
             cluster_id,
             Some(node_id.to_string()),
             None,
-            format!("Node {} added to cluster", node_id),
+            format!("Node {node_id} added to cluster"),
         )
         .await;
 
@@ -535,8 +539,7 @@ impl EdgeOrchestrator {
             cluster.last_updated = Utc::now();
         } else {
             return Err(DlsError::NotFound(format!(
-                "Cluster {} not found",
-                cluster_id
+                "Cluster {cluster_id} not found"
             )));
         }
 
@@ -550,7 +553,7 @@ impl EdgeOrchestrator {
             cluster_id,
             Some(node_id.to_string()),
             None,
-            format!("Node {} removed from cluster", node_id),
+            format!("Node {node_id} removed from cluster"),
         )
         .await;
 
@@ -567,7 +570,7 @@ impl EdgeOrchestrator {
         let cluster = self
             .clusters
             .get(cluster_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Cluster {cluster_id} not found")))?;
 
         let target_nodes: Vec<String> = cluster
             .member_nodes
@@ -606,8 +609,7 @@ impl EdgeOrchestrator {
                     Some(target_node_id.clone()),
                     Some(workload.workload_id.clone()),
                     format!(
-                        "Workload migrated from {} to {}",
-                        source_node_id, target_node_id
+                        "Workload migrated from {source_node_id} to {target_node_id}"
                     ),
                 )
                 .await;
@@ -674,7 +676,7 @@ impl EdgeOrchestrator {
         let cluster = self
             .clusters
             .get(cluster_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Cluster {cluster_id} not found")))?;
 
         // Get available nodes in cluster
         let all_nodes = self.node_manager.list_nodes().await;
@@ -722,7 +724,7 @@ impl EdgeOrchestrator {
             cluster_id,
             Some(selected_node_id.clone()),
             Some(workload.workload_id.clone()),
-            format!("Workload scheduled to node {}", selected_node_id),
+            format!("Workload scheduled to node {selected_node_id}"),
         )
         .await;
 
@@ -741,7 +743,7 @@ impl EdgeOrchestrator {
         node_id: &str,
         workload_id: &str,
     ) -> Result<()> {
-        let distribution_id = format!("{}-distribution", cluster_id);
+        let distribution_id = format!("{cluster_id}-distribution");
 
         if let Some(mut distribution) = self.workload_distributions.get_mut(&distribution_id) {
             // Add workload to existing distribution
@@ -781,7 +783,7 @@ impl EdgeOrchestrator {
         let cluster = self
             .clusters
             .get(cluster_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Cluster {cluster_id} not found")))?;
 
         if !cluster.auto_scaling.enabled {
             return Ok(()); // Auto-scaling disabled
@@ -816,7 +818,7 @@ impl EdgeOrchestrator {
         let cluster = self
             .clusters
             .get(cluster_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Cluster {cluster_id} not found")))?;
 
         let nodes = self.node_manager.list_nodes_by_cluster(cluster_id).await;
 
@@ -852,8 +854,7 @@ impl EdgeOrchestrator {
             started_at: Utc::now(),
             estimated_completion: Utc::now() + Duration::minutes(10),
             reason: format!(
-                "Cluster utilization ({:.1}%) exceeds scale-up threshold",
-                current_utilization
+                "Cluster utilization ({current_utilization:.1}%) exceeds scale-up threshold"
             ),
         };
 
@@ -886,8 +887,7 @@ impl EdgeOrchestrator {
             started_at: Utc::now(),
             estimated_completion: Utc::now() + Duration::minutes(15),
             reason: format!(
-                "Cluster utilization ({:.1}%) below scale-down threshold",
-                current_utilization
+                "Cluster utilization ({current_utilization:.1}%) below scale-down threshold"
             ),
         };
 
@@ -992,7 +992,7 @@ impl EdgeOrchestrator {
         let cluster = self
             .clusters
             .get(cluster_id)
-            .ok_or_else(|| DlsError::NotFound(format!("Cluster {} not found", cluster_id)))?;
+            .ok_or_else(|| DlsError::NotFound(format!("Cluster {cluster_id} not found")))?;
 
         let nodes = self.node_manager.list_nodes_by_cluster(cluster_id).await;
         let active_nodes = nodes
