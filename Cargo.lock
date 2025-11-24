@@ -1161,7 +1161,7 @@ dependencies = [
  "sqlx",
  "statrs",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror 2.0.16",
  "tokio",
  "tokio-util",
  "tower",
