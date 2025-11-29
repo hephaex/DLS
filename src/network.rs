@@ -585,6 +585,18 @@ impl NetworkManager {
         self.analytics_engine.as_ref()
     }
 
+    pub fn get_dhcp_server(&self) -> Option<&DhcpServer> {
+        self.dhcp_server.as_ref()
+    }
+
+    pub fn get_tftp_server(&self) -> Option<&TftpServer> {
+        self.tftp_server.as_ref()
+    }
+
+    pub fn get_iscsi_target(&self) -> Option<&IscsiTarget> {
+        self.iscsi_target.as_ref()
+    }
+
     pub async fn record_metric(
         &self,
         name: &str,
