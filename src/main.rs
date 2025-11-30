@@ -45,7 +45,14 @@ async fn main() -> Result<()> {
         "Starting CLAUDE Diskless Boot System v{}",
         env!("CARGO_PKG_VERSION")
     );
-    info!("Build mode: {}", if cli.production { "PRODUCTION" } else { "DEVELOPMENT" });
+    info!(
+        "Build mode: {}",
+        if cli.production {
+            "PRODUCTION"
+        } else {
+            "DEVELOPMENT"
+        }
+    );
 
     if !cli.production {
         warn!("⚠️  Running in DEVELOPMENT mode - not recommended for production use");
@@ -55,7 +62,10 @@ async fn main() -> Result<()> {
     // Load configuration
     let settings = load_configuration(&cli.config)?;
     info!("Configuration loaded from: {}", cli.config);
-    info!("  - DHCP range: {} - {}", settings.network.dhcp_range_start, settings.network.dhcp_range_end);
+    info!(
+        "  - DHCP range: {} - {}",
+        settings.network.dhcp_range_start, settings.network.dhcp_range_end
+    );
     info!("  - TFTP root: {}", settings.network.tftp_root);
     info!("  - iSCSI target: {}", settings.network.iscsi_target_name);
     info!("  - Management bind: {}", cli.bind);
@@ -128,7 +138,10 @@ async fn main() -> Result<()> {
             active_services.push("Analytics");
         }
 
-        info!("Health check - Active services: {}", active_services.join(", "));
+        info!(
+            "Health check - Active services: {}",
+            active_services.join(", ")
+        );
     }
 }
 
@@ -145,7 +158,7 @@ fn initialize_logging(log_level: &str) -> Result<()> {
                 .with_target(true)
                 .with_thread_ids(true)
                 .with_level(true)
-                .with_ansi(true)
+                .with_ansi(true),
         )
         .init();
 
@@ -156,8 +169,7 @@ fn initialize_logging(log_level: &str) -> Result<()> {
 fn load_configuration(config_path: &str) -> Result<Settings> {
     if std::path::Path::new(config_path).exists() {
         info!("Loading configuration from file: {}", config_path);
-        Settings::from_file(config_path)
-            .map_err(|e| anyhow::anyhow!("Configuration error: {}", e))
+        Settings::from_file(config_path).map_err(|e| anyhow::anyhow!("Configuration error: {}", e))
     } else {
         warn!("Configuration file not found: {}", config_path);
         warn!("Using default configuration - suitable for development only");
@@ -167,10 +179,16 @@ fn load_configuration(config_path: &str) -> Result<Settings> {
 
 /// Create NetworkConfig from Settings
 fn create_network_config(settings: &Settings) -> Result<NetworkConfig> {
-    let dhcp_start: Ipv4Addr = settings.network.dhcp_range_start.parse()
+    let dhcp_start: Ipv4Addr = settings
+        .network
+        .dhcp_range_start
+        .parse()
         .map_err(|e| anyhow::anyhow!("Invalid DHCP start address: {}", e))?;
 
-    let dhcp_end: Ipv4Addr = settings.network.dhcp_range_end.parse()
+    let dhcp_end: Ipv4Addr = settings
+        .network
+        .dhcp_range_end
+        .parse()
         .map_err(|e| anyhow::anyhow!("Invalid DHCP end address: {}", e))?;
 
     Ok(NetworkConfig {
