@@ -56,7 +56,7 @@ pub struct ConnectionPool {
     pub idle_timeout: Duration,
 }
 
-/// Optimized replacements for heavy Arc<DashMap> usage
+/// Optimized replacements for heavy `Arc<DashMap>` usage
 #[derive(Debug, Clone)]
 pub struct LightweightStore<K, V>
 where
