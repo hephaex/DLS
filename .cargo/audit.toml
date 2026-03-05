@@ -1,0 +1,16 @@
+# cargo-audit configuration
+# https://rustsec.org/
+
+[advisories]
+# Advisories to ignore because they have no available fix
+ignore = [
+    # rsa: Marvin Attack - timing side-channel vulnerability in RSA decryption
+    # No fix available yet. Used by jwt-simple/superboring and sqlx-mysql.
+    # Risk assessment: Medium severity (5.9), requires network attacker with
+    # ability to perform many precise timing measurements.
+    # Monitor: https://rustsec.org/advisories/RUSTSEC-2023-0071
+    "RUSTSEC-2023-0071",
+]
+
+# Treat warnings as informational only
+informational_warnings = ["unmaintained"]
