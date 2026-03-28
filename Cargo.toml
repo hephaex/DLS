@@ -17,7 +17,7 @@ time = "0.3.47"
 # Web framework and HTTP
 axum = "0.8"
 tower = "0.5"
-tower-http = { version = "0.5", features = ["cors", "trace"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
 hyper = "1.0"
 
 # Serialization
